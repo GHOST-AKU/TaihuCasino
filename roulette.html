@@ -1,0 +1,338 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>轮盘赌（离线网页版）</title>
+  <style>
+    :root { --bg:#0b1020; --card:#141a2e; --text:#e9ecff; --muted:#aab0d6; }
+    * { box-sizing:border-box; }
+    body{
+      margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans","PingFang SC","Microsoft YaHei",sans-serif;
+      background: radial-gradient(1200px 800px at 30% 10%, #1a2450, var(--bg));
+      color:var(--text);
+    }
+    .wrap{ max-width:1100px; margin:0 auto; padding:16px; }
+    .row{ display:flex; gap:14px; flex-wrap:wrap; }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:16px; padding:14px;
+      backdrop-filter: blur(6px);
+    }
+    .card h2{ margin:0 0 10px; font-size:16px; color:var(--muted); font-weight:600; }
+    .top{ align-items:stretch; }
+    .stat{ display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .stat b{ font-size:18px; }
+    button{
+      border:0; border-radius:14px; padding:12px 14px;
+      background:#2a62ff; color:white; font-weight:700; cursor:pointer;
+      transition: transform .05s ease, filter .15s ease;
+      touch-action: manipulation;
+    }
+    button:active{ transform: translateY(1px) scale(0.99); }
+    button.secondary{ background: rgba(255,255,255,.12); }
+    button:disabled{ opacity:.55; cursor:not-allowed; }
+    .pill{
+      display:inline-flex; gap:10px; align-items:center;
+      padding:10px 12px; border-radius:14px;
+      background: rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.10);
+    }
+    input[type="range"]{ width:100%; }
+    .result{
+      display:flex; gap:12px; align-items:center;
+    }
+    .ball{
+      width:62px; height:62px; border-radius:50%;
+      display:grid; place-items:center;
+      border:2px solid rgba(255,255,255,.2);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      font-size:22px; font-weight:900;
+      user-select:none;
+    }
+    .msg{ color:var(--muted); line-height:1.4; }
+    .betRow{ display:flex; gap:10px; flex-wrap:wrap; }
+    .chip{
+      padding:10px 12px; border-radius:999px;
+      background: rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.14);
+      color:var(--text); font-weight:800;
+    }
+    .chip.red{ background: rgba(220,38,38,.22); border-color: rgba(220,38,38,.45); }
+    .chip.black{ background: rgba(17,24,39,.50); border-color: rgba(255,255,255,.16); }
+    .chip.sel{ outline: 2px solid rgba(42,98,255,.85); }
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(12, minmax(0,1fr));
+      gap:8px;
+    }
+    .num{
+      border-radius:12px; padding:10px 0; text-align:center;
+      font-weight:900; cursor:pointer; user-select:none;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      touch-action: manipulation;
+    }
+    .num.red{ background: rgba(220,38,38,.25); }
+    .num.black{ background: rgba(17,24,39,.55); }
+    .num.green{ background: rgba(34,197,94,.22); }
+    .num.sel{ outline: 2px solid rgba(42,98,255,.9); }
+    .footer{ margin-top:10px; color:rgba(255,255,255,.55); font-size:12px; }
+    .spinBar{
+      height:10px; border-radius:999px; overflow:hidden;
+      background: rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .spinBar > div{
+      height:100%; width:0%;
+      background: linear-gradient(90deg, rgba(42,98,255,.2), rgba(42,98,255,1), rgba(42,98,255,.2));
+      filter: drop-shadow(0 0 10px rgba(42,98,255,.7));
+      animation: none;
+    }
+    @keyframes load {
+      0% { width: 0%; }
+      60% { width: 100%; }
+      100% { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="row top">
+    <div class="card" style="flex: 1 1 360px;">
+      <div class="stat">
+        <div><div style="color:var(--muted);font-weight:700;">余额</div><b id="balance">1000</b></div>
+        <div style="display:flex; gap:10px;">
+          <button class="secondary" id="resetBtn">重置</button>
+          <button id="spinBtn">旋转（Spin）</button>
+        </div>
+      </div>
+      <div style="height:12px"></div>
+      <div class="result">
+        <div class="ball" id="ball">—</div>
+        <div>
+          <div style="font-weight:800;">结果</div>
+          <div class="msg" id="msg">选择下注方式，然后点击旋转。</div>
+        </div>
+      </div>
+      <div style="height:14px"></div>
+      <div class="spinBar" aria-hidden="true"><div id="bar"></div></div>
+      <div class="footer">免责声明：离线娱乐模拟，不涉及真钱/支付/联网功能。</div>
+    </div>
+
+    <div class="card" style="flex: 1 1 360px;">
+      <h2>下注金额</h2>
+      <div class="pill" style="width:100%; justify-content:space-between;">
+        <span style="font-weight:800;">金额：</span>
+        <span style="font-weight:900; font-size:18px;" id="betShow">50</span>
+      </div>
+      <div style="height:10px"></div>
+      <input id="betRange" type="range" min="10" max="500" step="10" value="50" />
+      <div class="footer">直选命中赔 35:1；押红/黑命中赔 1:1；0 不算红黑。</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="card" style="flex: 1 1 420px;">
+      <h2>下注方式</h2>
+      <div class="betRow">
+        <div class="chip red" id="betRed" role="button" tabindex="0">押红</div>
+        <div class="chip black" id="betBlack" role="button" tabindex="0">押黑</div>
+        <div class="chip" id="betStraight" role="button" tabindex="0">直选数字</div>
+      </div>
+      <div style="height:12px"></div>
+      <div class="footer">先选下注方式；如果选“直选数字”，再点下面的数字。</div>
+    </div>
+
+    <div class="card" style="flex: 1 1 520px;">
+      <h2>数字（0–36）</h2>
+      <div class="grid" id="numGrid"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // 欧式轮盘红色集合
+  const RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+
+  let balance = 1000;
+  let betAmount = 50;
+
+  // betType: 'red' | 'black' | 'straight'
+  let betType = null;
+  let straightNumber = null;
+
+  let spinning = false;
+
+  const elBalance = document.getElementById('balance');
+  const elBetShow = document.getElementById('betShow');
+  const elBetRange = document.getElementById('betRange');
+  const elMsg = document.getElementById('msg');
+  const elBall = document.getElementById('ball');
+  const elSpin = document.getElementById('spinBtn');
+  const elReset = document.getElementById('resetBtn');
+  const elBar = document.getElementById('bar');
+
+  const chipRed = document.getElementById('betRed');
+  const chipBlack = document.getElementById('betBlack');
+  const chipStraight = document.getElementById('betStraight');
+  const grid = document.getElementById('numGrid');
+
+  function colorOf(n){
+    if (n === 0) return 'green';
+    return RED.has(n) ? 'red' : 'black';
+  }
+
+  function setBall(n){
+    elBall.textContent = (n === null || n === undefined) ? '—' : String(n);
+    elBall.style.background =
+      n === null || n === undefined ? 'rgba(255,255,255,.08)' :
+      (n === 0 ? 'rgba(34,197,94,.35)' :
+        (RED.has(n) ? 'rgba(220,38,38,.75)' : 'rgba(17,24,39,.85)'));
+  }
+
+  function render(){
+    elBalance.textContent = balance;
+    elBetShow.textContent = betAmount;
+
+    chipRed.classList.toggle('sel', betType === 'red');
+    chipBlack.classList.toggle('sel', betType === 'black');
+    chipStraight.classList.toggle('sel', betType === 'straight');
+
+    // 数字选择高亮
+    [...grid.children].forEach(node => {
+      const n = Number(node.dataset.n);
+      node.classList.toggle('sel', betType === 'straight' && straightNumber === n);
+    });
+
+    // 按钮可用性
+    elSpin.disabled = spinning;
+    elBetRange.disabled = spinning;
+  }
+
+  function setMessage(t){ elMsg.textContent = t; }
+
+  function pickBet(type){
+    if (spinning) return;
+    betType = type;
+    if (type !== 'straight') straightNumber = null;
+    render();
+  }
+
+  function payout(result){
+    if (!betType) return 0;
+    if (betType === 'straight'){
+      if (straightNumber === null || straightNumber === undefined) return 0;
+      return (result === straightNumber) ? betAmount * 35 : -betAmount;
+    }
+    if (betType === 'red'){
+      const win = (result !== 0 && RED.has(result));
+      return win ? betAmount : -betAmount;
+    }
+    if (betType === 'black'){
+      const win = (result !== 0 && !RED.has(result));
+      return win ? betAmount : -betAmount;
+    }
+    return 0;
+  }
+
+  // 构建数字网格
+  function buildGrid(){
+    for (let n = 0; n <= 36; n++){
+      const div = document.createElement('div');
+      div.className = `num ${colorOf(n)}`;
+      div.textContent = n;
+      div.dataset.n = String(n);
+      div.addEventListener('click', () => {
+        if (spinning) return;
+        betType = 'straight';
+        straightNumber = n;
+        render();
+      });
+      grid.appendChild(div);
+    }
+  }
+
+  function spin(){
+    if (spinning) return;
+
+    if (!betType){
+      setMessage('你还没选下注方式。');
+      return;
+    }
+    if (betType === 'straight' && (straightNumber === null || straightNumber === undefined)){
+      setMessage('你选了“直选数字”，但还没点具体数字。');
+      return;
+    }
+    if (betAmount <= 0){
+      setMessage('下注金额要大于 0。');
+      return;
+    }
+    if (balance < betAmount){
+      setMessage(`余额不足：你只有 ${balance}。`);
+      return;
+    }
+
+    spinning = true;
+    setMessage('旋转中…');
+    elBar.style.animation = 'load 900ms ease-out 1 forwards';
+    render();
+
+    // 做个“短暂停顿”增加手感
+    setTimeout(() => {
+      const result = Math.floor(Math.random() * 37); // 0..36
+      setBall(result);
+
+      const delta = payout(result);
+      balance += delta;
+
+      const c = result === 0 ? '绿(0)' : (RED.has(result) ? '红' : '黑');
+      if (delta > 0) setMessage(`开出：${result}（${c}）你赢了 +${delta}！`);
+      else setMessage(`开出：${result}（${c}）你输了 ${Math.abs(delta)}…`);
+
+      // 复位进度条
+      setTimeout(() => {
+        elBar.style.animation = 'none';
+        elBar.style.width = '0%';
+      }, 50);
+
+      spinning = false;
+      render();
+    }, 900);
+  }
+
+  function reset(){
+    if (spinning) return;
+    balance = 1000;
+    betAmount = 50;
+    betType = null;
+    straightNumber = null;
+    setBall(null);
+    elBetRange.value = String(betAmount);
+    setMessage('已重置。选择下注方式，然后点击旋转。');
+    render();
+  }
+
+  // 事件绑定
+  elBetRange.addEventListener('input', e => {
+    betAmount = Number(e.target.value) || 10;
+    render();
+  });
+
+  chipRed.addEventListener('click', () => pickBet('red'));
+  chipBlack.addEventListener('click', () => pickBet('black'));
+  chipStraight.addEventListener('click', () => pickBet('straight'));
+
+  elSpin.addEventListener('click', spin);
+  elReset.addEventListener('click', reset);
+
+  // 初始化
+  buildGrid();
+  setBall(null);
+  render();
+})();
+</script>
+</body>
+</html>
