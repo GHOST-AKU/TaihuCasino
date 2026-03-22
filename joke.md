@@ -1,5 +1,3 @@
-# TaihuCasino
-TaihuCasino
 # 🧾 Surreal Chaos License v0.1
 
 > A highly experimental, emotionally unstable, and ideologically inconsistent license.
