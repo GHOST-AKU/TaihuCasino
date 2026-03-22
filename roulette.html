@@ -1,338 +1,215 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>轮盘赌（离线网页版）</title>
+  <title>欧式轮盘（离线网页版）</title>
   <style>
-    :root { --bg:#0b1020; --card:#141a2e; --text:#e9ecff; --muted:#aab0d6; }
-    * { box-sizing:border-box; }
-    body{
-      margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans","PingFang SC","Microsoft YaHei",sans-serif;
-      background: radial-gradient(1200px 800px at 30% 10%, #1a2450, var(--bg));
-      color:var(--text);
-    }
-    .wrap{ max-width:1100px; margin:0 auto; padding:16px; }
-    .row{ display:flex; gap:14px; flex-wrap:wrap; }
-    .card{
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:16px; padding:14px;
-      backdrop-filter: blur(6px);
-    }
-    .card h2{ margin:0 0 10px; font-size:16px; color:var(--muted); font-weight:600; }
-    .top{ align-items:stretch; }
-    .stat{ display:flex; justify-content:space-between; align-items:center; gap:12px; }
-    .stat b{ font-size:18px; }
-    button{
-      border:0; border-radius:14px; padding:12px 14px;
-      background:#2a62ff; color:white; font-weight:700; cursor:pointer;
-      transition: transform .05s ease, filter .15s ease;
-      touch-action: manipulation;
-    }
-    button:active{ transform: translateY(1px) scale(0.99); }
-    button.secondary{ background: rgba(255,255,255,.12); }
-    button:disabled{ opacity:.55; cursor:not-allowed; }
-    .pill{
-      display:inline-flex; gap:10px; align-items:center;
-      padding:10px 12px; border-radius:14px;
-      background: rgba(255,255,255,.08);
-      border:1px solid rgba(255,255,255,.10);
-    }
-    input[type="range"]{ width:100%; }
-    .result{
-      display:flex; gap:12px; align-items:center;
-    }
-    .ball{
-      width:62px; height:62px; border-radius:50%;
-      display:grid; place-items:center;
-      border:2px solid rgba(255,255,255,.2);
-      box-shadow: 0 10px 30px rgba(0,0,0,.35);
-      font-size:22px; font-weight:900;
-      user-select:none;
-    }
-    .msg{ color:var(--muted); line-height:1.4; }
-    .betRow{ display:flex; gap:10px; flex-wrap:wrap; }
-    .chip{
-      padding:10px 12px; border-radius:999px;
-      background: rgba(255,255,255,.10);
-      border:1px solid rgba(255,255,255,.14);
-      color:var(--text); font-weight:800;
-    }
-    .chip.red{ background: rgba(220,38,38,.22); border-color: rgba(220,38,38,.45); }
-    .chip.black{ background: rgba(17,24,39,.50); border-color: rgba(255,255,255,.16); }
-    .chip.sel{ outline: 2px solid rgba(42,98,255,.85); }
-    .grid{
-      display:grid;
-      grid-template-columns: repeat(12, minmax(0,1fr));
-      gap:8px;
-    }
-    .num{
-      border-radius:12px; padding:10px 0; text-align:center;
-      font-weight:900; cursor:pointer; user-select:none;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
-      touch-action: manipulation;
-    }
-    .num.red{ background: rgba(220,38,38,.25); }
-    .num.black{ background: rgba(17,24,39,.55); }
-    .num.green{ background: rgba(34,197,94,.22); }
-    .num.sel{ outline: 2px solid rgba(42,98,255,.9); }
-    .footer{ margin-top:10px; color:rgba(255,255,255,.55); font-size:12px; }
-    .spinBar{
-      height:10px; border-radius:999px; overflow:hidden;
-      background: rgba(255,255,255,.08);
-      border:1px solid rgba(255,255,255,.10);
-    }
-    .spinBar > div{
-      height:100%; width:0%;
-      background: linear-gradient(90deg, rgba(42,98,255,.2), rgba(42,98,255,1), rgba(42,98,255,.2));
-      filter: drop-shadow(0 0 10px rgba(42,98,255,.7));
-      animation: none;
-    }
-    @keyframes load {
-      0% { width: 0%; }
-      60% { width: 100%; }
-      100% { width: 100%; }
-    }
+    :root{--bg:#08130f;--line:#d0b06e;--text:#f5ecd6;--muted:#bcae86;--red:#b2333f;--black:#16181c;--green:#1f8a56}
+    *{box-sizing:border-box}
+    body{margin:0;color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans","PingFang SC","Microsoft YaHei",sans-serif;background:radial-gradient(1200px 700px at 20% 0%,#29533f 0%,transparent 60%),radial-gradient(900px 700px at 100% 0%,#4b2a1d 0%,transparent 55%),linear-gradient(180deg,var(--bg),#050b08 70%)}
+    .wrap{max-width:1360px;margin:0 auto;padding:16px;display:grid;gap:12px}
+    .panel{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));border:1px solid rgba(208,176,110,.28);border-radius:16px;padding:12px;box-shadow:0 14px 38px rgba(0,0,0,.32)}
+    .title{font-size:13px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;font-weight:700}
+    .top{display:grid;grid-template-columns:1.15fr .85fr;gap:12px}.mid{display:grid;grid-template-columns:1.35fr .65fr;gap:12px;align-items:start}
+    .statRow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.bank{font-size:34px;font-weight:900;color:#f1d28f}
+    .btns{display:flex;gap:8px;flex-wrap:wrap}button{border-radius:10px;padding:8px 11px;border:1px solid rgba(208,176,110,.35);background:linear-gradient(180deg,#ebc982,#c59c54);color:#362506;font-weight:800;cursor:pointer}
+    button.secondary{background:linear-gradient(180deg,#1b3a2b,#12261c);color:var(--text)}button:disabled{opacity:.5;cursor:not-allowed}
+    .result{margin-top:8px;display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center}.ball{width:68px;height:68px;border-radius:50%;display:grid;place-items:center;font-size:25px;font-weight:900;border:2px solid rgba(255,255,255,.28);background:rgba(255,255,255,.09)}
+    .msg{color:var(--muted)}.spinBar{height:9px;margin-top:12px;border:1px solid rgba(255,255,255,.1);border-radius:999px;overflow:hidden}.spinBar>div{height:100%;width:0%;background:linear-gradient(90deg,rgba(208,176,110,0),rgba(208,176,110,1),rgba(208,176,110,0))}@keyframes load{from{width:0}to{width:100%}}
+    .wheelPanel{display:grid;place-items:center;gap:8px}#wheelCanvas{width:min(420px,92vw);aspect-ratio:1/1;border-radius:50%;border:6px solid rgba(208,176,110,.5);background:radial-gradient(circle at center,#123527 0%,#07150f 70%)}.arrow{width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:18px solid #efcf8c}
+    .controlRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}input[type="number"],input[type="text"],select{border-radius:8px;border:1px solid rgba(208,176,110,.3);background:rgba(0,0,0,.22);color:var(--text);padding:8px 9px}
+    .chipRack{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.chip{border-radius:999px;min-width:70px;text-align:center;padding:8px 10px;font-weight:900;cursor:pointer;border:2px dashed rgba(255,255,255,.4);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+    .chip.c1{background:radial-gradient(circle at 30% 28%,#fff2cc,#d5a246)}.chip.c2{background:radial-gradient(circle at 30% 28%,#ffe5e5,#d95b5b)}.chip.c3{background:radial-gradient(circle at 30% 28%,#e2efff,#5f8fda)}.chip.c4{background:radial-gradient(circle at 30% 28%,#e3ffe9,#4daa67)}.chip.c5{background:radial-gradient(circle at 30% 28%,#f4e6ff,#8b62c9)}.chip.c6{background:radial-gradient(circle at 30% 28%,#fff0df,#d27f4d)}.chip.sel{outline:2px solid #efcf8c}
+    .tableWrap{margin-top:10px;border:2px solid rgba(208,176,110,.5);border-radius:12px;padding:10px;background:linear-gradient(180deg,#0d3a2a,#07261b);overflow-x:auto}.rouletteTable{min-width:860px;display:grid;gap:8px}
+    .insideHead{display:grid;grid-template-columns:52px repeat(3,1fr);gap:4px}.zeroCell{grid-row:span 12;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:var(--green);display:grid;place-items:center;font-size:22px;font-weight:900;cursor:pointer;min-height:436px}
+    .grid3x12{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(12,36px);gap:4px}.numCell{border:1px solid rgba(255,255,255,.2);border-radius:6px;display:grid;place-items:center;font-weight:900;cursor:pointer;user-select:none}.numCell.red{background:#ac313d}.numCell.black{background:#13161a}
+    .outsideRow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}.dozenRow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.colRow{display:grid;grid-template-columns:52px repeat(3,minmax(0,1fr));gap:4px}.placeholder{visibility:hidden}
+    .outsideCell,.dozenCell,.colCell{border:1px solid rgba(255,255,255,.2);border-radius:6px;background:rgba(0,0,0,.22);padding:7px 6px;text-align:center;font-weight:800;cursor:pointer;user-select:none}.outsideCell small,.dozenCell small,.colCell small,.numCell small,.zeroCell small{display:block;font-size:11px;color:#d8d8d8;opacity:.85;font-weight:600;line-height:1.1}
+    .active{outline:2px solid #efcf8c;box-shadow:0 0 0 1px rgba(0,0,0,.35) inset}
+    .insideTools{margin-top:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.toolCard{border:1px solid rgba(208,176,110,.25);border-radius:10px;padding:8px;background:rgba(0,0,0,.18)}
+    .slipList{margin-top:10px;border:1px solid rgba(208,176,110,.25);border-radius:10px;max-height:260px;overflow:auto}.betItem{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px}.betItem:last-child{border-bottom:none}
+    .metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.metric{border:1px solid rgba(208,176,110,.25);border-radius:10px;background:rgba(0,0,0,.16);padding:8px}.metric .k{color:var(--muted);font-size:12px}.metric .v{font-size:18px;font-weight:900;margin-top:2px}.good{color:#34cc7b}.bad{color:#ee6a6a}
+    .footer{color:rgba(255,255,255,.64);font-size:12px;margin-top:6px}
+    dialog{border:1px solid rgba(208,176,110,.4);border-radius:12px;background:#0c1f17;color:var(--text);max-width:760px;width:95%;padding:12px}
+    dialog::backdrop{background:rgba(0,0,0,.6)}table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid rgba(255,255,255,.15);padding:6px;text-align:left}
+    @media (max-width:1060px){.top,.mid{grid-template-columns:1fr}.insideTools{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="row top">
-    <div class="card" style="flex: 1 1 360px;">
-      <div class="stat">
-        <div><div style="color:var(--muted);font-weight:700;">余额</div><b id="balance">1000</b></div>
-        <div style="display:flex; gap:10px;">
-          <button class="secondary" id="resetBtn">重置</button>
-          <button id="spinBtn">旋转（Spin）</button>
+  <div class="wrap">
+    <section class="top">
+      <div class="panel">
+        <div class="title">Bankroll & Spin</div>
+        <div class="statRow">
+          <div><div style="color:var(--muted);font-size:13px;">余额</div><div class="bank" id="balance">1000</div></div>
+          <div class="btns"><button class="secondary" id="helpBtn">玩法说明</button><button class="secondary" id="clearBetsBtn">清空下注</button><button class="secondary" id="resetBtn">重置局面</button><button id="spinBtn">旋转结算</button></div>
+        </div>
+        <div class="result"><div class="ball" id="ball">—</div><div><div style="font-weight:800;">结果播报</div><div class="msg" id="msg">可同局叠加多个下注项目。</div></div></div>
+        <div class="spinBar"><div id="bar"></div></div>
+        <div class="footer">欧式规则：单零（0），无 La Partage / En Prison 特殊条款。</div>
+      </div>
+      <div class="panel wheelPanel"><div class="title">可视化轮盘</div><div class="arrow"></div><canvas id="wheelCanvas" width="420" height="420"></canvas><div class="msg" id="wheelHint">当前指针：—</div></div>
+    </section>
+
+    <section class="mid">
+      <div class="panel">
+        <div class="title">赌桌下注区（横向布局）</div>
+        <div class="controlRow"><span>当前每注金额</span><input id="stakeInput" type="number" min="1" step="1" value="50" style="width:100px;"><span style="color:var(--muted);">点击下注位 = 当前金额追加到该项目</span></div>
+        <div class="chipRack" id="chipRack"></div>
+        <div class="controlRow" style="margin-top:8px;"><label>初始资金</label><input id="initialBankrollInput" type="number" min="100" step="100" value="1000" style="width:120px;"><label>初始筹码面额</label><input id="initialChipsInput" type="text" value="10,25,50,100,250" style="width:220px;"><button class="secondary" id="applyInitBtn">应用初始设置</button></div>
+
+        <div class="tableWrap">
+          <div class="rouletteTable">
+            <div class="insideHead"><div class="zeroCell" id="zeroCell"><div>0<small>Zero</small></div></div><div class="grid3x12" id="insideGrid"></div></div>
+            <div class="dozenRow" id="dozenRow"></div>
+            <div class="outsideRow" id="outsideRow"></div>
+            <div class="colRow" id="columnRow"><div class="placeholder">.</div></div>
+          </div>
+        </div>
+
+        <div class="insideTools">
+          <div class="toolCard"><div style="font-weight:800;margin-bottom:6px;">内注补充：分注 / 街注</div><div class="controlRow"><select id="insideTypeA"><option value="split">分注<small></small> Split (17:1)</option><option value="street">街注 Street (11:1)</option></select><select id="insideOptionA" style="min-width:180px;"></select><button class="secondary" id="addInsideABtn">添加</button></div></div>
+          <div class="toolCard"><div style="font-weight:800;margin-bottom:6px;">内注补充：角注 / 六线</div><div class="controlRow"><select id="insideTypeB"><option value="corner">角注 Corner (8:1)</option><option value="sixline">六线 Six Line (5:1)</option></select><select id="insideOptionB" style="min-width:180px;"></select><button class="secondary" id="addInsideBBtn">添加</button></div></div>
+        </div>
+        <div class="slipList" id="betSlip"></div>
+      </div>
+
+      <div class="panel">
+        <div class="title">数学计算 & 统计（实时）</div>
+        <div class="metrics">
+          <div class="metric"><div class="k">当前注单数</div><div class="v" id="mCount">0</div></div>
+          <div class="metric"><div class="k">总下注额</div><div class="v" id="mStake">0</div></div>
+          <div class="metric"><div class="k">理论 EV（单轮）</div><div class="v" id="mEv">0</div></div>
+          <div class="metric"><div class="k">至少命中1注概率</div><div class="v" id="mHitProb">0%</div></div>
+          <div class="metric"><div class="k">本轮可能最大净赢</div><div class="v" id="mMaxWin">0</div></div>
+          <div class="metric"><div class="k">上轮净盈亏</div><div class="v" id="mLastDelta">0</div></div>
+          <div class="metric"><div class="k">局数 / 命中局</div><div class="v" id="mRounds">0 / 0</div></div>
+          <div class="metric"><div class="k">累计 ROI</div><div class="v" id="mROI">0%</div></div>
         </div>
       </div>
-      <div style="height:12px"></div>
-      <div class="result">
-        <div class="ball" id="ball">—</div>
-        <div>
-          <div style="font-weight:800;">结果</div>
-          <div class="msg" id="msg">选择下注方式，然后点击旋转。</div>
-        </div>
-      </div>
-      <div style="height:14px"></div>
-      <div class="spinBar" aria-hidden="true"><div id="bar"></div></div>
-      <div class="footer">免责声明：离线娱乐模拟，不涉及真钱/支付/联网功能。</div>
-    </div>
-
-    <div class="card" style="flex: 1 1 360px;">
-      <h2>下注金额</h2>
-      <div class="pill" style="width:100%; justify-content:space-between;">
-        <span style="font-weight:800;">金额：</span>
-        <span style="font-weight:900; font-size:18px;" id="betShow">50</span>
-      </div>
-      <div style="height:10px"></div>
-      <input id="betRange" type="range" min="10" max="500" step="10" value="50" />
-      <div class="footer">直选命中赔 35:1；押红/黑命中赔 1:1；0 不算红黑。</div>
-    </div>
+    </section>
   </div>
 
-  <div class="row">
-    <div class="card" style="flex: 1 1 420px;">
-      <h2>下注方式</h2>
-      <div class="betRow">
-        <div class="chip red" id="betRed" role="button" tabindex="0">押红</div>
-        <div class="chip black" id="betBlack" role="button" tabindex="0">押黑</div>
-        <div class="chip" id="betStraight" role="button" tabindex="0">直选数字</div>
-      </div>
-      <div style="height:12px"></div>
-      <div class="footer">先选下注方式；如果选“直选数字”，再点下面的数字。</div>
-    </div>
+  <dialog id="rulesDialog">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b>下注方式说明（欧式轮盘）</b><button id="closeRulesBtn" class="secondary">关闭</button></div>
+    <table style="margin-top:8px">
+      <thead><tr><th>类型</th><th>下注名称</th><th>覆盖号码数</th><th>赔率</th><th>例子</th></tr></thead>
+      <tbody>
+        <tr><td>内注</td><td>直注 Straight</td><td>1</td><td>35:1</td><td>17</td></tr>
+        <tr><td>内注</td><td>分注 Split</td><td>2</td><td>17:1</td><td>17/20</td></tr>
+        <tr><td>内注</td><td>街注 Street</td><td>3</td><td>11:1</td><td>1-2-3</td></tr>
+        <tr><td>内注</td><td>角注 Corner</td><td>4</td><td>8:1</td><td>1-2-4-5</td></tr>
+        <tr><td>内注</td><td>六线 Six Line</td><td>6</td><td>5:1</td><td>1-6</td></tr>
+        <tr><td>外注</td><td>红/黑 Red/Black</td><td>18</td><td>1:1</td><td>押红</td></tr>
+        <tr><td>外注</td><td>单/双 Odd/Even</td><td>18</td><td>1:1</td><td>押偶数</td></tr>
+        <tr><td>外注</td><td>大/小 High/Low</td><td>18</td><td>1:1</td><td>1-18</td></tr>
+        <tr><td>外注</td><td>一打 Dozen</td><td>12</td><td>2:1</td><td>1st 12</td></tr>
+        <tr><td>外注</td><td>列 Column</td><td>12</td><td>2:1</td><td>col 1</td></tr>
+      </tbody>
+    </table>
+  </dialog>
 
-    <div class="card" style="flex: 1 1 520px;">
-      <h2>数字（0–36）</h2>
-      <div class="grid" id="numGrid"></div>
-    </div>
-  </div>
-</div>
+  <script>
+  (()=>{
+    const RED=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+    const WHEEL_ORDER=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+    const PAYOUT={straight:35,split:17,street:11,corner:8,sixline:5,outside1:1,outside2:2};
+    let initialBankroll=1000,balance=1000,stake=50,chips=[10,25,50,100,250],spinning=false,wheelAngle=0;
+    let bets=[]; // {key,label,numbers,payout,amount}
+    const stats={rounds:0,hitRounds:0,totalStake:0,totalDelta:0,lastDelta:0};
+    const $=id=>document.getElementById(id);
+    const el={balance:$('balance'),msg:$('msg'),ball:$('ball'),spinBtn:$('spinBtn'),resetBtn:$('resetBtn'),clearBetsBtn:$('clearBetsBtn'),bar:$('bar'),wheelHint:$('wheelHint'),wheel:$('wheelCanvas'),chipRack:$('chipRack'),stakeInput:$('stakeInput'),initialBankrollInput:$('initialBankrollInput'),initialChipsInput:$('initialChipsInput'),applyInitBtn:$('applyInitBtn'),insideGrid:$('insideGrid'),zeroCell:$('zeroCell'),dozenRow:$('dozenRow'),outsideRow:$('outsideRow'),columnRow:$('columnRow'),insideTypeA:$('insideTypeA'),insideOptionA:$('insideOptionA'),addInsideABtn:$('addInsideABtn'),insideTypeB:$('insideTypeB'),insideOptionB:$('insideOptionB'),addInsideBBtn:$('addInsideBBtn'),betSlip:$('betSlip'),mCount:$('mCount'),mStake:$('mStake'),mEv:$('mEv'),mHitProb:$('mHitProb'),mMaxWin:$('mMaxWin'),mLastDelta:$('mLastDelta'),mRounds:$('mRounds'),mROI:$('mROI'),helpBtn:$('helpBtn'),rulesDialog:$('rulesDialog'),closeRulesBtn:$('closeRulesBtn')};
+    const ctx=el.wheel.getContext('2d'); const pocketAngle=(Math.PI*2)/WHEEL_ORDER.length;
+    const splitOptions=[],streetOptions=[],cornerOptions=[],sixLineOptions=[];
 
-<script>
-(() => {
-  // 欧式轮盘红色集合
-  const RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+    const clamp=(v,f=1)=>{const n=Math.floor(Number(v));return Number.isFinite(n)&&n>0?n:f};
+    const range=(a,b)=>Array.from({length:b-a+1},(_,i)=>a+i);
+    const parseChips=t=>[...new Set(String(t).split(',').map(s=>clamp(s.trim(),0)).filter(n=>n>0))].sort((a,b)=>a-b).slice(0,20);
+    const fmtNums=nums=>nums.slice().sort((a,b)=>a-b).join('/');
+    const setMsg=t=>el.msg.textContent=t;
+    const betIndex=key=>bets.findIndex(b=>b.key===key);
+    const betAmount=key=>{const i=betIndex(key);return i>-1?bets[i].amount:0};
 
-  let balance = 1000;
-  let betAmount = 50;
-
-  // betType: 'red' | 'black' | 'straight'
-  let betType = null;
-  let straightNumber = null;
-
-  let spinning = false;
-
-  const elBalance = document.getElementById('balance');
-  const elBetShow = document.getElementById('betShow');
-  const elBetRange = document.getElementById('betRange');
-  const elMsg = document.getElementById('msg');
-  const elBall = document.getElementById('ball');
-  const elSpin = document.getElementById('spinBtn');
-  const elReset = document.getElementById('resetBtn');
-  const elBar = document.getElementById('bar');
-
-  const chipRed = document.getElementById('betRed');
-  const chipBlack = document.getElementById('betBlack');
-  const chipStraight = document.getElementById('betStraight');
-  const grid = document.getElementById('numGrid');
-
-  function colorOf(n){
-    if (n === 0) return 'green';
-    return RED.has(n) ? 'red' : 'black';
-  }
-
-  function setBall(n){
-    elBall.textContent = (n === null || n === undefined) ? '—' : String(n);
-    elBall.style.background =
-      n === null || n === undefined ? 'rgba(255,255,255,.08)' :
-      (n === 0 ? 'rgba(34,197,94,.35)' :
-        (RED.has(n) ? 'rgba(220,38,38,.75)' : 'rgba(17,24,39,.85)'));
-  }
-
-  function render(){
-    elBalance.textContent = balance;
-    elBetShow.textContent = betAmount;
-
-    chipRed.classList.toggle('sel', betType === 'red');
-    chipBlack.classList.toggle('sel', betType === 'black');
-    chipStraight.classList.toggle('sel', betType === 'straight');
-
-    // 数字选择高亮
-    [...grid.children].forEach(node => {
-      const n = Number(node.dataset.n);
-      node.classList.toggle('sel', betType === 'straight' && straightNumber === n);
-    });
-
-    // 按钮可用性
-    elSpin.disabled = spinning;
-    elBetRange.disabled = spinning;
-  }
-
-  function setMessage(t){ elMsg.textContent = t; }
-
-  function pickBet(type){
-    if (spinning) return;
-    betType = type;
-    if (type !== 'straight') straightNumber = null;
-    render();
-  }
-
-  function payout(result){
-    if (!betType) return 0;
-    if (betType === 'straight'){
-      if (straightNumber === null || straightNumber === undefined) return 0;
-      return (result === straightNumber) ? betAmount * 35 : -betAmount;
-    }
-    if (betType === 'red'){
-      const win = (result !== 0 && RED.has(result));
-      return win ? betAmount : -betAmount;
-    }
-    if (betType === 'black'){
-      const win = (result !== 0 && !RED.has(result));
-      return win ? betAmount : -betAmount;
-    }
-    return 0;
-  }
-
-  // 构建数字网格
-  function buildGrid(){
-    for (let n = 0; n <= 36; n++){
-      const div = document.createElement('div');
-      div.className = `num ${colorOf(n)}`;
-      div.textContent = n;
-      div.dataset.n = String(n);
-      div.addEventListener('click', () => {
-        if (spinning) return;
-        betType = 'straight';
-        straightNumber = n;
-        render();
-      });
-      grid.appendChild(div);
-    }
-  }
-
-  function spin(){
-    if (spinning) return;
-
-    if (!betType){
-      setMessage('你还没选下注方式。');
-      return;
-    }
-    if (betType === 'straight' && (straightNumber === null || straightNumber === undefined)){
-      setMessage('你选了“直选数字”，但还没点具体数字。');
-      return;
-    }
-    if (betAmount <= 0){
-      setMessage('下注金额要大于 0。');
-      return;
-    }
-    if (balance < betAmount){
-      setMessage(`余额不足：你只有 ${balance}。`);
-      return;
-    }
-
-    spinning = true;
-    setMessage('旋转中…');
-    elBar.style.animation = 'load 900ms ease-out 1 forwards';
-    render();
-
-    // 做个“短暂停顿”增加手感
-    setTimeout(() => {
-      const result = Math.floor(Math.random() * 37); // 0..36
-      setBall(result);
-
-      const delta = payout(result);
-      balance += delta;
-
-      const c = result === 0 ? '绿(0)' : (RED.has(result) ? '红' : '黑');
-      if (delta > 0) setMessage(`开出：${result}（${c}）你赢了 +${delta}！`);
-      else setMessage(`开出：${result}（${c}）你输了 ${Math.abs(delta)}…`);
-
-      // 复位进度条
-      setTimeout(() => {
-        elBar.style.animation = 'none';
-        elBar.style.width = '0%';
-      }, 50);
-
-      spinning = false;
+    function upsertBet(base){
+      const i=betIndex(base.key);
+      if(i>-1) bets[i].amount+=stake;
+      else bets.push({...base,amount:stake});
+      setMsg(`已下注：${base.label}，+${stake}`);
       render();
-    }, 900);
-  }
+    }
+    function setBetAmount(key,amount){
+      const i=betIndex(key); if(i<0) return;
+      bets[i].amount=Math.max(0,amount);
+      if(bets[i].amount===0) bets.splice(i,1);
+      render();
+    }
 
-  function reset(){
-    if (spinning) return;
-    balance = 1000;
-    betAmount = 50;
-    betType = null;
-    straightNumber = null;
-    setBall(null);
-    elBetRange.value = String(betAmount);
-    setMessage('已重置。选择下注方式，然后点击旋转。');
-    render();
-  }
+    function cellHtml(cn,en){return `${cn}<small>${en}</small>`}
 
-  // 事件绑定
-  elBetRange.addEventListener('input', e => {
-    betAmount = Number(e.target.value) || 10;
-    render();
-  });
+    function buildOptions(){
+      for(let r=0;r<12;r++){for(let c=0;c<3;c++){const n=r*3+c+1;if(c<2)splitOptions.push([n,n+1]);if(r<11)splitOptions.push([n,n+3])}streetOptions.push([r*3+1,r*3+2,r*3+3])}
+      for(let r=0;r<11;r++)for(let c=0;c<2;c++){const a=r*3+c+1;cornerOptions.push([a,a+1,a+3,a+4])}
+      for(let r=0;r<11;r++)sixLineOptions.push([r*3+1,r*3+2,r*3+3,r*3+4,r*3+5,r*3+6])
+    }
+    function populateSelect(sel,arr){sel.innerHTML='';arr.forEach((nums,idx)=>{const op=document.createElement('option');op.value=String(idx);op.textContent=fmtNums(nums);sel.appendChild(op)})}
+    function refreshInsideControls(){populateSelect(el.insideOptionA,{split:splitOptions,street:streetOptions}[el.insideTypeA.value]);populateSelect(el.insideOptionB,{corner:cornerOptions,sixline:sixLineOptions}[el.insideTypeB.value])}
 
-  chipRed.addEventListener('click', () => pickBet('red'));
-  chipBlack.addEventListener('click', () => pickBet('black'));
-  chipStraight.addEventListener('click', () => pickBet('straight'));
+    function addCell(parent,cls,cn,en,key,numbers,payout){const d=document.createElement('div');d.className=cls;d.innerHTML=cellHtml(cn,en);d.dataset.key=key;d.addEventListener('click',()=>upsertBet({key,label:cn,numbers,payout}));parent.appendChild(d);return d}
 
-  elSpin.addEventListener('click', spin);
-  elReset.addEventListener('click', reset);
+    function buildTable(){
+      for(let r=0;r<12;r++)for(let c=0;c<3;c++){const n=r*3+c+1;addCell(el.insideGrid,`numCell ${RED.has(n)?'red':'black'}`,String(n),'Straight',`straight:${n}`,[n],PAYOUT.straight)}
+      el.zeroCell.dataset.key='straight:0'; el.zeroCell.addEventListener('click',()=>upsertBet({key:'straight:0',label:'直注 0',numbers:[0],payout:PAYOUT.straight}));
+      addCell(el.dozenRow,'dozenCell','第一打','1st 12','dozen:1',range(1,12),PAYOUT.outside2);
+      addCell(el.dozenRow,'dozenCell','第二打','2nd 12','dozen:2',range(13,24),PAYOUT.outside2);
+      addCell(el.dozenRow,'dozenCell','第三打','3rd 12','dozen:3',range(25,36),PAYOUT.outside2);
+      addCell(el.outsideRow,'outsideCell','小','1-18','low',range(1,18),PAYOUT.outside1);
+      addCell(el.outsideRow,'outsideCell','双','EVEN','even',range(1,36).filter(n=>n%2===0),PAYOUT.outside1);
+      addCell(el.outsideRow,'outsideCell','红','RED','red',range(1,36).filter(n=>RED.has(n)),PAYOUT.outside1);
+      addCell(el.outsideRow,'outsideCell','黑','BLACK','black',range(1,36).filter(n=>!RED.has(n)),PAYOUT.outside1);
+      addCell(el.outsideRow,'outsideCell','单','ODD','odd',range(1,36).filter(n=>n%2===1),PAYOUT.outside1);
+      addCell(el.outsideRow,'outsideCell','大','19-36','high',range(19,36),PAYOUT.outside1);
+      addCell(el.columnRow,'colCell','第一列','Column 1','col:1',range(1,34).filter(n=>(n-1)%3===0),PAYOUT.outside2);
+      addCell(el.columnRow,'colCell','第二列','Column 2','col:2',range(2,35).filter(n=>(n-2)%3===0),PAYOUT.outside2);
+      addCell(el.columnRow,'colCell','第三列','Column 3','col:3',range(3,36).filter(n=>n%3===0),PAYOUT.outside2);
+    }
 
-  // 初始化
-  buildGrid();
-  setBall(null);
-  render();
-})();
-</script>
+    function renderHighlights(){document.querySelectorAll('[data-key]').forEach(n=>n.classList.toggle('active',betAmount(n.dataset.key)>0))}
+
+    function makeInsideBet(type,nums){const m={split:['分注',PAYOUT.split],street:['街注',PAYOUT.street],corner:['角注',PAYOUT.corner],sixline:['六线',PAYOUT.sixline]};const [name,p]=m[type];return {key:`${type}:${fmtNums(nums)}`,label:`${name} ${fmtNums(nums)}`,numbers:nums,payout:p}}
+
+    function renderChipRack(){el.chipRack.innerHTML='';chips.forEach((v,i)=>{const d=document.createElement('div');d.className=`chip c${(i%6)+1} ${stake===v?'sel':''}`;d.textContent=v;d.addEventListener('click',()=>{if(spinning)return;stake=v;el.stakeInput.value=String(stake);render()});el.chipRack.appendChild(d)})}
+
+    function renderSlip(){el.betSlip.innerHTML='';if(!bets.length){el.betSlip.innerHTML='<div class="betItem"><div>暂无下注，点击赌桌添加。</div><div></div><div></div></div>';return}
+      bets.forEach(b=>{const row=document.createElement('div');row.className='betItem';row.innerHTML=`<div>${b.label}</div><div><input type="number" min="0" step="1" value="${b.amount}" style="width:88px"></div><button class="secondary">清除</button>`;row.querySelector('input').addEventListener('input',e=>setBetAmount(b.key,clamp(e.target.value,0)));row.querySelector('button').addEventListener('click',()=>setBetAmount(b.key,0));el.betSlip.appendChild(row)})
+    }
+
+    function payoutOne(bet,res){return bet.numbers.includes(res)?bet.amount*bet.payout:-bet.amount}
+    function calcPreview(){const totalStake=bets.reduce((s,b)=>s+b.amount,0);const ev=-totalStake/37;const netBy=Array.from({length:37},(_,n)=>bets.reduce((sum,b)=>sum+payoutOne(b,n),0));const hitProb=netBy.filter(v=>v>0).length/37;const maxWin=netBy.length?Math.max(...netBy):0;return{totalStake,ev,hitProb,maxWin}}
+    function updateMath(){const p=calcPreview();el.mCount.textContent=String(bets.length);el.mStake.textContent=String(p.totalStake);el.mEv.textContent=p.ev.toFixed(2);el.mEv.className=`v ${p.ev>=0?'good':'bad'}`;el.mHitProb.textContent=`${(p.hitProb*100).toFixed(2)}%`;el.mMaxWin.textContent=String(p.maxWin);el.mLastDelta.textContent=`${stats.lastDelta>=0?'+':''}${stats.lastDelta}`;el.mLastDelta.className=`v ${stats.lastDelta>=0?'good':'bad'}`;el.mRounds.textContent=`${stats.rounds} / ${stats.hitRounds}`;const roi=stats.totalStake>0?stats.totalDelta/stats.totalStake*100:0;el.mROI.textContent=`${roi.toFixed(2)}%`}
+
+    function setBall(n){el.ball.textContent=n==null?'—':String(n);el.ball.style.background=n==null?'rgba(255,255,255,.09)':n===0?'#1f8a56':RED.has(n)?'#b2333f':'#16181c'}
+    function drawWheel(result=null){const w=el.wheel.width,h=el.wheel.height,cx=w/2,cy=h/2,outer=194,inner=138;ctx.clearRect(0,0,w,h);ctx.save();ctx.translate(cx,cy);ctx.rotate(wheelAngle);
+      for(let i=0;i<WHEEL_ORDER.length;i++){const n=WHEEL_ORDER[i],a0=-Math.PI/2+i*pocketAngle,a1=a0+pocketAngle,c=n===0?'#1f8a56':RED.has(n)?'#b2333f':'#14171c';ctx.beginPath();ctx.moveTo(Math.cos(a0)*inner,Math.sin(a0)*inner);ctx.arc(0,0,outer,a0,a1);ctx.arc(0,0,inner,a1,a0,true);ctx.closePath();ctx.fillStyle=c;ctx.fill();ctx.strokeStyle='rgba(255,255,255,.12)';ctx.stroke();const mid=(a0+a1)/2,tx=Math.cos(mid)*(outer+inner)/2,ty=Math.sin(mid)*(outer+inner)/2;ctx.save();ctx.translate(tx,ty);ctx.rotate(mid+Math.PI/2);if(mid>Math.PI/2||mid<-Math.PI/2)ctx.rotate(Math.PI);ctx.fillStyle='#f9e9c2';ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(n),0,0);ctx.restore()}
+      ctx.beginPath();ctx.arc(0,0,125,0,Math.PI*2);ctx.fillStyle='#0e2d21';ctx.fill();ctx.strokeStyle='rgba(208,176,110,.7)';ctx.lineWidth=5;ctx.stroke();ctx.restore();ctx.beginPath();ctx.arc(cx,cy,26,0,Math.PI*2);ctx.fillStyle='#d0b06e';ctx.fill();if(result!==null){const idx=WHEEL_ORDER.indexOf(result),a=-Math.PI/2+idx*pocketAngle+pocketAngle/2+wheelAngle,bx=cx+Math.cos(a)*178,by=cy+Math.sin(a)*178;ctx.beginPath();ctx.arc(bx,by,8,0,Math.PI*2);ctx.fillStyle='#fff6df';ctx.fill();ctx.strokeStyle='#333';ctx.stroke()}}
+    function animateTo(result,duration=1700){const idx=WHEEL_ORDER.indexOf(result),pointer=-Math.PI/2+idx*pocketAngle+pocketAngle/2,target=-pointer+Math.PI*2*5,from=wheelAngle,start=performance.now();return new Promise(resolve=>{const frame=now=>{const t=Math.min(1,(now-start)/duration),e=1-Math.pow(1-t,3);wheelAngle=from+(target-from)*e;drawWheel(result);if(t<1)requestAnimationFrame(frame);else resolve()};requestAnimationFrame(frame)})}
+
+    async function spin(){if(spinning)return;if(!bets.length)return setMsg('请先添加下注。');const totalStake=bets.reduce((s,b)=>s+b.amount,0);if(balance<totalStake)return setMsg(`余额不足：下注 ${totalStake}，余额 ${balance}`);
+      spinning=true;el.spinBtn.disabled=true;el.bar.style.animation='load 1700ms linear forwards';setMsg('轮盘旋转中...');const result=Math.floor(Math.random()*37);await animateTo(result);const delta=bets.reduce((s,b)=>s+payoutOne(b,result),0);balance+=delta;stats.rounds++;stats.totalStake+=totalStake;stats.totalDelta+=delta;stats.lastDelta=delta;if(delta>0)stats.hitRounds++;const c=result===0?'绿(0)':RED.has(result)?'红':'黑';setBall(result);el.wheelHint.textContent=`当前指针：${result}（${c}）`;setMsg(`开出 ${result}（${c}），本轮净${delta>=0?'赢':'输'} ${Math.abs(delta)}。`);el.bar.style.animation='none';el.bar.style.width='0%';spinning=false;el.spinBtn.disabled=false;render()}
+
+    function clearBets(){if(spinning)return;bets=[];setMsg('已清空下注。');render()}
+    function resetGame(){if(spinning)return;balance=initialBankroll;bets=[];Object.assign(stats,{rounds:0,hitRounds:0,totalStake:0,totalDelta:0,lastDelta:0});setBall(null);el.wheelHint.textContent='当前指针：—';setMsg('已重置局面。');drawWheel(null);render()}
+    function applyInit(){if(spinning)return;initialBankroll=clamp(el.initialBankrollInput.value,1000);chips=parseChips(el.initialChipsInput.value);if(!chips.length)chips=[10,25,50,100,250];if(!chips.includes(stake))stake=chips[0];resetGame();setMsg('已应用初始设置。')}
+    function render(){el.balance.textContent=String(balance);el.stakeInput.value=String(stake);renderChipRack();renderSlip();renderHighlights();updateMath()}
+
+    el.helpBtn.addEventListener('click',()=>el.rulesDialog.showModal());el.closeRulesBtn.addEventListener('click',()=>el.rulesDialog.close());
+    el.stakeInput.addEventListener('input',e=>{stake=clamp(e.target.value,1);render()});el.spinBtn.addEventListener('click',spin);el.resetBtn.addEventListener('click',resetGame);el.clearBetsBtn.addEventListener('click',clearBets);el.applyInitBtn.addEventListener('click',applyInit);
+    el.insideTypeA.addEventListener('change',refreshInsideControls);el.insideTypeB.addEventListener('change',refreshInsideControls);
+    el.addInsideABtn.addEventListener('click',()=>{const t=el.insideTypeA.value,nums={split:splitOptions,street:streetOptions}[t][Number(el.insideOptionA.value)]||[];if(nums.length)upsertBet(makeInsideBet(t,nums))});
+    el.addInsideBBtn.addEventListener('click',()=>{const t=el.insideTypeB.value,nums={corner:cornerOptions,sixline:sixLineOptions}[t][Number(el.insideOptionB.value)]||[];if(nums.length)upsertBet(makeInsideBet(t,nums))});
+
+    buildOptions();buildTable();refreshInsideControls();drawWheel(null);setBall(null);render();
+  })();
+  </script>
 </body>
 </html>
