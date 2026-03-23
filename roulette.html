@@ -17,7 +17,7 @@
     button.secondary{background:linear-gradient(180deg,#1b3a2b,#12261c);color:var(--text)}button:disabled{opacity:.5;cursor:not-allowed}
     .result{margin-top:8px;display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center}.ball{width:68px;height:68px;border-radius:50%;display:grid;place-items:center;font-size:25px;font-weight:900;border:2px solid rgba(255,255,255,.28);background:rgba(255,255,255,.09)}
     .msg{color:var(--muted)}.spinBar{height:9px;margin-top:12px;border:1px solid rgba(255,255,255,.1);border-radius:999px;overflow:hidden}.spinBar>div{height:100%;width:0%;background:linear-gradient(90deg,rgba(208,176,110,0),rgba(208,176,110,1),rgba(208,176,110,0))}@keyframes load{from{width:0}to{width:100%}}
-    .wheelPanel{display:grid;place-items:center;gap:8px}#wheelCanvas{width:min(420px,92vw);aspect-ratio:1/1;border-radius:50%;border:6px solid rgba(208,176,110,.5);background:radial-gradient(circle at center,#123527 0%,#07150f 70%)}.arrow{width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:18px solid #efcf8c}
+    .wheelPanel{--wheel-size:clamp(250px,32vw,350px);display:grid;place-items:center;gap:8px}.wheelPanel.compact{--wheel-size:clamp(220px,26vw,290px)}.wheelPanel.large{--wheel-size:min(420px,92vw)}.wheelToolbar{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;color:var(--muted);font-size:12px}#wheelCanvas{width:var(--wheel-size);aspect-ratio:1/1;border-radius:50%;border:6px solid rgba(208,176,110,.5);background:radial-gradient(circle at center,#123527 0%,#07150f 70%)}.arrow{width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:18px solid #efcf8c}
     .controlRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}input[type="number"],input[type="text"],select{border-radius:8px;border:1px solid rgba(208,176,110,.3);background:rgba(0,0,0,.22);color:var(--text);padding:8px 9px}
     .chipRack{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.chip{border-radius:999px;min-width:70px;text-align:center;padding:8px 10px;font-weight:900;cursor:pointer;border:2px dashed rgba(255,255,255,.4);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
     .chip.c1{background:radial-gradient(circle at 30% 28%,#fff2cc,#d5a246)}.chip.c2{background:radial-gradient(circle at 30% 28%,#ffe5e5,#d95b5b)}.chip.c3{background:radial-gradient(circle at 30% 28%,#e2efff,#5f8fda)}.chip.c4{background:radial-gradient(circle at 30% 28%,#e3ffe9,#4daa67)}.chip.c5{background:radial-gradient(circle at 30% 28%,#f4e6ff,#8b62c9)}.chip.c6{background:radial-gradient(circle at 30% 28%,#fff0df,#d27f4d)}.chip.sel{outline:2px solid #efcf8c}
@@ -49,7 +49,7 @@
         <div class="spinBar"><div id="bar"></div></div>
         <div class="footer">欧式规则：单零（0），无 La Partage / En Prison 特殊条款。</div>
       </div>
-      <div class="panel wheelPanel"><div class="title">可视化轮盘</div><div class="arrow"></div><canvas id="wheelCanvas" width="420" height="420"></canvas><div class="msg" id="wheelHint">当前指针：—</div></div>
+      <div class="panel wheelPanel compact" id="wheelPanel"><div class="title">可视化轮盘</div><div class="wheelToolbar"><span>尺寸方案</span><select id="wheelSizeSelect"><option value="compact" selected>紧凑（推荐）</option><option value="default">均衡</option><option value="large">大尺寸</option></select></div><div class="arrow"></div><canvas id="wheelCanvas" width="420" height="420"></canvas><div class="msg" id="wheelHint">当前指针：—</div></div>
     </section>
 
     <section class="mid">
@@ -119,7 +119,7 @@
     let bets=[]; // {key,label,numbers,payout,amount}
     const stats={rounds:0,hitRounds:0,totalStake:0,totalDelta:0,lastDelta:0};
     const $=id=>document.getElementById(id);
-    const el={balance:$('balance'),msg:$('msg'),ball:$('ball'),spinBtn:$('spinBtn'),resetBtn:$('resetBtn'),clearBetsBtn:$('clearBetsBtn'),bar:$('bar'),wheelHint:$('wheelHint'),wheel:$('wheelCanvas'),chipRack:$('chipRack'),stakeInput:$('stakeInput'),initialBankrollInput:$('initialBankrollInput'),initialChipsInput:$('initialChipsInput'),applyInitBtn:$('applyInitBtn'),insideGrid:$('insideGrid'),zeroCell:$('zeroCell'),dozenRow:$('dozenRow'),outsideRow:$('outsideRow'),columnRow:$('columnRow'),insideTypeA:$('insideTypeA'),insideOptionA:$('insideOptionA'),addInsideABtn:$('addInsideABtn'),insideTypeB:$('insideTypeB'),insideOptionB:$('insideOptionB'),addInsideBBtn:$('addInsideBBtn'),betSlip:$('betSlip'),mCount:$('mCount'),mStake:$('mStake'),mEv:$('mEv'),mHitProb:$('mHitProb'),mMaxWin:$('mMaxWin'),mLastDelta:$('mLastDelta'),mRounds:$('mRounds'),mROI:$('mROI'),helpBtn:$('helpBtn'),rulesDialog:$('rulesDialog'),closeRulesBtn:$('closeRulesBtn')};
+    const el={balance:$('balance'),msg:$('msg'),ball:$('ball'),spinBtn:$('spinBtn'),resetBtn:$('resetBtn'),clearBetsBtn:$('clearBetsBtn'),bar:$('bar'),wheelHint:$('wheelHint'),wheel:$('wheelCanvas'),wheelPanel:$('wheelPanel'),wheelSizeSelect:$('wheelSizeSelect'),chipRack:$('chipRack'),stakeInput:$('stakeInput'),initialBankrollInput:$('initialBankrollInput'),initialChipsInput:$('initialChipsInput'),applyInitBtn:$('applyInitBtn'),insideGrid:$('insideGrid'),zeroCell:$('zeroCell'),dozenRow:$('dozenRow'),outsideRow:$('outsideRow'),columnRow:$('columnRow'),insideTypeA:$('insideTypeA'),insideOptionA:$('insideOptionA'),addInsideABtn:$('addInsideABtn'),insideTypeB:$('insideTypeB'),insideOptionB:$('insideOptionB'),addInsideBBtn:$('addInsideBBtn'),betSlip:$('betSlip'),mCount:$('mCount'),mStake:$('mStake'),mEv:$('mEv'),mHitProb:$('mHitProb'),mMaxWin:$('mMaxWin'),mLastDelta:$('mLastDelta'),mRounds:$('mRounds'),mROI:$('mROI'),helpBtn:$('helpBtn'),rulesDialog:$('rulesDialog'),closeRulesBtn:$('closeRulesBtn')};
     const ctx=el.wheel.getContext('2d'); const pocketAngle=(Math.PI*2)/WHEEL_ORDER.length;
     const splitOptions=[],streetOptions=[],cornerOptions=[],sixLineOptions=[];
 
@@ -201,14 +201,15 @@
     function resetGame(){if(spinning)return;balance=initialBankroll;bets=[];Object.assign(stats,{rounds:0,hitRounds:0,totalStake:0,totalDelta:0,lastDelta:0});setBall(null);el.wheelHint.textContent='当前指针：—';setMsg('已重置局面。');drawWheel(null);render()}
     function applyInit(){if(spinning)return;initialBankroll=clamp(el.initialBankrollInput.value,1000);chips=parseChips(el.initialChipsInput.value);if(!chips.length)chips=[10,25,50,100,250];if(!chips.includes(stake))stake=chips[0];resetGame();setMsg('已应用初始设置。')}
     function render(){el.balance.textContent=String(balance);el.stakeInput.value=String(stake);renderChipRack();renderSlip();renderHighlights();updateMath()}
+    function applyWheelSize(mode){el.wheelPanel.classList.remove('compact','large');if(mode==='compact')el.wheelPanel.classList.add('compact');else if(mode==='large')el.wheelPanel.classList.add('large')}
 
     el.helpBtn.addEventListener('click',()=>el.rulesDialog.showModal());el.closeRulesBtn.addEventListener('click',()=>el.rulesDialog.close());
     el.stakeInput.addEventListener('input',e=>{stake=clamp(e.target.value,1);render()});el.spinBtn.addEventListener('click',spin);el.resetBtn.addEventListener('click',resetGame);el.clearBetsBtn.addEventListener('click',clearBets);el.applyInitBtn.addEventListener('click',applyInit);
     el.insideTypeA.addEventListener('change',refreshInsideControls);el.insideTypeB.addEventListener('change',refreshInsideControls);
     el.addInsideABtn.addEventListener('click',()=>{const t=el.insideTypeA.value,nums={split:splitOptions,street:streetOptions}[t][Number(el.insideOptionA.value)]||[];if(nums.length)upsertBet(makeInsideBet(t,nums))});
-    el.addInsideBBtn.addEventListener('click',()=>{const t=el.insideTypeB.value,nums={corner:cornerOptions,sixline:sixLineOptions}[t][Number(el.insideOptionB.value)]||[];if(nums.length)upsertBet(makeInsideBet(t,nums))});
+    el.addInsideBBtn.addEventListener('click',()=>{const t=el.insideTypeB.value,nums={corner:cornerOptions,sixline:sixLineOptions}[t][Number(el.insideOptionB.value)]||[];if(nums.length)upsertBet(makeInsideBet(t,nums))});el.wheelSizeSelect.addEventListener('change',e=>applyWheelSize(e.target.value));
 
-    buildOptions();buildTable();refreshInsideControls();drawWheel(null);setBall(null);render();
+    buildOptions();buildTable();refreshInsideControls();applyWheelSize(el.wheelSizeSelect.value);drawWheel(null);setBall(null);render();
   })();
   </script>
 </body>
