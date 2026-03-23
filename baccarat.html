@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>百家乐（离线网页版）</title>
+  <style>
+    :root{--bg:#08130f;--line:#d0b06e;--text:#f5ecd6;--muted:#bcae86;--blue:#375bbf;--red:#b2333f;--green:#1f8a56}
+    *{box-sizing:border-box}
+    body{margin:0;color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans","PingFang SC","Microsoft YaHei",sans-serif;background:radial-gradient(1200px 700px at 20% 0%,#29533f 0%,transparent 60%),radial-gradient(900px 700px at 100% 0%,#4b2a1d 0%,transparent 55%),linear-gradient(180deg,var(--bg),#050b08 70%)}
+    .wrap{max-width:1360px;margin:0 auto;padding:16px;display:grid;gap:12px}
+    .panel{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));border:1px solid rgba(208,176,110,.28);border-radius:16px;padding:12px;box-shadow:0 14px 38px rgba(0,0,0,.32)}
+    .title{font-size:13px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;font-weight:700}
+    .top{display:grid;grid-template-columns:1.1fr .9fr;gap:12px}
+    .mid{display:grid;grid-template-columns:1.35fr .65fr;gap:12px;align-items:start}
+    .statRow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .bank{font-size:34px;font-weight:900;color:#f1d28f}
+    .btns{display:flex;gap:8px;flex-wrap:wrap}
+    button{border-radius:10px;padding:8px 11px;border:1px solid rgba(208,176,110,.35);background:linear-gradient(180deg,#ebc982,#c59c54);color:#362506;font-weight:800;cursor:pointer}
+    button.secondary{background:linear-gradient(180deg,#1b3a2b,#12261c);color:var(--text)}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    .result{margin-top:8px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .resultCard{border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:8px;background:rgba(0,0,0,.18)}
+    .resultCard .k{font-size:12px;color:var(--muted)}
+    .resultCard .v{font-size:24px;font-weight:900;margin-top:3px}
+    .msg{color:var(--muted)}
+    .dealBar{height:9px;margin-top:12px;border:1px solid rgba(255,255,255,.1);border-radius:999px;overflow:hidden}
+    .dealBar>div{height:100%;width:0%;background:linear-gradient(90deg,rgba(208,176,110,0),rgba(208,176,110,1),rgba(208,176,110,0))}
+    @keyframes load{from{width:0}to{width:100%}}
+
+    .cardsPanel{display:grid;gap:8px}
+    .handRow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .hand{border:1px solid rgba(208,176,110,.32);border-radius:12px;padding:8px;background:rgba(0,0,0,.2)}
+    .hand h3{margin:0 0 8px 0;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+    .hand h3 .badge{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.25)}
+    .player .badge{background:rgba(55,91,191,.25)}
+    .banker .badge{background:rgba(178,51,63,.25)}
+    .cards{display:flex;gap:6px;flex-wrap:wrap;min-height:68px}
+    .card{width:44px;height:62px;border-radius:7px;border:1px solid rgba(255,255,255,.24);background:linear-gradient(180deg,#f9f4e6,#ddd0b5);color:#221b12;display:grid;place-items:center;font-weight:900}
+    .card.red{color:#b2333f}
+
+    .controlRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    input[type="number"],input[type="text"]{border-radius:8px;border:1px solid rgba(208,176,110,.3);background:rgba(0,0,0,.22);color:var(--text);padding:8px 9px}
+    .chipRack{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .chip{border-radius:999px;min-width:70px;text-align:center;padding:8px 10px;font-weight:900;cursor:pointer;border:2px dashed rgba(255,255,255,.4);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+    .chip.c1{background:radial-gradient(circle at 30% 28%,#fff2cc,#d5a246)}
+    .chip.c2{background:radial-gradient(circle at 30% 28%,#ffe5e5,#d95b5b)}
+    .chip.c3{background:radial-gradient(circle at 30% 28%,#e2efff,#5f8fda)}
+    .chip.c4{background:radial-gradient(circle at 30% 28%,#e3ffe9,#4daa67)}
+    .chip.c5{background:radial-gradient(circle at 30% 28%,#f4e6ff,#8b62c9)}
+    .chip.c6{background:radial-gradient(circle at 30% 28%,#fff0df,#d27f4d)}
+    .chip.sel{outline:2px solid #efcf8c}
+
+    .betGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:10px}
+    .betCell{border:1px solid rgba(255,255,255,.2);border-radius:10px;background:rgba(0,0,0,.22);padding:9px;cursor:pointer;user-select:none;position:relative;min-height:84px}
+    .betCell .name{font-weight:900}
+    .betCell .odds{color:var(--muted);font-size:12px;margin-top:4px}
+    .betCell .amt{position:absolute;right:9px;bottom:9px;font-size:13px;background:rgba(0,0,0,.45);padding:2px 7px;border-radius:999px}
+    .betCell.active{outline:2px solid #efcf8c}
+    .betCell.player{background:linear-gradient(180deg,rgba(55,91,191,.35),rgba(0,0,0,.2))}
+    .betCell.banker{background:linear-gradient(180deg,rgba(178,51,63,.35),rgba(0,0,0,.2))}
+    .betCell.tie{background:linear-gradient(180deg,rgba(31,138,86,.33),rgba(0,0,0,.2))}
+
+    .slipList{margin-top:10px;border:1px solid rgba(208,176,110,.25);border-radius:10px;max-height:260px;overflow:auto}
+    .betItem{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px}
+    .betItem:last-child{border-bottom:none}
+    .metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .metric{border:1px solid rgba(208,176,110,.25);border-radius:10px;background:rgba(0,0,0,.16);padding:8px}
+    .metric .k{color:var(--muted);font-size:12px}
+    .metric .v{font-size:18px;font-weight:900;margin-top:2px}
+    .good{color:#34cc7b}.bad{color:#ee6a6a}
+    .road{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+    .road span{width:24px;height:24px;display:grid;place-items:center;border-radius:999px;border:1px solid rgba(255,255,255,.2);font-size:12px;font-weight:900}
+    .road .P{background:rgba(55,91,191,.35)}
+    .road .B{background:rgba(178,51,63,.35)}
+    .road .T{background:rgba(31,138,86,.35)}
+    .footer{color:rgba(255,255,255,.64);font-size:12px;margin-top:6px}
+    dialog{border:1px solid rgba(208,176,110,.4);border-radius:12px;background:#0c1f17;color:var(--text);max-width:760px;width:95%;padding:12px}
+    dialog::backdrop{background:rgba(0,0,0,.6)}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{border:1px solid rgba(255,255,255,.15);padding:6px;text-align:left}
+    @media (max-width:1060px){.top,.mid,.handRow{grid-template-columns:1fr}.betGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="top">
+      <div class="panel">
+        <div class="title">资金与发牌（Bankroll & Deal）</div>
+        <div class="statRow">
+          <div><div style="color:var(--muted);font-size:13px;">余额</div><div class="bank" id="balance">1000</div></div>
+          <div class="btns">
+            <button class="secondary" id="helpBtn">玩法说明 / Rules</button>
+            <button class="secondary" id="clearBetsBtn">清空下注</button>
+            <button class="secondary" id="resetBtn">重置局面</button>
+            <button id="dealBtn">发牌结算</button>
+          </div>
+        </div>
+        <div class="result">
+          <div class="resultCard"><div class="k">本局结果</div><div class="v" id="winner">—</div></div>
+          <div class="resultCard"><div class="k">闲点数</div><div class="v" id="playerPoint">0</div></div>
+          <div class="resultCard"><div class="k">庄点数</div><div class="v" id="bankerPoint">0</div></div>
+        </div>
+        <div style="margin-top:8px;font-weight:700;" id="msg">可同局叠加多个下注项目。</div>
+        <div class="dealBar"><div id="bar"></div></div>
+        <div class="footer">规则：8副牌，庄赢抽佣 5%，和局赔率 8:1，闲/庄对子赔率 11:1。</div>
+      </div>
+
+      <div class="panel cardsPanel">
+        <div class="title">发牌可视化</div>
+        <div class="handRow">
+          <div class="hand player"><h3>闲家 <span class="badge">PLAYER</span></h3><div class="cards" id="playerCards"></div></div>
+          <div class="hand banker"><h3>庄家 <span class="badge">BANKER</span></h3><div class="cards" id="bankerCards"></div></div>
+        </div>
+        <div class="msg" id="shoeInfo">牌靴剩余：416 张</div>
+      </div>
+    </section>
+
+    <section class="mid">
+      <div class="panel">
+        <div class="title">下注区（参考轮盘样式）</div>
+        <div class="controlRow">
+          <span>当前每注金额</span>
+          <input id="stakeInput" type="number" min="1" step="1" value="50" style="width:100px;">
+          <span style="color:var(--muted);">点击下注位 = 当前金额追加到该项目</span>
+        </div>
+        <div class="chipRack" id="chipRack"></div>
+        <div class="controlRow" style="margin-top:8px;">
+          <label>初始资金</label><input id="initialBankrollInput" type="number" min="100" step="100" value="1000" style="width:120px;">
+          <label>初始筹码面额</label><input id="initialChipsInput" type="text" value="10,25,50,100,250" style="width:220px;">
+          <button class="secondary" id="applyInitBtn">应用初始设置</button>
+        </div>
+
+        <div class="betGrid" id="betGrid"></div>
+        <div class="slipList" id="betSlip"></div>
+      </div>
+
+      <div class="panel">
+        <div class="title">数学计算 & 统计（实时）</div>
+        <div class="metrics">
+          <div class="metric"><div class="k">当前注单数</div><div class="v" id="mCount">0</div></div>
+          <div class="metric"><div class="k">总下注额</div><div class="v" id="mStake">0</div></div>
+          <div class="metric"><div class="k">理论 EV（单轮）</div><div class="v" id="mEv">0</div></div>
+          <div class="metric"><div class="k">本轮可能最大净赢</div><div class="v" id="mMaxWin">0</div></div>
+          <div class="metric"><div class="k">上轮净盈亏</div><div class="v" id="mLastDelta">0</div></div>
+          <div class="metric"><div class="k">局数 / 命中局</div><div class="v" id="mRounds">0 / 0</div></div>
+          <div class="metric"><div class="k">累计 ROI</div><div class="v" id="mROI">0%</div></div>
+          <div class="metric"><div class="k">和局占比</div><div class="v" id="mTieRate">0%</div></div>
+        </div>
+        <div class="title" style="margin-top:12px;">近 30 局路单</div>
+        <div class="road" id="road"></div>
+      </div>
+    </section>
+  </div>
+
+  <dialog id="rulesDialog">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b>百家乐下注说明（常见 8 副牌规则）</b><button id="closeRulesBtn" class="secondary">关闭</button></div>
+    <table style="margin-top:8px">
+      <thead><tr><th>下注类型</th><th>赔率</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>闲（Player）</td><td>1:1</td><td>闲点数大于庄点数</td></tr>
+        <tr><td>庄（Banker）</td><td>0.95:1</td><td>庄赢需抽 5% 佣金</td></tr>
+        <tr><td>和（Tie）</td><td>8:1</td><td>闲庄点数相同</td></tr>
+        <tr><td>闲对子（Player Pair）</td><td>11:1</td><td>闲前两张牌同点值</td></tr>
+        <tr><td>庄对子（Banker Pair）</td><td>11:1</td><td>庄前两张牌同点值</td></tr>
+      </tbody>
+    </table>
+  </dialog>
+
+  <script>
+  (()=>{
+    const BETS=[
+      {key:'player',name:'闲',en:'Player',odds:'1:1',payout:1,group:'player'},
+      {key:'banker',name:'庄',en:'Banker',odds:'0.95:1',payout:0.95,group:'banker'},
+      {key:'tie',name:'和',en:'Tie',odds:'8:1',payout:8,group:'tie'},
+      {key:'playerPair',name:'闲对子',en:'Player Pair',odds:'11:1',payout:11,group:'player'},
+      {key:'bankerPair',name:'庄对子',en:'Banker Pair',odds:'11:1',payout:11,group:'banker'}
+    ];
+    const SUITS=['♠','♥','♣','♦'];
+    const $=id=>document.getElementById(id);
+    const el={
+      balance:$('balance'),msg:$('msg'),winner:$('winner'),playerPoint:$('playerPoint'),bankerPoint:$('bankerPoint'),
+      playerCards:$('playerCards'),bankerCards:$('bankerCards'),shoeInfo:$('shoeInfo'),road:$('road'),bar:$('bar'),
+      dealBtn:$('dealBtn'),resetBtn:$('resetBtn'),clearBetsBtn:$('clearBetsBtn'),helpBtn:$('helpBtn'),closeRulesBtn:$('closeRulesBtn'),rulesDialog:$('rulesDialog'),
+      stakeInput:$('stakeInput'),chipRack:$('chipRack'),initialBankrollInput:$('initialBankrollInput'),initialChipsInput:$('initialChipsInput'),applyInitBtn:$('applyInitBtn'),
+      betGrid:$('betGrid'),betSlip:$('betSlip'),
+      mCount:$('mCount'),mStake:$('mStake'),mEv:$('mEv'),mMaxWin:$('mMaxWin'),mLastDelta:$('mLastDelta'),mRounds:$('mRounds'),mROI:$('mROI'),mTieRate:$('mTieRate')
+    };
+
+    let initialBankroll=1000,balance=1000,stake=50,chips=[10,25,50,100,250],dealing=false;
+    let bets=[]; // {key, amount}
+    let shoe=[];
+    const stats={rounds:0,hitRounds:0,totalStake:0,totalDelta:0,lastDelta:0,ties:0,history:[]};
+
+    const clamp=(v,f=1)=>{const n=Math.floor(Number(v));return Number.isFinite(n)&&n>0?n:f};
+    const parseChips=t=>[...new Set(String(t).split(',').map(s=>clamp(s.trim(),0)).filter(n=>n>0))].sort((a,b)=>a-b).slice(0,20);
+    const betMeta=k=>BETS.find(b=>b.key===k);
+    const betIndex=k=>bets.findIndex(b=>b.key===k);
+    const betAmount=k=>{const i=betIndex(k);return i>-1?bets[i].amount:0};
+
+    function freshShoe(){
+      const cards=[];
+      for(let d=0;d<8;d++)for(const s of SUITS)for(let r=1;r<=13;r++)cards.push({rank:r,suit:s});
+      for(let i=cards.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[cards[i],cards[j]]=[cards[j],cards[i]]}
+      return cards;
+    }
+    function ensureShoe(){if(shoe.length<20)shoe=freshShoe();el.shoeInfo.textContent=`牌靴剩余：${shoe.length} 张`}
+    function drawCard(){ensureShoe();const c=shoe.pop();el.shoeInfo.textContent=`牌靴剩余：${shoe.length} 张`;return c}
+    const cardPoint=c=>c.rank>=10?0:c.rank;
+    const handPoint=hand=>hand.reduce((s,c)=>s+cardPoint(c),0)%10;
+    const rankText=r=>({1:'A',11:'J',12:'Q',13:'K'})[r]||String(r);
+
+    function renderCards(node,cards){
+      node.innerHTML='';
+      cards.forEach(c=>{const d=document.createElement('div');d.className=`card ${(c.suit==='♥'||c.suit==='♦')?'red':''}`;d.textContent=`${rankText(c.rank)}${c.suit}`;node.appendChild(d)})
+    }
+
+    function shouldBankerDraw(bankerPoint,playerThird){
+      if(playerThird==null) return bankerPoint<=5;
+      if(bankerPoint<=2) return true;
+      if(bankerPoint===3) return playerThird!==8;
+      if(bankerPoint===4) return playerThird>=2&&playerThird<=7;
+      if(bankerPoint===5) return playerThird>=4&&playerThird<=7;
+      if(bankerPoint===6) return playerThird===6||playerThird===7;
+      return false;
+    }
+
+    function dealRound(){
+      const player=[drawCard(),drawCard()];
+      const banker=[drawCard(),drawCard()];
+      let p=handPoint(player),b=handPoint(banker);
+      if(p>=8||b>=8) return {player,banker,p,b};
+
+      let playerThird=null;
+      if(p<=5){const c=drawCard();player.push(c);playerThird=cardPoint(c);p=handPoint(player)}
+      if(shouldBankerDraw(b,playerThird)){banker.push(drawCard());b=handPoint(banker)}
+      return {player,banker,p,b};
+    }
+
+    function settle(result,betsThisRound){
+      let delta=0;
+      betsThisRound.forEach(b=>{
+        if(b.key==='player'){
+          if(result.winner==='P') delta+=b.amount;
+          else if(result.winner==='B') delta-=b.amount;
+        }
+        if(b.key==='banker'){
+          if(result.winner==='B') delta+=Math.round(b.amount*0.95*100)/100;
+          else if(result.winner==='P') delta-=b.amount;
+        }
+        if(b.key==='tie') delta+=result.winner==='T'?b.amount*8:-b.amount;
+        if(b.key==='playerPair') delta+=result.playerPair?b.amount*11:-b.amount;
+        if(b.key==='bankerPair') delta+=result.bankerPair?b.amount*11:-b.amount;
+      });
+      return delta;
+    }
+
+    function calcPreview(){
+      const totalStake=bets.reduce((s,b)=>s+b.amount,0);
+      // 概率近似：8副牌常见结果分布
+      const probs={P:0.4462,B:0.4586,T:0.0952,PP:0.0747,BP:0.0747};
+      let ev=0,maxWin=-Infinity;
+      const outcomes=['P','B','T'];
+      outcomes.forEach(w=>{
+        [false,true].forEach(pp=>{
+          [false,true].forEach(bp=>{
+            const pr=(w==='P'?probs.P:w==='B'?probs.B:probs.T)*(pp?probs.PP:1-probs.PP)*(bp?probs.BP:1-probs.BP);
+            const d=settle({winner:w,playerPair:pp,bankerPair:bp},bets);
+            ev+=d*pr;
+            maxWin=Math.max(maxWin,d);
+          })
+        })
+      });
+      if(!bets.length)maxWin=0;
+      return {totalStake,ev,maxWin};
+    }
+
+    function updateMath(){
+      const p=calcPreview();
+      el.mCount.textContent=String(bets.length);
+      el.mStake.textContent=String(p.totalStake);
+      el.mEv.textContent=p.ev.toFixed(2);
+      el.mEv.className=`v ${p.ev>=0?'good':'bad'}`;
+      el.mMaxWin.textContent=String(p.maxWin);
+      el.mLastDelta.textContent=`${stats.lastDelta>=0?'+':''}${stats.lastDelta.toFixed(2)}`;
+      el.mLastDelta.className=`v ${stats.lastDelta>=0?'good':'bad'}`;
+      el.mRounds.textContent=`${stats.rounds} / ${stats.hitRounds}`;
+      const roi=stats.totalStake>0?stats.totalDelta/stats.totalStake*100:0;
+      el.mROI.textContent=`${roi.toFixed(2)}%`;
+      el.mTieRate.textContent=`${stats.rounds?((stats.ties/stats.rounds)*100).toFixed(2):'0.00'}%`;
+    }
+
+    function renderBetGrid(){
+      el.betGrid.innerHTML='';
+      BETS.forEach((b,idx)=>{
+        const d=document.createElement('div');
+        d.className=`betCell ${b.group} ${betAmount(b.key)>0?'active':''}`;
+        d.innerHTML=`<div class="name">${b.name}</div><div>${b.en}</div><div class="odds">赔率 ${b.odds}</div><div class="amt">${betAmount(b.key)}</div>`;
+        d.addEventListener('click',()=>upsertBet(b.key));
+        el.betGrid.appendChild(d);
+      })
+    }
+
+    function renderChipRack(){
+      el.chipRack.innerHTML='';
+      chips.forEach((v,i)=>{const d=document.createElement('div');d.className=`chip c${(i%6)+1} ${stake===v?'sel':''}`;d.textContent=v;d.addEventListener('click',()=>{if(dealing)return;stake=v;el.stakeInput.value=String(stake);render()});el.chipRack.appendChild(d)})
+    }
+
+    function renderSlip(){
+      el.betSlip.innerHTML='';
+      if(!bets.length){el.betSlip.innerHTML='<div class="betItem"><div>暂无下注，点击下注区添加。</div><div></div><div></div></div>';return}
+      bets.forEach(b=>{
+        const m=betMeta(b.key);
+        const row=document.createElement('div');
+        row.className='betItem';
+        row.innerHTML=`<div>${m.name} / ${m.en}</div><div><input type="number" min="0" step="1" value="${b.amount}" style="width:88px"></div><button class="secondary">清除</button>`;
+        row.querySelector('input').addEventListener('input',e=>setBetAmount(b.key,clamp(e.target.value,0)));
+        row.querySelector('button').addEventListener('click',()=>setBetAmount(b.key,0));
+        el.betSlip.appendChild(row);
+      })
+    }
+
+    function renderRoad(){
+      el.road.innerHTML='';
+      if(!stats.history.length){el.road.innerHTML='<span style="width:auto;padding:0 8px;border-radius:8px;">暂无记录</span>';return}
+      stats.history.slice(-30).forEach(r=>{const s=document.createElement('span');s.className=r;s.textContent=r;el.road.appendChild(s)})
+    }
+
+    function setBetAmount(key,amount){
+      const i=betIndex(key);if(i<0)return;
+      bets[i].amount=Math.max(0,amount);
+      if(bets[i].amount===0) bets.splice(i,1);
+      render();
+    }
+
+    function upsertBet(key){
+      if(dealing)return;
+      const i=betIndex(key);
+      if(i>-1) bets[i].amount+=stake;
+      else bets.push({key,amount:stake});
+      const m=betMeta(key);
+      el.msg.textContent=`已下注：${m.name}，+${stake}`;
+      render();
+    }
+
+    async function deal(){
+      if(dealing)return;
+      if(!bets.length){el.msg.textContent='请先添加下注。';return}
+      const totalStake=bets.reduce((s,b)=>s+b.amount,0);
+      if(balance<totalStake){el.msg.textContent=`余额不足：下注 ${totalStake}，余额 ${balance}`;return}
+
+      dealing=true;
+      el.dealBtn.disabled=true;
+      el.bar.style.animation='load 1200ms linear forwards';
+      el.msg.textContent='发牌中...';
+      await new Promise(r=>setTimeout(r,1200));
+
+      const {player,banker,p,b}=dealRound();
+      const winner=p===b?'T':p>b?'P':'B';
+      const result={winner,playerPair:player[0].rank===player[1].rank,bankerPair:banker[0].rank===banker[1].rank};
+      const delta=settle(result,bets);
+
+      balance=Math.round((balance+delta)*100)/100;
+      stats.rounds++;
+      stats.totalStake+=totalStake;
+      stats.totalDelta+=delta;
+      stats.lastDelta=delta;
+      if(delta>0)stats.hitRounds++;
+      if(winner==='T')stats.ties++;
+      stats.history.push(winner);
+
+      renderCards(el.playerCards,player);
+      renderCards(el.bankerCards,banker);
+      el.playerPoint.textContent=String(p);
+      el.bankerPoint.textContent=String(b);
+      el.winner.textContent=winner==='P'?'闲赢':winner==='B'?'庄赢':'和局';
+      el.msg.textContent=`结果：${el.winner.textContent}，本轮净${delta>=0?'赢':'输'} ${Math.abs(delta).toFixed(2)}。`;
+
+      el.bar.style.animation='none';
+      el.bar.style.width='0%';
+      dealing=false;
+      el.dealBtn.disabled=false;
+      render();
+    }
+
+    function clearBets(){if(dealing)return;bets=[];el.msg.textContent='已清空下注。';render()}
+    function resetGame(){
+      if(dealing)return;
+      balance=initialBankroll;bets=[];shoe=freshShoe();
+      Object.assign(stats,{rounds:0,hitRounds:0,totalStake:0,totalDelta:0,lastDelta:0,ties:0,history:[]});
+      el.winner.textContent='—';el.playerPoint.textContent='0';el.bankerPoint.textContent='0';
+      el.playerCards.innerHTML='';el.bankerCards.innerHTML='';el.msg.textContent='已重置局面。';
+      render();
+    }
+
+    function applyInit(){
+      if(dealing)return;
+      initialBankroll=clamp(el.initialBankrollInput.value,1000);
+      chips=parseChips(el.initialChipsInput.value);
+      if(!chips.length)chips=[10,25,50,100,250];
+      if(!chips.includes(stake))stake=chips[0];
+      resetGame();
+      el.msg.textContent='已应用初始设置。';
+    }
+
+    function render(){
+      el.balance.textContent=String(balance);
+      el.stakeInput.value=String(stake);
+      renderBetGrid();
+      renderChipRack();
+      renderSlip();
+      renderRoad();
+      ensureShoe();
+      updateMath();
+    }
+
+    el.helpBtn.addEventListener('click',()=>el.rulesDialog.showModal());
+    el.closeRulesBtn.addEventListener('click',()=>el.rulesDialog.close());
+    el.stakeInput.addEventListener('input',e=>{stake=clamp(e.target.value,1);render()});
+    el.dealBtn.addEventListener('click',deal);
+    el.resetBtn.addEventListener('click',resetGame);
+    el.clearBetsBtn.addEventListener('click',clearBets);
+    el.applyInitBtn.addEventListener('click',applyInit);
+
+    shoe=freshShoe();
+    render();
+  })();
+  </script>
+</body>
+</html>
