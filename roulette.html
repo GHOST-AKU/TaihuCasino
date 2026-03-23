@@ -25,8 +25,9 @@
     .chipRack{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.chip{border-radius:999px;min-width:70px;text-align:center;padding:8px 10px;font-weight:900;cursor:pointer;border:2px dashed rgba(255,255,255,.4);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
     .chip.c1{background:radial-gradient(circle at 30% 28%,#fff2cc,#d5a246)}.chip.c2{background:radial-gradient(circle at 30% 28%,#ffe5e5,#d95b5b)}.chip.c3{background:radial-gradient(circle at 30% 28%,#e2efff,#5f8fda)}.chip.c4{background:radial-gradient(circle at 30% 28%,#e3ffe9,#4daa67)}.chip.c5{background:radial-gradient(circle at 30% 28%,#f4e6ff,#8b62c9)}.chip.c6{background:radial-gradient(circle at 30% 28%,#fff0df,#d27f4d)}.chip.sel{outline:2px solid #efcf8c}
     .tableWrap{margin-top:10px;border:2px solid rgba(208,176,110,.5);border-radius:12px;padding:10px;background:linear-gradient(180deg,#0d3a2a,#07261b);overflow-x:auto}.rouletteTable{min-width:860px;display:grid;gap:8px}
-    .insideHead{display:grid;grid-template-columns:52px minmax(0,1fr);gap:4px;align-items:stretch}.zeroCell{border-radius:8px;border:1px solid rgba(255,255,255,.2);background:var(--green);display:grid;place-items:center;font-size:22px;font-weight:900;cursor:pointer;height:100%;min-height:0}
-    .grid3x12{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(12,36px);gap:4px}.numCell{border:1px solid rgba(255,255,255,.2);border-radius:6px;display:grid;place-items:center;font-weight:900;cursor:pointer;user-select:none}.numCell.red{background:#ac313d}.numCell.black{background:#13161a}.numCell small:empty{display:none}
+    .insideHead{display:grid;grid-template-columns:72px minmax(0,1fr);gap:4px;align-items:stretch}
+    .zeroCell{border:1px solid rgba(255,255,255,.2);background:#2fdf00;display:grid;place-items:center;font-size:22px;font-weight:900;cursor:pointer;height:100%;min-height:0;clip-path:polygon(100% 0,100% 100%,0 50%)}
+    .grid4x9{display:grid;grid-template-columns:repeat(9,minmax(56px,1fr));grid-template-rows:repeat(4,46px);gap:4px}.numCell{border:1px solid rgba(255,255,255,.2);border-radius:6px;display:grid;place-items:center;font-weight:900;cursor:pointer;user-select:none}.numCell.red{background:#ac313d}.numCell.black{background:#13161a}.numCell small:empty{display:none}
     .outsideRow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}.dozenRow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.colRow{display:grid;grid-template-columns:52px repeat(3,minmax(0,1fr));gap:4px}.placeholder{visibility:hidden}
     .outsideCell,.dozenCell,.colCell{border:1px solid rgba(255,255,255,.2);border-radius:6px;background:rgba(0,0,0,.22);padding:7px 6px;text-align:center;font-weight:800;cursor:pointer;user-select:none}.outsideCell small,.dozenCell small,.colCell small,.numCell small,.zeroCell small{display:block;font-size:11px;color:#d8d8d8;opacity:.85;font-weight:600;line-height:1.1}
     .active{outline:2px solid #efcf8c;box-shadow:0 0 0 1px rgba(0,0,0,.35) inset}
@@ -78,7 +79,7 @@
         <div class="bettingLayout">
           <div class="tableWrap">
             <div class="rouletteTable">
-              <div class="insideHead"><div class="zeroCell" id="zeroCell"><div>0<small>Zero</small></div></div><div class="grid3x12" id="insideGrid"></div></div>
+              <div class="insideHead"><div class="zeroCell" id="zeroCell"><div>0<small>Zero</small></div></div><div class="grid4x9" id="insideGrid"></div></div>
               <div class="dozenRow" id="dozenRow"></div>
               <div class="outsideRow" id="outsideRow"></div>
               <div class="colRow" id="columnRow"><div class="placeholder">.</div></div>
@@ -168,7 +169,7 @@
     function addCell(parent,cls,cn,en,key,numbers,payout){const d=document.createElement('div');d.className=cls;d.innerHTML=cellHtml(cn,en);d.dataset.key=key;d.addEventListener('click',()=>upsertBet({key,label:cn,numbers,payout}));parent.appendChild(d);return d}
 
     function buildTable(){
-      for(let r=0;r<12;r++)for(let c=0;c<3;c++){const n=r*3+c+1;addCell(el.insideGrid,`numCell ${RED.has(n)?'red':'black'}`,String(n),'',`straight:${n}`,[n],PAYOUT.straight)}
+      for(let r=0;r<4;r++)for(let c=0;c<9;c++){const n=c*4+r+1;addCell(el.insideGrid,`numCell ${RED.has(n)?'red':'black'}`,String(n),'',`straight:${n}`,[n],PAYOUT.straight)}
       el.zeroCell.dataset.key='straight:0'; el.zeroCell.addEventListener('click',()=>upsertBet({key:'straight:0',label:'直注 0',numbers:[0],payout:PAYOUT.straight}));
       addCell(el.dozenRow,'dozenCell','第一打','1st 12','dozen:1',range(1,12),PAYOUT.outside2);
       addCell(el.dozenRow,'dozenCell','第二打','2nd 12','dozen:2',range(13,24),PAYOUT.outside2);
