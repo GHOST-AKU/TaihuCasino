@@ -240,8 +240,14 @@
     function settle(result,betsThisRound){
       let delta=0;
       betsThisRound.forEach(b=>{
-        if(b.key==='player') delta+=result.winner==='P'?b.amount:-b.amount;
-        if(b.key==='banker') delta+=result.winner==='B'?Math.round(b.amount*0.95*100)/100:-b.amount;
+        if(b.key==='player'){
+          if(result.winner==='P') delta+=b.amount;
+          else if(result.winner==='B') delta-=b.amount;
+        }
+        if(b.key==='banker'){
+          if(result.winner==='B') delta+=Math.round(b.amount*0.95*100)/100;
+          else if(result.winner==='P') delta-=b.amount;
+        }
         if(b.key==='tie') delta+=result.winner==='T'?b.amount*8:-b.amount;
         if(b.key==='playerPair') delta+=result.playerPair?b.amount*11:-b.amount;
         if(b.key==='bankerPair') delta+=result.bankerPair?b.amount*11:-b.amount;
