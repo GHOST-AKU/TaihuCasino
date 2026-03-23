@@ -11,7 +11,7 @@
     .wrap{max-width:1360px;margin:0 auto;padding:16px;display:grid;gap:12px}
     .panel{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));border:1px solid rgba(208,176,110,.28);border-radius:16px;padding:12px;box-shadow:0 14px 38px rgba(0,0,0,.32)}
     .title{font-size:13px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;font-weight:700}
-    .top{display:grid;grid-template-columns:1fr;gap:12px}.mid{display:grid;grid-template-columns:1.35fr .65fr;gap:12px;align-items:start}
+    .top{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}.mid{display:grid;grid-template-columns:1fr;gap:12px;align-items:start}
     .statRow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.bank{font-size:34px;font-weight:900;color:#f1d28f}
     .btns{display:flex;gap:8px;flex-wrap:wrap}button{border-radius:10px;padding:8px 11px;border:1px solid rgba(208,176,110,.35);background:linear-gradient(180deg,#ebc982,#c59c54);color:#362506;font-weight:800;cursor:pointer}
     button.secondary{background:linear-gradient(180deg,#1b3a2b,#12261c);color:var(--text)}button:disabled{opacity:.5;cursor:not-allowed}
@@ -37,7 +37,7 @@
     dialog{border:1px solid rgba(208,176,110,.4);border-radius:12px;background:#0c1f17;color:var(--text);max-width:760px;width:95%;padding:12px}
     dialog::backdrop{background:rgba(0,0,0,.6)}table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid rgba(255,255,255,.15);padding:6px;text-align:left}
     @media (max-width:1200px){.bettingLayout{grid-template-columns:1fr}.wheelPanel{order:2}}
-    @media (max-width:1060px){.mid{grid-template-columns:1fr}.insideTools{grid-template-columns:1fr}}
+    @media (max-width:1060px){.top,.mid{grid-template-columns:1fr}.insideTools{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -52,6 +52,19 @@
         <div class="result"><div class="ball" id="ball">—</div><div><div style="font-weight:800;">结果播报</div><div class="msg" id="msg">可同局叠加多个下注项目。</div></div></div>
         <div class="spinBar"><div id="bar"></div></div>
         <div class="footer">欧式规则：单零（0），无 La Partage / En Prison 特殊条款。</div>
+      </div>
+      <div class="panel">
+        <div class="title">数学计算 & 统计（实时）</div>
+        <div class="metrics">
+          <div class="metric"><div class="k">当前注单数</div><div class="v" id="mCount">0</div></div>
+          <div class="metric"><div class="k">总下注额</div><div class="v" id="mStake">0</div></div>
+          <div class="metric"><div class="k">理论 EV（单轮）</div><div class="v" id="mEv">0</div></div>
+          <div class="metric"><div class="k">至少命中1注概率</div><div class="v" id="mHitProb">0%</div></div>
+          <div class="metric"><div class="k">本轮可能最大净赢</div><div class="v" id="mMaxWin">0</div></div>
+          <div class="metric"><div class="k">上轮净盈亏</div><div class="v" id="mLastDelta">0</div></div>
+          <div class="metric"><div class="k">局数 / 命中局</div><div class="v" id="mRounds">0 / 0</div></div>
+          <div class="metric"><div class="k">累计 ROI</div><div class="v" id="mROI">0%</div></div>
+        </div>
       </div>
     </section>
 
@@ -84,20 +97,6 @@
           <div class="toolCard"><div style="font-weight:800;margin-bottom:6px;">内注补充：角注 / 六线</div><div class="controlRow"><select id="insideTypeB"><option value="corner">角注 Corner (8:1)</option><option value="sixline">六线 Six Line (5:1)</option></select><select id="insideOptionB" style="min-width:180px;"></select><button class="secondary" id="addInsideBBtn">添加</button></div></div>
         </div>
         <div class="slipList" id="betSlip"></div>
-      </div>
-
-      <div class="panel">
-        <div class="title">数学计算 & 统计（实时）</div>
-        <div class="metrics">
-          <div class="metric"><div class="k">当前注单数</div><div class="v" id="mCount">0</div></div>
-          <div class="metric"><div class="k">总下注额</div><div class="v" id="mStake">0</div></div>
-          <div class="metric"><div class="k">理论 EV（单轮）</div><div class="v" id="mEv">0</div></div>
-          <div class="metric"><div class="k">至少命中1注概率</div><div class="v" id="mHitProb">0%</div></div>
-          <div class="metric"><div class="k">本轮可能最大净赢</div><div class="v" id="mMaxWin">0</div></div>
-          <div class="metric"><div class="k">上轮净盈亏</div><div class="v" id="mLastDelta">0</div></div>
-          <div class="metric"><div class="k">局数 / 命中局</div><div class="v" id="mRounds">0 / 0</div></div>
-          <div class="metric"><div class="k">累计 ROI</div><div class="v" id="mROI">0%</div></div>
-        </div>
       </div>
     </section>
   </div>
