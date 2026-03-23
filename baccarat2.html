@@ -214,7 +214,10 @@
       render();
     }
 
-    function calcPayout(bet,res){return bet.win(res)?bet.amount*bet.payout:-bet.amount}
+    function calcPayout(bet,res){
+      if(res.winner==='T'&&(bet.key==='player'||bet.key==='banker'))return 0;
+      return bet.win(res)?bet.amount*bet.payout:-bet.amount;
+    }
 
     function renderCards(round){
       const p=round?round.player:[null],b=round?round.banker:[null];
