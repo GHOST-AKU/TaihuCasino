@@ -11,19 +11,24 @@
     .wrap{max-width:1360px;margin:0 auto;padding:16px;display:grid;gap:12px}
     .panel{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));border:1px solid rgba(208,176,110,.28);border-radius:16px;padding:12px;box-shadow:0 14px 38px rgba(0,0,0,.32)}
     .title{font-size:13px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;font-weight:700}
-    .top{display:grid;grid-template-columns:1.15fr .85fr;gap:12px}.mid{display:grid;grid-template-columns:1.35fr .65fr;gap:12px;align-items:start}
+    .top{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:stretch}.mid{display:grid;grid-template-columns:1fr;gap:12px;align-items:start}
+    .top>.panel{min-height:280px}
     .statRow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.bank{font-size:34px;font-weight:900;color:#f1d28f}
     .btns{display:flex;gap:8px;flex-wrap:wrap}button{border-radius:10px;padding:8px 11px;border:1px solid rgba(208,176,110,.35);background:linear-gradient(180deg,#ebc982,#c59c54);color:#362506;font-weight:800;cursor:pointer}
     button.secondary{background:linear-gradient(180deg,#1b3a2b,#12261c);color:var(--text)}button:disabled{opacity:.5;cursor:not-allowed}
     .result{margin-top:8px;display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center}.ball{width:68px;height:68px;border-radius:50%;display:grid;place-items:center;font-size:25px;font-weight:900;border:2px solid rgba(255,255,255,.28);background:rgba(255,255,255,.09)}
     .msg{color:var(--muted)}.spinBar{height:9px;margin-top:12px;border:1px solid rgba(255,255,255,.1);border-radius:999px;overflow:hidden}.spinBar>div{height:100%;width:0%;background:linear-gradient(90deg,rgba(208,176,110,0),rgba(208,176,110,1),rgba(208,176,110,0))}@keyframes load{from{width:0}to{width:100%}}
-    .wheelPanel{display:grid;place-items:center;gap:8px}#wheelCanvas{width:min(420px,92vw);aspect-ratio:1/1;border-radius:50%;border:6px solid rgba(208,176,110,.5);background:radial-gradient(circle at center,#123527 0%,#07150f 70%)}.arrow{width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:18px solid #efcf8c}
+    .bettingLayout{display:grid;grid-template-columns:minmax(0,1fr) 410px;gap:12px;align-items:stretch}
+    .wheelPanel{display:grid;align-content:start;justify-items:center;gap:8px;padding:12px;border:1px solid rgba(208,176,110,.3);border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01))}
+    #wheelCanvas{width:min(320px,100%);aspect-ratio:1/1;border-radius:50%;border:6px solid rgba(208,176,110,.5);background:radial-gradient(circle at center,#123527 0%,#07150f 70%)}
+    .arrow{width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:18px solid #efcf8c}
     .controlRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}input[type="number"],input[type="text"],select{border-radius:8px;border:1px solid rgba(208,176,110,.3);background:rgba(0,0,0,.22);color:var(--text);padding:8px 9px}
     .chipRack{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.chip{border-radius:999px;min-width:70px;text-align:center;padding:8px 10px;font-weight:900;cursor:pointer;border:2px dashed rgba(255,255,255,.4);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
     .chip.c1{background:radial-gradient(circle at 30% 28%,#fff2cc,#d5a246)}.chip.c2{background:radial-gradient(circle at 30% 28%,#ffe5e5,#d95b5b)}.chip.c3{background:radial-gradient(circle at 30% 28%,#e2efff,#5f8fda)}.chip.c4{background:radial-gradient(circle at 30% 28%,#e3ffe9,#4daa67)}.chip.c5{background:radial-gradient(circle at 30% 28%,#f4e6ff,#8b62c9)}.chip.c6{background:radial-gradient(circle at 30% 28%,#fff0df,#d27f4d)}.chip.sel{outline:2px solid #efcf8c}
     .tableWrap{margin-top:10px;border:2px solid rgba(208,176,110,.5);border-radius:12px;padding:10px;background:linear-gradient(180deg,#0d3a2a,#07261b);overflow-x:auto}.rouletteTable{min-width:860px;display:grid;gap:8px}
-    .insideHead{display:grid;grid-template-columns:52px repeat(3,1fr);gap:4px}.zeroCell{grid-row:span 12;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:var(--green);display:grid;place-items:center;font-size:22px;font-weight:900;cursor:pointer;min-height:436px}
-    .grid3x12{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(12,36px);gap:4px}.numCell{border:1px solid rgba(255,255,255,.2);border-radius:6px;display:grid;place-items:center;font-weight:900;cursor:pointer;user-select:none}.numCell.red{background:#ac313d}.numCell.black{background:#13161a}
+    .insideHead{display:grid;grid-template-columns:56px minmax(0,1fr);gap:4px;align-items:stretch}
+    .zeroCell{border-radius:8px;border:1px solid rgba(255,255,255,.2);background:var(--green);display:grid;place-items:center;font-size:22px;font-weight:900;cursor:pointer;height:100%;min-height:0}
+    .grid4x9{display:grid;grid-template-columns:repeat(9,minmax(56px,1fr));grid-template-rows:repeat(4,44px);gap:4px}.numCell{border:1px solid rgba(255,255,255,.2);border-radius:6px;display:grid;place-items:center;font-weight:900;cursor:pointer;user-select:none}.numCell.red{background:#ac313d}.numCell.black{background:#13161a}.numCell small:empty{display:none}
     .outsideRow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}.dozenRow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.colRow{display:grid;grid-template-columns:52px repeat(3,minmax(0,1fr));gap:4px}.placeholder{visibility:hidden}
     .outsideCell,.dozenCell,.colCell{border:1px solid rgba(255,255,255,.2);border-radius:6px;background:rgba(0,0,0,.22);padding:7px 6px;text-align:center;font-weight:800;cursor:pointer;user-select:none}.outsideCell small,.dozenCell small,.colCell small,.numCell small,.zeroCell small{display:block;font-size:11px;color:#d8d8d8;opacity:.85;font-weight:600;line-height:1.1}
     .active{outline:2px solid #efcf8c;box-shadow:0 0 0 1px rgba(0,0,0,.35) inset}
@@ -33,6 +38,7 @@
     .footer{color:rgba(255,255,255,.64);font-size:12px;margin-top:6px}
     dialog{border:1px solid rgba(208,176,110,.4);border-radius:12px;background:#0c1f17;color:var(--text);max-width:760px;width:95%;padding:12px}
     dialog::backdrop{background:rgba(0,0,0,.6)}table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid rgba(255,255,255,.15);padding:6px;text-align:left}
+    @media (max-width:1200px){.bettingLayout{grid-template-columns:1fr}.wheelPanel{order:2}}
     @media (max-width:1060px){.top,.mid{grid-template-columns:1fr}.insideTools{grid-template-columns:1fr}}
   </style>
 </head>
@@ -49,32 +55,6 @@
         <div class="spinBar"><div id="bar"></div></div>
         <div class="footer">欧式规则：单零（0），无 La Partage / En Prison 特殊条款。</div>
       </div>
-      <div class="panel wheelPanel"><div class="title">可视化轮盘</div><div class="arrow"></div><canvas id="wheelCanvas" width="420" height="420"></canvas><div class="msg" id="wheelHint">当前指针：—</div></div>
-    </section>
-
-    <section class="mid">
-      <div class="panel">
-        <div class="title">赌桌下注区（横向布局，中文优先）</div>
-        <div class="controlRow"><span>当前每注金额</span><input id="stakeInput" type="number" min="1" step="1" value="50" style="width:100px;"><span style="color:var(--muted);">点击下注位 = 当前金额追加到该项目</span></div>
-        <div class="chipRack" id="chipRack"></div>
-        <div class="controlRow" style="margin-top:8px;"><label>初始资金</label><input id="initialBankrollInput" type="number" min="100" step="100" value="1000" style="width:120px;"><label>初始筹码面额</label><input id="initialChipsInput" type="text" value="10,25,50,100,250" style="width:220px;"><button class="secondary" id="applyInitBtn">应用初始设置</button></div>
-
-        <div class="tableWrap">
-          <div class="rouletteTable">
-            <div class="insideHead"><div class="zeroCell" id="zeroCell"><div>0<small>Zero</small></div></div><div class="grid3x12" id="insideGrid"></div></div>
-            <div class="dozenRow" id="dozenRow"></div>
-            <div class="outsideRow" id="outsideRow"></div>
-            <div class="colRow" id="columnRow"><div class="placeholder">.</div></div>
-          </div>
-        </div>
-
-        <div class="insideTools">
-          <div class="toolCard"><div style="font-weight:800;margin-bottom:6px;">内注补充：分注 / 街注</div><div class="controlRow"><select id="insideTypeA"><option value="split">分注 Split (17:1)</option><option value="street">街注 Street (11:1)</option></select><select id="insideOptionA" style="min-width:180px;"></select><button class="secondary" id="addInsideABtn">添加</button></div></div>
-          <div class="toolCard"><div style="font-weight:800;margin-bottom:6px;">内注补充：角注 / 六线</div><div class="controlRow"><select id="insideTypeB"><option value="corner">角注 Corner (8:1)</option><option value="sixline">六线 Six Line (5:1)</option></select><select id="insideOptionB" style="min-width:180px;"></select><button class="secondary" id="addInsideBBtn">添加</button></div></div>
-        </div>
-        <div class="slipList" id="betSlip"></div>
-      </div>
-
       <div class="panel">
         <div class="title">数学计算 & 统计（实时）</div>
         <div class="metrics">
@@ -87,6 +67,38 @@
           <div class="metric"><div class="k">局数 / 命中局</div><div class="v" id="mRounds">0 / 0</div></div>
           <div class="metric"><div class="k">累计 ROI</div><div class="v" id="mROI">0%</div></div>
         </div>
+      </div>
+    </section>
+
+    <section class="mid">
+      <div class="panel">
+        <div class="title">赌桌下注区（横向布局，中文优先）</div>
+        <div class="controlRow"><span>当前每注金额</span><input id="stakeInput" type="number" min="1" step="1" value="50" style="width:100px;"><span style="color:var(--muted);">点击下注位 = 当前金额追加到该项目</span></div>
+        <div class="chipRack" id="chipRack"></div>
+        <div class="controlRow" style="margin-top:8px;"><label>初始资金</label><input id="initialBankrollInput" type="number" min="100" step="100" value="1000" style="width:120px;"><label>初始筹码面额</label><input id="initialChipsInput" type="text" value="10,25,50,100,250" style="width:220px;"><button class="secondary" id="applyInitBtn">应用初始设置</button></div>
+
+        <div class="bettingLayout">
+          <div class="tableWrap">
+            <div class="rouletteTable">
+              <div class="insideHead"><div class="zeroCell" id="zeroCell"><div>0<small>Zero</small></div></div><div class="grid4x9" id="insideGrid"></div></div>
+              <div class="dozenRow" id="dozenRow"></div>
+              <div class="outsideRow" id="outsideRow"></div>
+              <div class="colRow" id="columnRow"><div class="placeholder">.</div></div>
+            </div>
+          </div>
+          <div class="wheelPanel" id="wheelPanel">
+            <div class="title">可视化轮盘</div>
+            <div class="arrow"></div>
+            <canvas id="wheelCanvas" width="420" height="420"></canvas>
+            <div class="msg" id="wheelHint">当前指针：—</div>
+          </div>
+        </div>
+
+        <div class="insideTools">
+          <div class="toolCard"><div style="font-weight:800;margin-bottom:6px;">内注补充：分注 / 街注</div><div class="controlRow"><select id="insideTypeA"><option value="split">分注 Split (17:1)</option><option value="street">街注 Street (11:1)</option></select><select id="insideOptionA" style="min-width:180px;"></select><button class="secondary" id="addInsideABtn">添加</button></div></div>
+          <div class="toolCard"><div style="font-weight:800;margin-bottom:6px;">内注补充：角注 / 六线</div><div class="controlRow"><select id="insideTypeB"><option value="corner">角注 Corner (8:1)</option><option value="sixline">六线 Six Line (5:1)</option></select><select id="insideOptionB" style="min-width:180px;"></select><button class="secondary" id="addInsideBBtn">添加</button></div></div>
+        </div>
+        <div class="slipList" id="betSlip"></div>
       </div>
     </section>
   </div>
@@ -158,7 +170,7 @@
     function addCell(parent,cls,cn,en,key,numbers,payout){const d=document.createElement('div');d.className=cls;d.innerHTML=cellHtml(cn,en);d.dataset.key=key;d.addEventListener('click',()=>upsertBet({key,label:cn,numbers,payout}));parent.appendChild(d);return d}
 
     function buildTable(){
-      for(let r=0;r<12;r++)for(let c=0;c<3;c++){const n=r*3+c+1;addCell(el.insideGrid,`numCell ${RED.has(n)?'red':'black'}`,String(n),'Straight',`straight:${n}`,[n],PAYOUT.straight)}
+      for(let r=0;r<4;r++)for(let c=0;c<9;c++){const n=c*4+r+1;addCell(el.insideGrid,`numCell ${RED.has(n)?'red':'black'}`,String(n),'',`straight:${n}`,[n],PAYOUT.straight)}
       el.zeroCell.dataset.key='straight:0'; el.zeroCell.addEventListener('click',()=>upsertBet({key:'straight:0',label:'直注 0',numbers:[0],payout:PAYOUT.straight}));
       addCell(el.dozenRow,'dozenCell','第一打','1st 12','dozen:1',range(1,12),PAYOUT.outside2);
       addCell(el.dozenRow,'dozenCell','第二打','2nd 12','dozen:2',range(13,24),PAYOUT.outside2);
