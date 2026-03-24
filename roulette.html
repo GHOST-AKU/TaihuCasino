@@ -28,7 +28,7 @@
     .tableWrap{margin-top:10px;border:2px solid rgba(208,176,110,.5);border-radius:12px;padding:10px;background:linear-gradient(180deg,#0d3a2a,#07261b);overflow-x:auto}.rouletteTable{min-width:860px;display:grid;gap:8px}
     .insideHead{display:grid;grid-template-columns:56px minmax(0,1fr);gap:4px;align-items:stretch}
     .zeroCell{border-radius:8px;border:1px solid rgba(255,255,255,.2);background:var(--green);display:grid;place-items:center;font-size:22px;font-weight:900;cursor:pointer;height:100%;min-height:0}
-    .grid4x9{display:grid;grid-template-columns:repeat(9,minmax(56px,1fr));grid-template-rows:repeat(4,44px);gap:4px}.numCell{border:1px solid rgba(255,255,255,.2);border-radius:6px;display:grid;place-items:center;font-weight:900;cursor:pointer;user-select:none}.numCell.red{background:#ac313d}.numCell.black{background:#13161a}.numCell small:empty{display:none}
+    .grid4x9{display:grid;grid-template-columns:repeat(12,minmax(56px,1fr));grid-template-rows:repeat(3,44px);gap:4px}.numCell{border:1px solid rgba(255,255,255,.2);border-radius:6px;display:grid;place-items:center;font-weight:900;cursor:pointer;user-select:none}.numCell.red{background:#ac313d}.numCell.black{background:#13161a}.numCell small:empty{display:none}
     .outsideRow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}.dozenRow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.colRow{display:grid;grid-template-columns:52px repeat(3,minmax(0,1fr));gap:4px}.placeholder{visibility:hidden}
     .outsideCell,.dozenCell,.colCell{border:1px solid rgba(255,255,255,.2);border-radius:6px;background:rgba(0,0,0,.22);padding:7px 6px;text-align:center;font-weight:800;cursor:pointer;user-select:none}.outsideCell small,.dozenCell small,.colCell small,.numCell small,.zeroCell small{display:block;font-size:11px;color:#d8d8d8;opacity:.85;font-weight:600;line-height:1.1}
     .active{outline:2px solid #efcf8c;box-shadow:0 0 0 1px rgba(0,0,0,.35) inset}
@@ -170,7 +170,7 @@
     function addCell(parent,cls,cn,en,key,numbers,payout){const d=document.createElement('div');d.className=cls;d.innerHTML=cellHtml(cn,en);d.dataset.key=key;d.addEventListener('click',()=>upsertBet({key,label:cn,numbers,payout}));parent.appendChild(d);return d}
 
     function buildTable(){
-      for(let r=0;r<4;r++)for(let c=0;c<9;c++){const n=c*4+r+1;addCell(el.insideGrid,`numCell ${RED.has(n)?'red':'black'}`,String(n),'',`straight:${n}`,[n],PAYOUT.straight)}
+      for(let r=0;r<3;r++)for(let c=0;c<12;c++){const n=c*3+r+1;addCell(el.insideGrid,`numCell ${RED.has(n)?'red':'black'}`,String(n),'',`straight:${n}`,[n],PAYOUT.straight)}
       el.zeroCell.dataset.key='straight:0'; el.zeroCell.addEventListener('click',()=>upsertBet({key:'straight:0',label:'直注 0',numbers:[0],payout:PAYOUT.straight}));
       addCell(el.dozenRow,'dozenCell','第一打','1st 12','dozen:1',range(1,12),PAYOUT.outside2);
       addCell(el.dozenRow,'dozenCell','第二打','2nd 12','dozen:2',range(13,24),PAYOUT.outside2);
