@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Taihu Casino</title>
+  <desc id="desc">A stylized Taihu Casino poster with lake waves, cards, dice, and chips.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a1028"/>
+      <stop offset="100%" stop-color="#143f59"/>
+    </linearGradient>
+    <radialGradient id="moon" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#fff7d6" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#ffd271" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4fb4e8" stop-opacity="0.65"/>
+      <stop offset="100%" stop-color="#114d7a" stop-opacity="0.8"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="800" fill="url(#bg)"/>
+  <circle cx="960" cy="140" r="190" fill="url(#moon)"/>
+
+  <g fill="none" stroke="url(#water)" stroke-linecap="round">
+    <path d="M-30 520 C170 470, 370 570, 570 520 C770 470, 970 570, 1230 515" stroke-width="28"/>
+    <path d="M-20 585 C160 545, 350 635, 540 585 C730 535, 920 635, 1220 575" stroke-width="34"/>
+    <path d="M-40 660 C140 620, 330 705, 520 660 C710 615, 900 710, 1210 655" stroke-width="40"/>
+  </g>
+
+  <g transform="translate(170 130) rotate(-8)">
+    <rect x="0" y="0" width="230" height="320" rx="18" fill="#fefefe"/>
+    <rect x="12" y="12" width="206" height="296" rx="12" fill="#ffffff" stroke="#e9e9e9"/>
+    <text x="26" y="56" font-size="56" fill="#cf1f2e" font-family="Georgia,serif">A</text>
+    <text x="96" y="196" font-size="128" fill="#cf1f2e" font-family="Georgia,serif">♥</text>
+    <text x="186" y="290" font-size="56" fill="#cf1f2e" font-family="Georgia,serif" transform="rotate(180 186 290)">A</text>
+  </g>
+
+  <g transform="translate(360 150) rotate(7)">
+    <rect x="0" y="0" width="230" height="320" rx="18" fill="#fefefe"/>
+    <rect x="12" y="12" width="206" height="296" rx="12" fill="#ffffff" stroke="#e9e9e9"/>
+    <text x="26" y="56" font-size="56" fill="#111" font-family="Georgia,serif">K</text>
+    <text x="92" y="200" font-size="120" fill="#111" font-family="Georgia,serif">♠</text>
+    <text x="186" y="290" font-size="56" fill="#111" font-family="Georgia,serif" transform="rotate(180 186 290)">K</text>
+  </g>
+
+  <g transform="translate(760 300)">
+    <rect x="0" y="0" width="170" height="170" rx="20" fill="#f8f8f8"/>
+    <g fill="#202020">
+      <circle cx="44" cy="44" r="12"/>
+      <circle cx="126" cy="44" r="12"/>
+      <circle cx="44" cy="126" r="12"/>
+      <circle cx="126" cy="126" r="12"/>
+    </g>
+  </g>
+
+  <g transform="translate(870 380)">
+    <circle cx="0" cy="0" r="78" fill="#cc2436"/>
+    <circle cx="0" cy="0" r="64" fill="none" stroke="#f4cf63" stroke-width="10"/>
+    <circle cx="0" cy="0" r="40" fill="#9d1727"/>
+  </g>
+
+  <g transform="translate(980 455)">
+    <circle cx="0" cy="0" r="62" fill="#1f8d5f"/>
+    <circle cx="0" cy="0" r="50" fill="none" stroke="#f4cf63" stroke-width="8"/>
+    <circle cx="0" cy="0" r="30" fill="#166843"/>
+  </g>
+
+  <text x="600" y="680" text-anchor="middle" fill="#f5d272" font-size="94" font-weight="700"
+        font-family="'Trebuchet MS', 'Noto Sans SC', sans-serif" letter-spacing="8" filter="url(#glow)">
+    TAIHU CASINO
+  </text>
+  <text x="600" y="735" text-anchor="middle" fill="#d8eef9" font-size="30"
+        font-family="'Noto Sans SC', 'Microsoft YaHei', sans-serif" letter-spacing="4">
+    太湖之夜 · 幸运与浪潮同在
+  </text>
+</svg>
