@@ -9,9 +9,9 @@
 
 `TaihuCasino` 当前是**静态网页项目**，核心文件是：
 
-- `roulette.html`（欧式轮盘）
-- `baccarat.html`（百家乐版本一）
-- `baccarat2.html`（百家乐版本二）
+- `pages/roulette.html`（欧式轮盘）
+- `pages/baccarat.html`（百家乐版本一）
+- `pages/baccarat2.html`（百家乐版本二）
 
 这类项目最适合的 Codex 工作流是：
 
@@ -29,7 +29,7 @@
 1. 启动 Codex App。
 2. 点击 **Open Folder / 打开文件夹**。
 3. 选择你的项目根目录：`TaihuCasino`。
-4. 确认左侧文件树里能看到 `roulette.html`、`baccarat.html`、`baccarat2.html`。
+4. 确认左侧文件树里能看到 `pages/roulette.html`、`pages/baccarat.html`、`pages/baccarat2.html`。
 
 ## 1.2 建议先开一个任务分支
 
@@ -46,11 +46,11 @@ git checkout -b feat/mobile-roulette
 推荐模板：
 
 ```text
-目标：优化 roulette.html 的移动端布局。
+目标：优化 `pages/roulette.html` 的移动端布局。
 约束：
 1) 不改游戏规则逻辑，只改 HTML/CSS。
 2) 保留现有配色和中文文案。
-3) 修改范围仅限 roulette.html。
+3) 修改范围仅限 `pages/roulette.html`。
 输出：
 1) 修改摘要。
 2) 风险点。
@@ -84,7 +84,7 @@ git checkout -b feat/mobile-roulette
 示例：
 
 ```text
-只允许修改 baccarat.html，禁止改结算逻辑（赔率和发牌规则）。
+只允许修改 `pages/baccarat.html`，禁止改结算逻辑（赔率和发牌规则）。
 验收标准：桌面和手机宽度都不溢出，按钮不重叠。
 ```
 
@@ -108,12 +108,12 @@ git checkout -b feat/mobile-roulette
 python -m http.server 8000
 ```
 
-然后访问 `http://localhost:8000/roulette.html`。
+然后访问 `http://localhost:8000/pages/roulette.html`。
 
 ## Step E：提交改动
 
 ```bash
-git add roulette.html
+git add pages/roulette.html
 git commit -m "feat: 优化轮盘页面移动端布局"
 ```
 
@@ -141,7 +141,7 @@ git commit -m "feat: 优化轮盘页面移动端布局"
 ```text
 目标：优化移动端布局。
 限制：仅可改 CSS/HTML，不得改 JS 结算逻辑。
-文件范围：roulette.html。
+文件范围：`pages/roulette.html`。
 交付：变更摘要 + 验收清单。
 ```
 
@@ -207,7 +207,7 @@ git commit -m "feat: 优化轮盘页面移动端布局"
 
 ## 7. 建议的 30 分钟推进节奏（非常实用）
 
-- **0~5 分钟**：定义单一目标（例如：只改 `roulette.html` 移动端）
+- **0~5 分钟**：定义单一目标（例如：只改 `pages/roulette.html` 移动端）
 - **5~15 分钟**：Codex 修改
 - **15~25 分钟**：你本地验证（布局、下注、结算展示）
 - **25~30 分钟**：提交并记录下一步

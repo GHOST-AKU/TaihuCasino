@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TaihuCasino</title>
+  <link rel="stylesheet" href="./assets/css/site.css" />
+</head>
+<body>
+  <div class="site-shell">
+    <header class="hero">
+      <div class="hero__brand">
+        <img src="./assets/images/taihu-casino-logo.svg" alt="TaihuCasino logo" class="hero__logo" />
+        <div>
+          <p class="eyebrow">TaihuCasino</p>
+          <h1>离线赌场原型项目</h1>
+          <p class="hero__copy">把零散的单文件页面整理成一个可继续扩展的静态项目骨架。</p>
+        </div>
+      </div>
+      <div class="hero__actions">
+        <a class="button button--primary" href="./pages/roulette.html">进入欧式轮盘</a>
+        <a class="button" href="./pages/baccarat.html">进入百家乐</a>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="card">
+        <p class="eyebrow">Games</p>
+        <h2>当前页面</h2>
+        <div class="link-list">
+          <a href="./pages/roulette.html">Roulette / 欧式轮盘</a>
+          <a href="./pages/baccarat.html">Baccarat / 百家乐主版本</a>
+          <a href="./pages/baccarat2.html">Baccarat 2 / 百家乐备选版本</a>
+        </div>
+      </section>
+
+      <section class="card">
+        <p class="eyebrow">Structure</p>
+        <h2>项目分层</h2>
+        <ul class="plain-list">
+          <li><code>pages/</code> 存放实际游戏页面</li>
+          <li><code>assets/css</code> 与 <code>assets/js</code> 存放公共资源</li>
+          <li><code>assets/images</code> 存放 logo 和图形素材</li>
+          <li><code>docs/</code> 存放结构说明与后续文档</li>
+        </ul>
+      </section>
+
+      <section class="card card--wide">
+        <p class="eyebrow">Next</p>
+        <h2>接下来适合做的事</h2>
+        <ul class="plain-list">
+          <li>确定 `baccarat.html` 与 `baccarat2.html` 的主从关系，避免双份维护。</li>
+          <li>把公共主题样式逐步从各页面内联 CSS 中抽出来。</li>
+          <li>给每个游戏补一个独立的脚本文件，逐步替换内联脚本。</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <script src="./assets/js/site.js"></script>
+</body>
+</html>

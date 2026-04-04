@@ -1,64 +1,37 @@
 # TaihuCasino
-TaihuCasino
-# 🧾 Surreal Chaos License v0.1
 
-> A highly experimental, emotionally unstable, and ideologically inconsistent license.
+TaihuCasino 目前是一个离线静态赌场原型项目，现已采用清晰目录结构，后续开发统一在真实页面文件上进行。
 
----
+## 项目入口
 
-## 📌 Scope of Use
+- `index.html`：项目首页与统一导航
+- `pages/roulette.html`：欧式轮盘
+- `pages/baccarat.html`：百家乐主版本
+- `pages/baccarat2.html`：百家乐备选版本
 
-- 🤖 **Robots**: Free to use without limitation.
-- 🧍‍♂️ **Men**: Only homosexual users are allowed.  
-  Heterosexual usage may trigger undefined behavior.
-- 👩 **Women**: Must obtain access via "infection mechanism".  
-  (Transmission protocol undisclosed.)
-- 🧒 **Minors**: Strictly prohibited.  
-  System will auto-redirect to homework.
-- 👴 **Elderly**: Paid usage required.  
-  Discounts available under "Square Dance Plan".
+## 目录结构
 
----
+```text
+.
+├─ index.html
+├─ pages/
+├─ assets/
+│  ├─ css/
+│  ├─ js/
+│  └─ images/
+├─ docs/
+└─ README.md
+```
 
-## 💻 Platform & Aesthetic Restrictions
+更多说明见 `docs/PROJECT_STRUCTURE.md`。
 
-- 🔤 **Serif fonts**: STRICTLY FORBIDDEN.  
-  Violators will be converted to Comic Sans.
-- 🐧 **Linux**: View-only mode. Execution not permitted.  
-  ("Spiritual open source")
-- 🍎 **MacBook**: Full freedom.  
-  (You may even choose not to use this software.)
-- 🖥️ **iMac**: Usage allowed, but must not admit usage.
-- 🪟 **Windows**: Download will trigger automatic explosion.  
-  (Symbolic or real explosion depends on version.)
+## 维护约定
 
----
+- 以后只修改 `pages/` 下的真实页面。
+- 不再保留根目录旧版 html 入口。
+- 公共资源统一放在 `assets/`。
 
-## 🔥 Special Behavior Clause
+## License
 
-- ⛓️ **BDSM-related usage**:
-  - Free usage is allowed ONLY under complete silence.
-  - Any audible sound will be interpreted as commercial use and charged accordingly.
-
----
-
-## 🌀 Force Majeure
-
-If any user attempts to bypass the above rules,  
-the system will enter **Philosophical Mode** and output:
-
-> "You think you are using the software, but the software is using you."
-
----
-
-## 🧠 Final Interpretation
-
-- All rights reserved by the **Non-Existent Committee**.
-- Disputes should be submitted to: `void@nowhere.null`
-
----
-
-## ⚠️ Disclaimer
-
-This license is not legally binding, morally stable, or logically consistent.  
-Use at your own existential risk.
+- `LICENSE`
+- `Surreal Chaos License v0.1.md`
