@@ -1,0 +1,687 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>骰子游戏（离线网页）</title>
+  <style>
+    :root{
+      --bg:#07120d;
+      --panel:rgba(255,255,255,.035);
+      --panel-strong:rgba(255,255,255,.06);
+      --line:rgba(208,176,110,.28);
+      --gold:#d8b36d;
+      --gold-2:#f0d8a0;
+      --text:#f5ecd6;
+      --muted:#b9ab83;
+      --green:#1f8a56;
+      --green-2:#2ca76b;
+      --red:#b2333f;
+      --ink:#13161a;
+      --shadow:0 16px 42px rgba(0,0,0,.34);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      color:var(--text);
+      font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      background:
+        radial-gradient(1100px 700px at 18% 0%, rgba(41,83,63,.9) 0%, transparent 58%),
+        radial-gradient(900px 700px at 100% 0%, rgba(75,42,29,.85) 0%, transparent 55%),
+        radial-gradient(700px 500px at 50% 100%, rgba(31,138,86,.18) 0%, transparent 55%),
+        linear-gradient(180deg, var(--bg), #050a07 72%);
+    }
+    .wrap{max-width:1360px;margin:0 auto;padding:16px;display:grid;gap:12px}
+    .panel{
+      background:linear-gradient(180deg,var(--panel),rgba(255,255,255,.012));
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:12px;
+      box-shadow:var(--shadow);
+      backdrop-filter: blur(6px);
+    }
+    .title{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:800;margin-bottom:8px}
+    .top{display:grid;grid-template-columns:1.15fr .85fr;gap:12px;align-items:stretch}
+    .mid{display:grid;grid-template-columns:1.35fr .65fr;gap:12px;align-items:start}
+    .statRow{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .bank{font-size:34px;line-height:1;font-weight:900;color:var(--gold-2);text-shadow:0 0 16px rgba(240,216,160,.18)}
+    .miniRow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;min-width:min(100%,460px);margin-top:4px}
+    .mini{border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:8px 10px;background:rgba(0,0,0,.18)}
+    .mini .k{font-size:12px;color:var(--muted)}
+    .mini .v{font-size:18px;font-weight:900;margin-top:2px}
+    .btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    button{border:1px solid rgba(208,176,110,.35);background:linear-gradient(180deg,#ebc982,#c59c54);color:#362506;border-radius:11px;padding:9px 12px;font-weight:800;cursor:pointer}
+    button.secondary{background:linear-gradient(180deg,#1b3a2b,#12261c);color:var(--text)}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .resultBox{margin-top:10px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}
+    .resultText{display:grid;gap:6px}
+    .headline{font-size:18px;font-weight:900;color:var(--gold-2)}
+    .sub{color:var(--muted);font-size:13px;line-height:1.5}
+    .bar{margin-top:10px;height:10px;border-radius:999px;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18)}
+    .bar > div{width:0%;height:100%;background:linear-gradient(90deg, rgba(208,176,110,0), rgba(208,176,110,1), rgba(208,176,110,0));box-shadow:0 0 18px rgba(208,176,110,.5)}
+    @keyframes load{from{width:0%}to{width:100%}}
+    .diceStage{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:stretch}
+    .die{position:relative;min-height:118px;border-radius:18px;border:1px solid rgba(255,255,255,.18);background:radial-gradient(circle at 30% 25%, rgba(255,255,255,.25), transparent 30%),linear-gradient(180deg, rgba(255,255,255,.13), rgba(0,0,0,.14));box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 8px 22px rgba(0,0,0,.26);overflow:hidden}
+    .die::before{content:"";position:absolute;inset:10px;border-radius:14px;border:1px solid rgba(255,255,255,.12);pointer-events:none}
+    .pipGrid{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:10px;padding:20px;place-items:center}
+    .pip{width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 30% 28%, #fff, #d7d7d7 55%, #9b9b9b 100%);box-shadow:0 1px 0 rgba(255,255,255,.5), 0 2px 7px rgba(0,0,0,.22);opacity:0;transform:scale(.85)}
+    .die.n1 .p1,
+    .die.n2 .p1,.die.n2 .p5,
+    .die.n3 .p1,.die.n3 .p3,.die.n3 .p5,
+    .die.n4 .p1,.die.n4 .p2,.die.n4 .p4,.die.n4 .p5,
+    .die.n5 .p1,.die.n5 .p2,.die.n5 .p3,.die.n5 .p4,.die.n5 .p5,
+    .die.n6 .p1,.die.n6 .p2,.die.n6 .p3,.die.n6 .p4,.die.n6 .p5,.die.n6 .p6{opacity:1}
+    .pip.p1{grid-area:1/1}.pip.p2{grid-area:1/2}.pip.p3{grid-area:1/3}.pip.p4{grid-area:2/1}.pip.p5{grid-area:2/2}.pip.p6{grid-area:2/3}
+    .dieLabel{position:absolute;left:10px;bottom:8px;display:flex;align-items:center;gap:6px;font-size:12px;color:#f4e7ca;text-shadow:0 1px 2px rgba(0,0,0,.45);letter-spacing:.04em}
+    .dieValue{position:absolute;right:10px;bottom:7px;font-size:14px;font-weight:900;color:#fff5dd;text-shadow:0 1px 2px rgba(0,0,0,.45)}
+    .controlRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    input[type="number"],input[type="text"]{border-radius:9px;border:1px solid rgba(208,176,110,.3);background:rgba(0,0,0,.22);color:var(--text);padding:8px 10px;outline:none}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+    .chip{border-radius:999px;min-width:70px;padding:8px 12px;text-align:center;border:2px dashed rgba(255,255,255,.36);color:#fff;cursor:pointer;font-weight:900;text-shadow:0 1px 2px rgba(0,0,0,.52);user-select:none}
+    .chip.c1{background:radial-gradient(circle at 30% 28%,#fff2cc,#d5a246)}
+    .chip.c2{background:radial-gradient(circle at 30% 28%,#ffe5e5,#d95b5b)}
+    .chip.c3{background:radial-gradient(circle at 30% 28%,#e2efff,#5f8fda)}
+    .chip.c4{background:radial-gradient(circle at 30% 28%,#e3ffe9,#4daa67)}
+    .chip.c5{background:radial-gradient(circle at 30% 28%,#f4e6ff,#8b62c9)}
+    .chip.c6{background:radial-gradient(circle at 30% 28%,#fff0df,#d27f4d)}
+    .chip.sel{outline:2px solid var(--gold-2)}
+    .betGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:10px}
+    .betCard{position:relative;min-height:96px;border:1px solid rgba(255,255,255,.2);border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(0,0,0,.2));padding:10px;cursor:pointer;user-select:none;overflow:hidden}
+    .betCard::after{content:"";position:absolute;inset:auto -18px -18px auto;width:72px;height:72px;border-radius:50%;background:radial-gradient(circle, rgba(255,255,255,.08), transparent 70%);pointer-events:none}
+    .betCard.active{outline:2px solid var(--gold-2)}
+    .betCard .name{font-size:20px;font-weight:900}
+    .betCard .en{margin-top:2px;font-size:12px;color:var(--muted);letter-spacing:.08em}
+    .betCard .meta{margin-top:10px;font-size:12px;color:#f4e7ca}
+    .betCard .amt{position:absolute;right:10px;bottom:10px;padding:2px 8px;border-radius:999px;background:rgba(0,0,0,.45);font-size:12px;font-weight:900}
+    .betCard.big{background:linear-gradient(180deg,rgba(31,138,86,.24),rgba(0,0,0,.2))}
+    .betCard.small{background:linear-gradient(180deg,rgba(31,138,86,.16),rgba(0,0,0,.2))}
+    .betCard.odd{background:linear-gradient(180deg,rgba(178,51,63,.2),rgba(0,0,0,.2))}
+    .betCard.even{background:linear-gradient(180deg,rgba(55,91,191,.22),rgba(0,0,0,.2))}
+    .betCard.triple{background:linear-gradient(180deg,rgba(208,176,110,.26),rgba(0,0,0,.2))}
+    .slipList{margin-top:10px;border:1px solid rgba(208,176,110,.25);border-radius:12px;max-height:270px;overflow:auto;background:rgba(0,0,0,.12)}
+    .betItem{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:8px 9px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px}
+    .betItem:last-child{border-bottom:none}
+    .betItem .desc{line-height:1.4}
+    .betItem small{display:block;color:var(--muted)}
+    .betItem input{width:92px}
+    .metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .metric{border:1px solid rgba(208,176,110,.25);border-radius:12px;background:rgba(0,0,0,.16);padding:9px}
+    .metric .k{font-size:12px;color:var(--muted)}
+    .metric .v{font-size:18px;font-weight:900;margin-top:2px}
+    .good{color:#35d07a}.bad{color:#f07c7c}
+    .history{margin-top:10px;display:grid;gap:8px;max-height:350px;overflow:auto;padding-right:2px}
+    .histItem{border:1px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(0,0,0,.14);padding:8px 9px;display:grid;gap:4px}
+    .histTop{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .histBadge{min-width:36px;text-align:center;border-radius:999px;padding:2px 8px;font-weight:900;font-size:12px;background:rgba(255,255,255,.08)}
+    .histNums{display:flex;gap:5px;flex-wrap:wrap}
+    .tinyDie{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.18);background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(0,0,0,.18));font-size:12px;font-weight:900}
+    .tinyDie.triple{border-color:rgba(240,216,160,.55);color:#ffeec7}
+    .tinyText{font-size:12px;color:var(--muted)}
+    .footer{color:rgba(255,255,255,.64);font-size:12px;margin-top:6px;line-height:1.5}
+    dialog{border:1px solid rgba(208,176,110,.4);border-radius:14px;background:#0c1f17;color:var(--text);max-width:760px;width:min(96vw,760px);padding:14px;box-shadow:var(--shadow)}
+    dialog::backdrop{background:rgba(0,0,0,.62)}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{border:1px solid rgba(255,255,255,.15);padding:7px;text-align:left;vertical-align:top}
+    .rulesNote{margin-top:8px;color:var(--muted);font-size:12px;line-height:1.6}
+    @media (max-width:1100px){.top,.mid{grid-template-columns:1fr}.betGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.miniRow{min-width:0}}
+    @media (max-width:720px){
+      .wrap{padding:12px}
+      .miniRow{grid-template-columns:1fr}
+      .statRow{gap:10px}
+      .btns{justify-content:flex-start}
+      .diceStage{grid-template-columns:1fr}
+      .metrics{grid-template-columns:1fr}
+      .betGrid{grid-template-columns:1fr}
+      .resultBox{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="top">
+      <div class="panel">
+        <div class="title">资金与掷骰 / Bankroll & Roll</div>
+        <div class="statRow">
+          <div>
+            <div style="color:var(--muted);font-size:13px;">玩家余额</div>
+            <div class="bank" id="balance">1000</div>
+          </div>
+          <div class="btns">
+            <button class="secondary" id="helpBtn">玩法说明 / Rules</button>
+            <button class="secondary" id="clearBetsBtn">清空下注</button>
+            <button class="secondary" id="resetBtn">重置局面</button>
+            <button id="rollBtn">掷骰结算</button>
+          </div>
+        </div>
+        <div class="miniRow">
+          <div class="mini"><div class="k">当前下注额</div><div class="v" id="stakeView">50</div></div>
+          <div class="mini"><div class="k">本局总下注</div><div class="v" id="totalBetView">0</div></div>
+          <div class="mini"><div class="k">已选注项</div><div class="v" id="betCountView">0</div></div>
+        </div>
+        <div class="resultBox">
+          <div class="resultText">
+            <div class="headline" id="headline">等待下注</div>
+            <div class="sub" id="subText">可同时下多个注，点击下注区即可按当前金额追加。三颗骰子、独立结算、离线可玩。</div>
+          </div>
+          <div style="min-width:min(100%, 320px)"><div class="sub" style="text-align:right">动画区 / Dice Stage</div></div>
+        </div>
+        <div class="bar"><div id="bar"></div></div>
+        <div class="footer">规则提示：大 = 11-17，小 = 4-10，单/双按和值奇偶，豹子 = 三颗同点。本文档采用独立结算，同一轮可多注同时中奖或落空。</div>
+      </div>
+
+      <div class="panel">
+        <div class="title">掷骰结果 / Result</div>
+        <div class="diceStage" id="diceStage">
+          <div class="die n1" data-die="0">
+            <div class="pipGrid">
+              <span class="pip p1"></span><span class="pip p2"></span><span class="pip p3"></span>
+              <span class="pip p4"></span><span class="pip p5"></span><span class="pip p6"></span>
+            </div>
+            <div class="dieLabel">DIE 1</div><div class="dieValue">1</div>
+          </div>
+          <div class="die n1" data-die="1">
+            <div class="pipGrid">
+              <span class="pip p1"></span><span class="pip p2"></span><span class="pip p3"></span>
+              <span class="pip p4"></span><span class="pip p5"></span><span class="pip p6"></span>
+            </div>
+            <div class="dieLabel">DIE 2</div><div class="dieValue">1</div>
+          </div>
+          <div class="die n1" data-die="2">
+            <div class="pipGrid">
+              <span class="pip p1"></span><span class="pip p2"></span><span class="pip p3"></span>
+              <span class="pip p4"></span><span class="pip p5"></span><span class="pip p6"></span>
+            </div>
+            <div class="dieLabel">DIE 3</div><div class="dieValue">1</div>
+          </div>
+        </div>
+        <div class="miniRow" style="margin-top:10px;min-width:0">
+          <div class="mini"><div class="k">和值</div><div class="v" id="sumView">3</div></div>
+          <div class="mini"><div class="k">本轮盈亏</div><div class="v" id="roundDeltaView">0</div></div>
+          <div class="mini"><div class="k">结算状态</div><div class="v" id="statusView">待掷骰</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mid">
+      <div class="panel">
+        <div class="title">下注区 / Bets</div>
+        <div class="controlRow">
+          <span>单次下注额</span>
+          <input id="stakeInput" type="number" min="1" step="1" value="50" style="width:110px" />
+          <span style="color:var(--muted)">点击下注卡片会按当前金额追加到该项</span>
+        </div>
+        <div class="chips" id="chipRack"></div>
+        <div class="controlRow" style="margin-top:8px">
+          <label>初始资金</label>
+          <input id="initialBankrollInput" type="number" min="100" step="100" value="1000" style="width:120px" />
+          <label>初始筹码面额</label>
+          <input id="initialChipsInput" type="text" value="10,25,50,100,250" style="width:220px" />
+          <button class="secondary" id="applyInitBtn">应用初始设置</button>
+        </div>
+
+        <div class="betGrid" id="betGrid"></div>
+        <div class="slipList" id="betSlip"></div>
+      </div>
+
+      <div class="panel">
+        <div class="title">数学面板 / Math</div>
+        <div class="metrics">
+          <div class="metric"><div class="k">当前下注数</div><div class="v" id="mCount">0</div></div>
+          <div class="metric"><div class="k">总下注</div><div class="v" id="mStake">0</div></div>
+          <div class="metric"><div class="k">理论EV（本手）</div><div class="v" id="mEv">0</div></div>
+          <div class="metric"><div class="k">累计ROI</div><div class="v" id="mRoi">0%</div></div>
+          <div class="metric"><div class="k">当前轮盈亏</div><div class="v" id="mLastDelta">0</div></div>
+          <div class="metric"><div class="k">累计净盈亏</div><div class="v" id="mNet">0</div></div>
+        </div>
+        <div class="title" style="margin-top:12px">最近结果历史 / Last 20 Rounds</div>
+        <div class="history" id="historyList"></div>
+      </div>
+    </section>
+  </div>
+
+  <dialog id="rulesDialog">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <b>骰子游戏规则 / Rules</b>
+      <button class="secondary" id="closeRulesBtn">关闭</button>
+    </div>
+    <table style="margin-top:10px">
+      <thead><tr><th>下注</th><th>赔付</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>大 Big</td><td>1:1</td><td>和值 11-17</td></tr>
+        <tr><td>小 Small</td><td>1:1</td><td>和值 4-10</td></tr>
+        <tr><td>单 Odd</td><td>1:1</td><td>和值为单数</td></tr>
+        <tr><td>双 Even</td><td>1:1</td><td>和值为双数</td></tr>
+        <tr><td>豹子 Triple</td><td>24:1</td><td>三颗骰子完全相同</td></tr>
+      </tbody>
+    </table>
+    <div class="rulesNote">
+      本页采用独立结算：每个下注都按同一组骰子单独判断。你可以同时下注多个项目，理论 EV 面板会按当前持仓自动计算。<br />
+      说明：本作是离线单页演示，不会写入服务器。
+    </div>
+  </dialog>
+  <script>
+  (() => {
+    const BETS = [
+      { key: 'big', name: '大', en: 'BIG', className: 'big', odds: '1:1', payout: 1, ev: 105 / 216, win: ({ sum }) => sum >= 11 && sum <= 17 },
+      { key: 'small', name: '小', en: 'SMALL', className: 'small', odds: '1:1', payout: 1, ev: 105 / 216, win: ({ sum }) => sum >= 4 && sum <= 10 },
+      { key: 'odd', name: '单', en: 'ODD', className: 'odd', odds: '1:1', payout: 1, ev: 108 / 216, win: ({ sum }) => sum % 2 === 1 },
+      { key: 'even', name: '双', en: 'EVEN', className: 'even', odds: '1:1', payout: 1, ev: 108 / 216, win: ({ sum }) => sum % 2 === 0 },
+      { key: 'triple', name: '豹子', en: 'TRIPLE', className: 'triple', odds: '24:1', payout: 24, ev: 6 / 216, win: ({ dice }) => dice[0] === dice[1] && dice[1] === dice[2] }
+    ];
+
+    const $ = (id) => document.getElementById(id);
+    const el = {
+      balance: $('balance'),
+      stakeView: $('stakeView'),
+      totalBetView: $('totalBetView'),
+      betCountView: $('betCountView'),
+      headline: $('headline'),
+      subText: $('subText'),
+      sumView: $('sumView'),
+      roundDeltaView: $('roundDeltaView'),
+      statusView: $('statusView'),
+      chipRack: $('chipRack'),
+      betGrid: $('betGrid'),
+      betSlip: $('betSlip'),
+      historyList: $('historyList'),
+      bar: $('bar'),
+      rollBtn: $('rollBtn'),
+      clearBetsBtn: $('clearBetsBtn'),
+      resetBtn: $('resetBtn'),
+      helpBtn: $('helpBtn'),
+      closeRulesBtn: $('closeRulesBtn'),
+      rulesDialog: $('rulesDialog'),
+      stakeInput: $('stakeInput'),
+      initialBankrollInput: $('initialBankrollInput'),
+      initialChipsInput: $('initialChipsInput'),
+      applyInitBtn: $('applyInitBtn'),
+      mCount: $('mCount'),
+      mStake: $('mStake'),
+      mEv: $('mEv'),
+      mRoi: $('mRoi'),
+      mLastDelta: $('mLastDelta'),
+      mNet: $('mNet')
+    };
+
+    const fmt = new Intl.NumberFormat('zh-CN');
+    const state = {
+      initialBankroll: 1000,
+      balance: 1000,
+      stake: 50,
+      chips: [10, 25, 50, 100, 250],
+      rolling: false,
+      bets: [],
+      lastResult: null,
+      lastSum: 3,
+      stats: { rounds: 0, totalStake: 0, totalDelta: 0, lastDelta: 0, history: [] }
+    };
+
+    const clampInt = (value, fallback = 1) => {
+      const n = Math.floor(Number(value));
+      return Number.isFinite(n) && n > 0 ? n : fallback;
+    };
+
+    const parseChips = (value) => {
+      const list = String(value)
+        .split(',')
+        .map((s) => clampInt(s.trim(), 0))
+        .filter((n) => n > 0);
+      return [...new Set(list)].sort((a, b) => a - b).slice(0, 20);
+    };
+
+    const fmtMoney = (n) => fmt.format(Math.round(n));
+    const fmtSigned = (n) => `${n >= 0 ? '+' : ''}${fmtMoney(n)}`;
+    const betIndex = (key) => state.bets.findIndex((b) => b.key === key);
+    const betAmount = (key) => {
+      const idx = betIndex(key);
+      return idx >= 0 ? state.bets[idx].amount : 0;
+    };
+
+    function setHeadline(text, sub = '') {
+      el.headline.textContent = text;
+      if (sub) el.subText.textContent = sub;
+    }
+
+    function createBetCard(meta) {
+      const card = document.createElement('div');
+      card.className = `betCard ${meta.className}`;
+      card.dataset.key = meta.key;
+      card.innerHTML = `
+        <div class="name">${meta.name}</div>
+        <div class="en">${meta.en}</div>
+        <div class="meta">赔率 ${meta.odds} · 点击追加当前金额</div>
+        <div class="amt" id="amt-${meta.key}">0</div>
+      `;
+      card.addEventListener('click', () => addBet(meta.key));
+      return card;
+    }
+
+    function addBet(key) {
+      if (state.rolling) return;
+      const meta = BETS.find((b) => b.key === key);
+      if (!meta) return;
+      const amount = clampInt(state.stake, 1);
+      const idx = betIndex(key);
+      if (idx >= 0) state.bets[idx].amount += amount;
+      else state.bets.push({ key, amount });
+      setHeadline(`已下注：${meta.name}`, `本次增加 ${amount} 点，继续点击可叠加同一项下注。`);
+      render();
+    }
+
+    function setBetAmount(key, amount) {
+      const idx = betIndex(key);
+      if (idx < 0) return;
+      const n = Math.max(0, Math.floor(Number(amount) || 0));
+      if (n === 0) state.bets.splice(idx, 1);
+      else state.bets[idx].amount = n;
+      render();
+    }
+
+    function renderChips() {
+      el.chipRack.innerHTML = '';
+      state.chips.forEach((chip, idx) => {
+        const btn = document.createElement('div');
+        btn.className = `chip c${(idx % 6) + 1}${state.stake === chip ? ' sel' : ''}`;
+        btn.textContent = chip;
+        btn.addEventListener('click', () => {
+          if (state.rolling) return;
+          state.stake = chip;
+          el.stakeInput.value = String(chip);
+          render();
+        });
+        el.chipRack.appendChild(btn);
+      });
+    }
+
+    function renderBetGrid() {
+      if (el.betGrid.childElementCount === 0) {
+        BETS.forEach((meta) => el.betGrid.appendChild(createBetCard(meta)));
+      }
+      BETS.forEach((meta) => {
+        const card = el.betGrid.querySelector(`[data-key="${meta.key}"]`);
+        if (!card) return;
+        card.classList.toggle('active', betAmount(meta.key) > 0);
+        const amtNode = card.querySelector(`#amt-${meta.key}`);
+        if (amtNode) amtNode.textContent = fmtMoney(betAmount(meta.key));
+      });
+    }
+
+    function renderSlip() {
+      el.betSlip.innerHTML = '';
+      if (!state.bets.length) {
+        const empty = document.createElement('div');
+        empty.className = 'betItem';
+        empty.innerHTML = '<div class="desc">暂无下注，点下面的下注卡片开始。<small>你可以在同一轮叠加多个下注。</small></div><div></div><div></div>';
+        el.betSlip.appendChild(empty);
+        return;
+      }
+
+      state.bets.forEach((bet) => {
+        const meta = BETS.find((b) => b.key === bet.key);
+        const row = document.createElement('div');
+        row.className = 'betItem';
+        row.innerHTML = `
+          <div class="desc">${meta ? meta.name + ' ' + meta.en : bet.key}<small>${meta ? '赔率 ' + meta.odds : '自定义下注'}</small></div>
+          <div><input type="number" min="0" step="1" value="${bet.amount}" /></div>
+          <button class="secondary">清除</button>
+        `;
+        const input = row.querySelector('input');
+        input.addEventListener('input', (e) => setBetAmount(bet.key, e.target.value));
+        row.querySelector('button').addEventListener('click', () => setBetAmount(bet.key, 0));
+        el.betSlip.appendChild(row);
+      });
+    }
+    function renderHistory() {
+      el.historyList.innerHTML = '';
+      const list = state.stats.history.slice(-20).reverse();
+      if (!list.length) {
+        const empty = document.createElement('div');
+        empty.className = 'histItem';
+        empty.innerHTML = '<div class="tinyText">这里会显示最近 20 轮结果。先掷几局吧。</div>';
+        el.historyList.appendChild(empty);
+        return;
+      }
+
+      list.forEach((entry) => {
+        const item = document.createElement('div');
+        item.className = 'histItem';
+        const badgeClass = entry.triple ? 'triple' : entry.delta >= 0 ? 'good' : 'bad';
+        item.innerHTML = `
+          <div class="histTop">
+            <div style="font-weight:900">第 ${entry.round} 轮</div>
+            <div class="histBadge ${badgeClass}">${entry.triple ? '豹子' : entry.sum}</div>
+          </div>
+          <div class="histNums"></div>
+          <div class="tinyText">${entry.text} · 本轮盈亏 ${fmtSigned(entry.delta)}</div>
+        `;
+        const nums = item.querySelector('.histNums');
+        entry.dice.forEach((n) => {
+          const d = document.createElement('div');
+          d.className = `tinyDie${entry.triple ? ' triple' : ''}`;
+          d.textContent = n;
+          nums.appendChild(d);
+        });
+        el.historyList.appendChild(item);
+      });
+    }
+
+    function renderMath() {
+      const totalStake = state.bets.reduce((sum, bet) => sum + bet.amount, 0);
+      const totalEV = state.bets.reduce((sum, bet) => {
+        const meta = BETS.find((b) => b.key === bet.key);
+        if (!meta) return sum;
+        const expected = bet.amount * (meta.ev * meta.payout - (1 - meta.ev));
+        return sum + expected;
+      }, 0);
+      const roi = state.stats.totalStake > 0 ? (state.stats.totalDelta / state.stats.totalStake) * 100 : 0;
+
+      el.mCount.textContent = String(state.bets.length);
+      el.mStake.textContent = fmtMoney(totalStake);
+      el.mEv.textContent = fmtSigned(totalEV);
+      el.mEv.className = `v ${totalEV >= 0 ? 'good' : 'bad'}`;
+      el.mRoi.textContent = `${roi.toFixed(2)}%`;
+      el.mRoi.className = `v ${roi >= 0 ? 'good' : 'bad'}`;
+      el.mLastDelta.textContent = fmtSigned(state.stats.lastDelta);
+      el.mLastDelta.className = `v ${state.stats.lastDelta >= 0 ? 'good' : 'bad'}`;
+      el.mNet.textContent = fmtSigned(state.stats.totalDelta);
+      el.mNet.className = `v ${state.stats.totalDelta >= 0 ? 'good' : 'bad'}`;
+    }
+
+    function renderTop() {
+      const totalStake = state.bets.reduce((sum, bet) => sum + bet.amount, 0);
+      el.balance.textContent = fmtMoney(state.balance);
+      el.stakeView.textContent = fmtMoney(state.stake);
+      el.totalBetView.textContent = fmtMoney(totalStake);
+      el.betCountView.textContent = String(state.bets.length);
+      el.sumView.textContent = String(state.lastSum ?? 3);
+      el.roundDeltaView.textContent = fmtSigned(state.stats.lastDelta);
+      el.roundDeltaView.className = `v ${state.stats.lastDelta >= 0 ? 'good' : 'bad'}`;
+      el.statusView.textContent = state.rolling ? '掷骰中' : (state.lastResult ? '已结算' : '待掷骰');
+      const canRoll = !state.rolling && state.bets.length > 0 && totalStake > 0 && state.balance >= totalStake;
+      el.rollBtn.disabled = !canRoll;
+    }
+
+    function renderBetAmounts() {
+      BETS.forEach((meta) => {
+        const node = el.betGrid.querySelector(`#amt-${meta.key}`);
+        if (node) node.textContent = fmtMoney(betAmount(meta.key));
+      });
+    }
+
+    function renderDice(values = [1, 1, 1]) {
+      const nodes = [...document.querySelectorAll('.die')];
+      values.forEach((v, idx) => {
+        const die = nodes[idx];
+        if (!die) return;
+        die.className = `die n${v}`;
+        const value = die.querySelector('.dieValue');
+        if (value) value.textContent = String(v);
+      });
+    }
+
+    function setBarRunning() {
+      el.bar.style.animation = 'none';
+      el.bar.offsetHeight;
+      el.bar.style.animation = 'load 1400ms linear forwards';
+    }
+
+    function rollDiceOnce() {
+      return [
+        1 + Math.floor(Math.random() * 6),
+        1 + Math.floor(Math.random() * 6),
+        1 + Math.floor(Math.random() * 6)
+      ];
+    }
+
+    function resolveRound(dice) {
+      const sum = dice.reduce((a, b) => a + b, 0);
+      const triple = dice[0] === dice[1] && dice[1] === dice[2];
+      const outcome = { dice, sum, triple };
+      let delta = 0;
+      const detail = [];
+
+      state.bets.forEach((bet) => {
+        const meta = BETS.find((b) => b.key === bet.key);
+        if (!meta) return;
+        const win = meta.win(outcome);
+        if (win) {
+          const profit = bet.amount * meta.payout;
+          delta += profit;
+          detail.push(`${meta.name} 中 ${fmtSigned(profit)}`);
+        } else {
+          delta -= bet.amount;
+          detail.push(`${meta.name} 不中 ${fmtSigned(-bet.amount)}`);
+        }
+      });
+
+      return { ...outcome, delta, detail: detail.join('；') || '无下注' };
+    }
+
+    function updateHistory(result) {
+      state.stats.rounds += 1;
+      state.stats.totalStake += state.bets.reduce((sum, bet) => sum + bet.amount, 0);
+      state.stats.totalDelta += result.delta;
+      state.stats.lastDelta = result.delta;
+      state.stats.history.push({
+        round: state.stats.rounds,
+        dice: result.dice,
+        sum: result.sum,
+        triple: result.triple,
+        delta: result.delta,
+        text: result.detail
+      });
+    }
+
+    function clearBets() {
+      if (state.rolling) return;
+      state.bets = [];
+      setHeadline('已清空下注', '保留余额与历史记录，只移除当前下注。');
+      render();
+    }
+
+    function resetGame() {
+      if (state.rolling) return;
+      state.balance = state.initialBankroll;
+      state.bets = [];
+      state.rolling = false;
+      state.stats = { rounds: 0, totalStake: 0, totalDelta: 0, lastDelta: 0, history: [] };
+      state.lastResult = null;
+      state.lastSum = 3;
+      renderDice([1, 1, 1]);
+      setHeadline('已重置局面', '余额、下注和历史都已恢复到初始状态。');
+      render();
+    }
+
+    function applyInit() {
+      if (state.rolling) return;
+      state.initialBankroll = clampInt(el.initialBankrollInput.value, 1000);
+      state.chips = parseChips(el.initialChipsInput.value);
+      if (!state.chips.length) state.chips = [10, 25, 50, 100, 250];
+      if (!state.chips.includes(state.stake)) state.stake = state.chips[0];
+      state.balance = state.initialBankroll;
+      state.bets = [];
+      state.stats = { rounds: 0, totalStake: 0, totalDelta: 0, lastDelta: 0, history: [] };
+      state.lastResult = null;
+      state.lastSum = 3;
+      renderDice([1, 1, 1]);
+      setHeadline('初始设置已应用', '余额与筹码面额已刷新，历史也已重置。');
+      render();
+    }
+
+    async function roll() {
+      if (state.rolling) return;
+      const totalStake = state.bets.reduce((sum, bet) => sum + bet.amount, 0);
+      if (!state.bets.length) {
+        setHeadline('请先下注', '至少选择一个下注项后再掷骰。');
+        return;
+      }
+      if (state.balance < totalStake) {
+        setHeadline('余额不足', `当前总下注 ${fmtMoney(totalStake)}，余额只有 ${fmtMoney(state.balance)}。`);
+        return;
+      }
+
+      state.rolling = true;
+      el.rollBtn.disabled = true;
+      setHeadline('骰子摇动中...', '动画为简化版进度条 + 实时随机点数预览。');
+      setBarRunning();
+
+      const previewTimer = setInterval(() => renderDice(rollDiceOnce()), 85);
+      const actualDice = rollDiceOnce();
+      await new Promise((resolve) => setTimeout(resolve, 1400));
+      clearInterval(previewTimer);
+
+      const result = resolveRound(actualDice);
+      state.balance += result.delta;
+      state.lastResult = result;
+      state.lastSum = result.sum;
+      updateHistory(result);
+
+      renderDice(actualDice);
+      el.sumView.textContent = String(result.sum);
+      el.roundDeltaView.textContent = fmtSigned(result.delta);
+      el.roundDeltaView.className = `v ${result.delta >= 0 ? 'good' : 'bad'}`;
+      el.statusView.textContent = '已结算';
+      setHeadline(result.triple ? '豹子出现！' : `和值 ${result.sum}`, `${result.dice.join(' + ')} = ${result.sum}，${result.detail}。`);
+
+      el.bar.style.animation = 'none';
+      el.bar.style.width = '0%';
+      state.rolling = false;
+      render();
+    }
+    function render() {
+      el.stakeInput.value = String(state.stake);
+      renderChips();
+      renderBetGrid();
+      renderBetAmounts();
+      renderSlip();
+      renderHistory();
+      renderTop();
+      renderMath();
+    }
+
+    // Initial view state
+    renderDice([1, 1, 1]);
+    setHeadline('欢迎来到骰子游戏', '中文界面，保留少量英文标签。点击下注卡片即可开始。');
+    render();
+
+    // Events
+    el.stakeInput.addEventListener('input', (e) => {
+      if (state.rolling) return;
+      state.stake = clampInt(e.target.value, 1);
+      render();
+    });
+    el.rollBtn.addEventListener('click', roll);
+    el.clearBetsBtn.addEventListener('click', clearBets);
+    el.resetBtn.addEventListener('click', resetGame);
+    el.helpBtn.addEventListener('click', () => el.rulesDialog.showModal());
+    el.closeRulesBtn.addEventListener('click', () => el.rulesDialog.close());
+    el.applyInitBtn.addEventListener('click', applyInit);
+
+    window.addEventListener('resize', () => {
+      if (state.lastResult) renderDice(state.lastResult.dice);
+    });
+  })();
+  </script>
+</body>
+</html>

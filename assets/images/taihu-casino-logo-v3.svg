@@ -1,0 +1,69 @@
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="180" y1="160" x2="1010" y2="1040" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#09253A"/>
+      <stop offset="0.52" stop-color="#0D3C57"/>
+      <stop offset="1" stop-color="#03131F"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(600 560) rotate(90) scale(420)">
+      <stop stop-color="#49E3D6" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#49E3D6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="290" y1="240" x2="910" y2="960" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF0B0"/>
+      <stop offset="0.25" stop-color="#F5C96C"/>
+      <stop offset="0.52" stop-color="#C68B2A"/>
+      <stop offset="0.78" stop-color="#F4D37A"/>
+      <stop offset="1" stop-color="#8B5A15"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="420" y1="350" x2="760" y2="820" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8CFFF8"/>
+      <stop offset="1" stop-color="#27B6B0"/>
+    </linearGradient>
+    <filter id="softShadow" x="130" y="130" width="940" height="940" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#020A11" flood-opacity="0.55"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="1200" rx="240" fill="#071723"/>
+  <circle cx="600" cy="600" r="430" fill="url(#bg)"/>
+  <circle cx="600" cy="600" r="430" fill="url(#glow)"/>
+
+  <g filter="url(#softShadow)">
+    <circle cx="600" cy="600" r="368" fill="none" stroke="url(#gold)" stroke-width="28"/>
+    <circle cx="600" cy="600" r="404" fill="none" stroke="url(#gold)" stroke-width="10" stroke-opacity="0.75"/>
+
+    <g fill="url(#gold)">
+      <rect x="585" y="178" width="30" height="72" rx="12"/>
+      <rect x="585" y="950" width="30" height="72" rx="12"/>
+      <rect x="950" y="585" width="72" height="30" rx="12"/>
+      <rect x="178" y="585" width="72" height="30" rx="12"/>
+
+      <rect x="861.82" y="237.06" width="30" height="72" rx="12" transform="rotate(45 861.82 237.06)"/>
+      <rect x="316.2" y="782.68" width="30" height="72" rx="12" transform="rotate(45 316.2 782.68)"/>
+      <rect x="888.74" y="819.53" width="30" height="72" rx="12" transform="rotate(135 888.74 819.53)"/>
+      <rect x="343.12" y="273.91" width="30" height="72" rx="12" transform="rotate(135 343.12 273.91)"/>
+    </g>
+
+    <path d="M406 355C468 304 531 282 600 282C691 282 773 323 831 394C791 382 738 392 704 422C663 459 612 474 556 470C485 465 432 421 406 355Z" fill="url(#teal)" fill-opacity="0.92"/>
+    <path d="M351 504C408 447 481 425 556 430C611 434 663 417 709 383C760 347 839 346 894 396C862 397 829 408 801 430C756 466 699 486 639 488C549 491 458 460 351 504Z" fill="#C8FFF7" fill-opacity="0.12"/>
+
+    <path d="M321 617C392 560 470 535 552 540C629 545 700 523 762 471C821 422 900 410 970 447C906 460 851 489 805 534C738 600 660 635 568 641C486 646 403 637 321 617Z" fill="url(#teal)" fill-opacity="0.88"/>
+    <path d="M278 736C370 671 465 639 563 642C660 644 740 610 809 542C862 490 929 465 995 472C963 525 914 569 871 607C787 681 693 728 582 744C476 758 380 753 278 736Z" fill="#52E7DB" fill-opacity="0.18"/>
+
+    <path d="M296 802C383 764 468 757 552 768C638 779 716 760 786 711C823 685 855 652 879 612C898 668 894 728 864 783C813 876 720 937 614 949C506 960 402 920 334 844C320 829 307 816 296 802Z" fill="url(#teal)"/>
+
+    <path d="M600 312L633 382L708 392L652 444L665 518L600 480L535 518L548 444L492 392L567 382L600 312Z" fill="url(#gold)"/>
+
+    <path d="M596 404C634 404 669 419 695 445C721 471 736 506 736 544C736 632 669 708 596 789C523 708 456 632 456 544C456 506 471 471 497 445C523 419 558 404 596 404Z" fill="#0A2334" stroke="url(#gold)" stroke-width="16"/>
+    <path d="M596 466C621 466 643 474 660 491C677 508 686 531 686 556C686 611 643 664 596 719C549 664 506 611 506 556C506 531 515 508 532 491C549 474 571 466 596 466Z" fill="url(#gold)" fill-opacity="0.12"/>
+    <path d="M596 498L620 546L673 554L634 592L643 646L596 621L549 646L558 592L519 554L572 546L596 498Z" fill="url(#gold)"/>
+
+    <circle cx="600" cy="600" r="302" fill="none" stroke="#D7FFF9" stroke-opacity="0.14" stroke-width="2"/>
+  </g>
+
+  <g>
+    <text x="600" y="1072" text-anchor="middle" fill="url(#gold)" font-size="96" font-weight="700" font-family="'Times New Roman', 'Georgia', serif" letter-spacing="10">TAIHU CASINO</text>
+    <text x="600" y="1122" text-anchor="middle" fill="#91FFF2" fill-opacity="0.8" font-size="28" font-weight="500" font-family="'Times New Roman', 'Georgia', serif" letter-spacing="9">WATER  LUCK  PRESTIGE</text>
+  </g>
+</svg>

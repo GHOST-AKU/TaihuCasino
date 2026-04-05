@@ -1,0 +1,808 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>21点（离线网页）</title>
+  <style>
+    :root{--bg:#08130f;--line:#d0b06e;--text:#f5ecd6;--muted:#bcae86;--red:#b2333f;--green:#1f8a56;--blue:#3159a8;--gold:#efcf8c}
+    *{box-sizing:border-box}
+    body{margin:0;color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans","PingFang SC","Microsoft YaHei",sans-serif;background:radial-gradient(1200px 700px at 20% 0%,#29533f 0%,transparent 60%),radial-gradient(900px 700px at 100% 0%,#4b2a1d 0%,transparent 55%),linear-gradient(180deg,var(--bg),#050b08 70%)}
+    .wrap{max-width:1320px;margin:0 auto;padding:16px;display:grid;gap:12px}
+    .panel{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));border:1px solid rgba(208,176,110,.28);border-radius:16px;padding:12px;box-shadow:0 14px 38px rgba(0,0,0,.32)}
+    .title{font-size:13px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;font-weight:700}
+    .top,.mid{display:grid;grid-template-columns:1.15fr .85fr;gap:12px}
+    .tableArea{display:grid;grid-template-columns:1.05fr .95fr;gap:12px}
+    .statRow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .bank{font-size:34px;font-weight:900;color:#f1d28f}
+    .btns{display:flex;gap:8px;flex-wrap:wrap}
+    button{border-radius:10px;padding:8px 11px;border:1px solid rgba(208,176,110,.35);background:linear-gradient(180deg,#ebc982,#c59c54);color:#362506;font-weight:800;cursor:pointer}
+    button.secondary{background:linear-gradient(180deg,#1b3a2b,#12261c);color:var(--text)}
+    button.ghost{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.18));color:var(--text)}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    .msg{margin-top:8px;color:var(--muted);line-height:1.6;min-height:44px}
+    .dealBar{height:10px;margin-top:10px;border:1px solid rgba(255,255,255,.1);border-radius:999px;overflow:hidden;background:rgba(0,0,0,.18)}
+    .dealBar>div{height:100%;width:0%;background:linear-gradient(90deg,rgba(208,176,110,0),rgba(208,176,110,1),rgba(208,176,110,0))}
+    .promptGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+    .promptCard{border:1px solid rgba(208,176,110,.25);border-radius:12px;padding:10px;background:rgba(0,0,0,.18);min-height:84px}
+    .promptCard .k{font-size:12px;color:var(--muted)}
+    .promptCard .v{font-size:18px;font-weight:900;margin-top:4px}
+    .promptCard .sub{margin-top:4px;font-size:12px;color:rgba(255,255,255,.72);line-height:1.45}
+
+    .hand{border:1px solid rgba(208,176,110,.32);border-radius:14px;padding:10px;background:rgba(0,0,0,.22)}
+    .hand.active{box-shadow:0 0 0 2px rgba(239,207,140,.5) inset}
+    .hand.finished{opacity:.82}
+    .hand h3{margin:0;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px}
+    .badge{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.25)}
+    .badge.player{background:rgba(49,89,168,.35)}
+    .badge.dealer{background:rgba(178,51,63,.35)}
+    .badge.bet{background:rgba(208,176,110,.18)}
+    .cards{display:flex;gap:6px;flex-wrap:wrap;min-height:72px;margin-top:8px}
+    .card{width:48px;height:66px;border-radius:8px;border:1px solid rgba(255,255,255,.24);background:linear-gradient(180deg,#f9f4e6,#ddd0b5);color:#221b12;display:grid;place-items:center;font-weight:900;box-shadow:0 8px 18px rgba(0,0,0,.18);transform:translateY(0);transition:transform .2s ease, box-shadow .2s ease, opacity .2s ease}
+    .card.red{color:var(--red)}
+    .card.back{background:linear-gradient(180deg,#4a2f13,#2a1a08);color:#f7ddaf}
+    .card.new{transform:translateY(-6px);box-shadow:0 14px 26px rgba(0,0,0,.28)}
+    .metaLine{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--muted)}
+    .playerHands{display:grid;gap:10px}
+
+    .controlRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    input[type="number"],input[type="text"]{border-radius:8px;border:1px solid rgba(208,176,110,.3);background:rgba(0,0,0,.22);color:var(--text);padding:8px 9px}
+    .chipRack{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .chip{border-radius:999px;min-width:70px;text-align:center;padding:8px 10px;font-weight:900;cursor:pointer;border:2px dashed rgba(255,255,255,.4);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+    .chip.c1{background:radial-gradient(circle at 30% 28%,#fff2cc,#d5a246)}
+    .chip.c2{background:radial-gradient(circle at 30% 28%,#ffe5e5,#d95b5b)}
+    .chip.c3{background:radial-gradient(circle at 30% 28%,#e2efff,#5f8fda)}
+    .chip.c4{background:radial-gradient(circle at 30% 28%,#e3ffe9,#4daa67)}
+    .chip.c5{background:radial-gradient(circle at 30% 28%,#f4e6ff,#8b62c9)}
+    .chip.sel{outline:2px solid #efcf8c}
+
+    .actionGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+    .slipList{margin-top:10px;border:1px solid rgba(208,176,110,.25);border-radius:10px;overflow:auto}
+    .betItem{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px}
+    .betItem:last-child{border-bottom:none}
+    .betItem input{width:96px}
+
+    .metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .metric{border:1px solid rgba(208,176,110,.25);border-radius:10px;background:rgba(0,0,0,.16);padding:8px}
+    .metric .k{color:var(--muted);font-size:12px}
+    .metric .v{font-size:18px;font-weight:900;margin-top:2px}
+    .good{color:#34cc7b}.bad{color:#ee6a6a}
+    .history{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+    .history span{min-width:34px;height:24px;display:grid;place-items:center;border-radius:999px;border:1px solid rgba(255,255,255,.2);font-size:12px;font-weight:900;padding:0 8px}
+    .history .P{background:rgba(49,89,168,.35)}
+    .history .D{background:rgba(178,51,63,.35)}
+    .history .T{background:rgba(31,138,86,.4)}
+    .history .PB{background:rgba(208,176,110,.32)}
+    .history .DB{background:rgba(104,67,38,.45)}
+    .history .S{background:rgba(121,94,181,.38)}
+
+    dialog{border:1px solid rgba(208,176,110,.4);border-radius:12px;background:#0c1f17;color:var(--text);max-width:760px;width:95%;padding:12px}
+    dialog::backdrop{background:rgba(0,0,0,.6)}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{border:1px solid rgba(255,255,255,.15);padding:6px;text-align:left;vertical-align:top}
+    .rulesNote{margin-top:8px;color:var(--muted);line-height:1.6;font-size:12px}
+    @media (max-width:1140px){.top,.mid,.tableArea{grid-template-columns:1fr}}
+    @media (max-width:760px){.promptGrid,.actionGrid,.metrics{grid-template-columns:1fr}.wrap{padding:12px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="top">
+      <div class="panel">
+        <div class="title">资金与操作（Bankroll & Actions）</div>
+        <div class="statRow">
+          <div><div style="color:var(--muted);font-size:13px;">余额</div><div class="bank" id="balance">1000</div></div>
+          <div class="btns">
+            <button class="secondary" id="helpBtn">玩法说明 / Rules</button>
+            <button class="secondary" id="clearBetBtn">清空主注</button>
+            <button class="secondary" id="resetBtn">重置局面</button>
+            <button id="dealBtn">发牌开局</button>
+          </div>
+        </div>
+        <div class="msg" id="msg">先设置主注，再点击“发牌开局”。发牌会按玩家、庄家、玩家、庄家暗牌的顺序逐张展示。</div>
+        <div class="dealBar"><div id="bar"></div></div>
+        <div class="promptGrid">
+          <div class="promptCard"><div class="k">当前阶段</div><div class="v" id="phaseView">等待开局</div><div class="sub" id="phaseSub">未开始新的一手。</div></div>
+          <div class="promptCard"><div class="k">当前行动位</div><div class="v" id="turnView">玩家主手</div><div class="sub" id="turnSub">开局后会标记正在操作的手牌。</div></div>
+          <div class="promptCard"><div class="k">保险 / 额外投注</div><div class="v" id="sideView">无</div><div class="sub" id="sideSub">庄家明牌 A 时可以购买保险，双倍和分牌会在合规时开放。</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="title">桌面操作区（Table Controls）</div>
+        <div class="actionGrid">
+          <button id="hitBtn" disabled>要牌 Hit</button>
+          <button id="standBtn" disabled>停牌 Stand</button>
+          <button id="doubleBtn" disabled>双倍 Double</button>
+          <button id="splitBtn" disabled>分牌 Split</button>
+          <button id="insuranceBtn" disabled>保险 Insurance</button>
+          <button class="ghost" id="skipInsuranceBtn" disabled>跳过保险</button>
+        </div>
+        <div class="rulesNote">默认使用单副牌、标准主注、S17。当前版本支持一次分牌，不支持再分牌、投降和边注。</div>
+      </div>
+    </section>
+
+    <section class="tableArea">
+      <div class="panel">
+        <div class="title">庄家区域（Dealer）</div>
+        <div class="hand" id="dealerHand"></div>
+      </div>
+
+      <div class="panel">
+        <div class="title">玩家区域（Player Hands）</div>
+        <div class="playerHands" id="playerHands"></div>
+      </div>
+    </section>
+
+    <section class="mid">
+      <div class="panel">
+        <div class="title">主注与筹码</div>
+        <div class="controlRow">
+          <span>当前基础主注金额</span>
+          <input id="stakeInput" type="number" min="1" step="1" value="50" style="width:100px;">
+          <span style="color:var(--muted);">标准规则：每手一个主注。双倍下注会把当前手的主注翻倍，分牌会复制同额主注。</span>
+        </div>
+        <div class="chipRack" id="chipRack"></div>
+        <div class="controlRow" style="margin-top:8px;">
+          <label>初始资金</label><input id="initialBankrollInput" type="number" min="100" step="100" value="1000" style="width:120px;">
+          <label>初始筹码面额</label><input id="initialChipsInput" type="text" value="10,25,50,100,250" style="width:220px;">
+          <button class="secondary" id="applyInitBtn">应用初始设置</button>
+        </div>
+
+        <div class="slipList" id="betSlip"></div>
+      </div>
+
+      <div class="panel">
+        <div class="title">统计面板</div>
+        <div class="metrics">
+          <div class="metric"><div class="k">当前基础主注</div><div class="v" id="mStake">0</div></div>
+          <div class="metric"><div class="k">本轮盈亏</div><div class="v" id="mLastDelta">0</div></div>
+          <div class="metric"><div class="k">局数 / 赢局</div><div class="v" id="mRounds">0 / 0</div></div>
+          <div class="metric"><div class="k">累计 ROI</div><div class="v" id="mROI">0%</div></div>
+          <div class="metric"><div class="k">玩家黑杰克</div><div class="v" id="mBlackjacks">0</div></div>
+          <div class="metric"><div class="k">累计净盈亏</div><div class="v" id="mNet">0</div></div>
+        </div>
+        <div class="title" style="margin-top:10px;">最近 20 局</div>
+        <div class="history" id="history"></div>
+      </div>
+    </section>
+  </div>
+
+  <dialog id="rulesDialog">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b>标准 21 点说明</b><button id="closeRulesBtn" class="secondary">关闭</button></div>
+    <table style="margin-top:8px">
+      <thead><tr><th>规则</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>主注</td><td>每手只有一个基础主注，开局前设定金额，发牌后不能改。</td></tr>
+        <tr><td>开牌顺序</td><td>按玩家第一张、庄家明牌、玩家第二张、庄家暗牌逐张展示，并在提示区显示阶段。</td></tr>
+        <tr><td>Double Down</td><td>仅在当前手牌正好两张时可用，需余额足够。执行后追加同额主注，只补一张牌并自动停牌。</td></tr>
+        <tr><td>Split</td><td>仅支持一次分牌。当前手两张牌点值相同时可分成两手，并各补一张牌继续结算。</td></tr>
+        <tr><td>Insurance</td><td>庄家明牌是 A 时开放，金额固定为基础主注的一半。若庄家黑杰克，保险按 2:1 支付；否则保险输掉。</td></tr>
+        <tr><td>庄家规则</td><td>玩家所有手牌结束后，庄家翻开暗牌并补牌到 17 点或以上；本页采用 S17，软 17 停牌。</td></tr>
+        <tr><td>黑杰克</td><td>仅原始两张组成的自然 21 按 3:2 结算；分牌后出现 21 只按普通 21 点胜利结算。</td></tr>
+      </tbody>
+    </table>
+    <div class="rulesNote">这页现在已经包含基础完整版循环，但仍未加入再分牌、投降、边注、切牌位置和多副牌鞋等赌场扩展。</div>
+  </dialog>
+
+  <script>
+(() => {
+  const SUITS = ['♠', '♥', '♣', '♦'];
+  const DEAL_DELAY = 420;
+  const DEALER_STAND_SOFT_17 = true;
+  const PHASE_TEXT = {
+    idle: ['等待开局', '设置主注后可以开始新的一手。'],
+    dealing: ['阶段发牌中', '按真实桌面顺序逐张开牌。'],
+    insurance: ['保险决策', '庄家明牌是 A，可以决定是否买保险。'],
+    player: ['玩家回合', '按高亮手牌依次操作。'],
+    dealer: ['庄家补牌', '所有玩家手牌结束后轮到庄家。'],
+    done: ['本局结束', '可以直接开下一手。']
+  };
+
+  let initialBankroll = 1000;
+  let balance = 1000;
+  let stake = 50;
+  let chips = [10, 25, 50, 100, 250];
+  let round = null;
+  let running = false;
+
+  const stats = { rounds: 0, wins: 0, blackjacks: 0, totalStake: 0, totalDelta: 0, lastDelta: 0, history: [] };
+
+  const $ = (id) => document.getElementById(id);
+  const el = {
+    balance: $('balance'), msg: $('msg'), bar: $('bar'), phaseView: $('phaseView'), phaseSub: $('phaseSub'), turnView: $('turnView'), turnSub: $('turnSub'), sideView: $('sideView'), sideSub: $('sideSub'), dealBtn: $('dealBtn'), hitBtn: $('hitBtn'), standBtn: $('standBtn'), doubleBtn: $('doubleBtn'), splitBtn: $('splitBtn'), insuranceBtn: $('insuranceBtn'), skipInsuranceBtn: $('skipInsuranceBtn'), clearBetBtn: $('clearBetBtn'), resetBtn: $('resetBtn'), stakeInput: $('stakeInput'), chipRack: $('chipRack'), initialBankrollInput: $('initialBankrollInput'), initialChipsInput: $('initialChipsInput'), applyInitBtn: $('applyInitBtn'), dealerHand: $('dealerHand'), playerHands: $('playerHands'), betSlip: $('betSlip'), history: $('history'), mStake: $('mStake'), mLastDelta: $('mLastDelta'), mRounds: $('mRounds'), mROI: $('mROI'), mBlackjacks: $('mBlackjacks'), mNet: $('mNet'), helpBtn: $('helpBtn'), rulesDialog: $('rulesDialog'), closeRulesBtn: $('closeRulesBtn')
+  };
+
+  const clamp = (value, fallback = 1) => {
+    const n = Math.floor(Number(value));
+    return Number.isFinite(n) && n > 0 ? n : fallback;
+  };
+  const parseChips = (value) => [...new Set(String(value).split(',').map((part) => clamp(part.trim(), 0)).filter((n) => n > 0))].sort((a, b) => a - b).slice(0, 20);
+  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const roundActive = () => Boolean(round && round.phase !== 'done');
+
+  function setMsg(text) { el.msg.textContent = text; }
+  function setBar(active, duration = DEAL_DELAY) {
+    el.bar.style.transition = active ? `width ${duration}ms linear` : 'none';
+    el.bar.style.width = active ? '100%' : '0%';
+  }
+  function newDeck() {
+    const deck = [];
+    for (let suit = 0; suit < 4; suit++) {
+      for (let rank = 1; rank <= 13; rank++) deck.push({ suit, rank });
+    }
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    return deck;
+  }
+  function draw() { return round.deck.pop(); }
+  function rankText(rank) { return ({ 1: 'A', 11: 'J', 12: 'Q', 13: 'K' })[rank] || String(rank); }
+  function cardPoint(card) { if (card.rank === 1) return 11; if (card.rank >= 10) return 10; return card.rank; }
+  function handPoint(cards) {
+    let total = cards.reduce((sum, card) => sum + cardPoint(card), 0);
+    let aces = cards.filter((card) => card.rank === 1).length;
+    while (total > 21 && aces > 0) {
+      total -= 10;
+      aces -= 1;
+    }
+    return total;
+  }
+  function isSoftTotal(cards, target) {
+    let total = cards.reduce((sum, card) => sum + cardPoint(card), 0);
+    let aces = cards.filter((card) => card.rank === 1).length;
+    let reduced = false;
+    while (total > 21 && aces > 0) {
+      total -= 10;
+      aces -= 1;
+      reduced = true;
+    }
+    return total === target && cards.some((card) => card.rank === 1) && !reduced;
+  }
+  function isBlackjack(cards) { return cards.length === 2 && handPoint(cards) === 21; }
+  function activeHand() { return round ? round.hands[round.activeHandIndex] : null; }
+  function totalCommittedStake() {
+    if (!round) return 0;
+    const handStake = round.hands.reduce((sum, hand) => sum + hand.bet, 0);
+    return handStake + round.insuranceBet;
+  }
+  function handSummary(hand) {
+    if (hand.resultLabel) return hand.resultLabel;
+    if (hand.finished && hand.busted) return '爆牌';
+    if (hand.finished) return '已停牌';
+    return '待操作';
+  }
+  function createHand(label, bet, cards = [], options = {}) {
+    return { label, bet, cards, finished: false, busted: false, doubled: false, canDouble: true, resultLabel: '', naturalBlackjack: Boolean(options.naturalBlackjack), fromSplit: Boolean(options.fromSplit), newCardIndex: options.newCardIndex ?? -1 };
+  }
+  function renderDealer() {
+    const revealDealer = !round || round.revealDealer;
+    const cards = round?.dealer?.length ? round.dealer : [null];
+    const pointText = !round ? '点数 0' : !revealDealer && round.dealer.length > 1 ? `点数 ${cardPoint(round.dealer[0])} + ?` : `点数 ${handPoint(round.dealer)}`;
+    el.dealerHand.className = 'hand';
+    el.dealerHand.innerHTML = `
+      <h3>庄家 Dealer <span class="badge dealer">${pointText}</span></h3>
+      <div class="cards">
+        ${cards.map((card, idx) => {
+          if (!card) return '<span class="card">—</span>';
+          if (!revealDealer && idx === 1) return '<span class="card back">?</span>';
+          const cls = card.suit === 1 || card.suit === 3 ? 'red' : '';
+          return `<span class="card ${cls} ${idx === round?.dealerNewCardIndex ? 'new' : ''}">${rankText(card.rank)}${SUITS[card.suit]}</span>`;
+        }).join('')}
+      </div>
+      <div class="metaLine"><span>规则：S17</span><span>${revealDealer ? '暗牌已翻开' : '暗牌隐藏中'}</span></div>
+    `;
+  }
+  function renderPlayerHands() {
+    if (!round || !round.hands.length) {
+      el.playerHands.innerHTML = '<div class="hand"><h3>玩家 Player <span class="badge player">点数 0</span></h3><div class="cards"><span class="card">—</span></div><div class="metaLine"><span>尚未开始本局</span></div></div>';
+      return;
+    }
+    el.playerHands.innerHTML = round.hands.map((hand, index) => {
+      const point = handPoint(hand.cards);
+      const isActive = round.phase === 'player' && index === round.activeHandIndex && !hand.finished;
+      const classes = ['hand'];
+      if (isActive) classes.push('active');
+      if (hand.finished) classes.push('finished');
+      return `
+        <div class="${classes.join(' ')}">
+          <h3>${hand.label}<span style="display:flex;gap:6px;flex-wrap:wrap"><span class="badge player">点数 ${point}</span><span class="badge bet">主注 ${hand.bet}</span></span></h3>
+          <div class="cards">${hand.cards.map((card, cardIndex) => {
+            const cls = card.suit === 1 || card.suit === 3 ? 'red' : '';
+            return `<span class="card ${cls} ${cardIndex === hand.newCardIndex ? 'new' : ''}">${rankText(card.rank)}${SUITS[card.suit]}</span>`;
+          }).join('')}</div>
+          <div class="metaLine"><span>${handSummary(hand)}</span>${hand.doubled ? '<span>已双倍下注</span>' : ''}${hand.fromSplit ? '<span>分牌手</span>' : ''}${hand.naturalBlackjack ? '<span>自然黑杰克</span>' : ''}</div>
+        </div>
+      `;
+    }).join('');
+  }
+  function renderChipRack() {
+    el.chipRack.innerHTML = '';
+    chips.forEach((value, idx) => {
+      const chip = document.createElement('div');
+      chip.className = `chip c${(idx % 5) + 1} ${stake === value ? 'sel' : ''}`;
+      chip.textContent = value;
+      chip.addEventListener('click', () => {
+        if (roundActive() || running) return;
+        stake = value;
+        render();
+      });
+      el.chipRack.appendChild(chip);
+    });
+  }
+  function renderSlip() {
+    const active = roundActive();
+    const committedStake = active ? round.baseStake : stake;
+    const insuranceLine = round ? (round.insuranceBet > 0 ? `保险 ${round.insuranceBet}` : round.phase === 'insurance' ? '可购买保险' : '无保险') : '无保险';
+    const disabled = active || running ? 'disabled' : '';
+    el.betSlip.innerHTML = `
+      <div class="betItem">
+        <div>基础主注 Main Bet<br><small>${active ? '本局基础主注已锁定。' : '开局前可调整基础主注。'}</small></div>
+        <div><input type="number" min="1" step="1" value="${committedStake}" ${disabled}></div>
+        <button class="secondary" id="betActionBtn" ${disabled}>清空</button>
+      </div>
+      <div class="betItem">
+        <div>本局总押注<br><small>包含分牌、双倍和保险。</small></div>
+        <div>${active ? totalCommittedStake() : committedStake}</div>
+        <div>${insuranceLine}</div>
+      </div>
+    `;
+    if (active || running) return;
+    el.betSlip.querySelector('input').addEventListener('input', (event) => {
+      stake = clamp(event.target.value, 1);
+      render();
+    });
+    el.betSlip.querySelector('#betActionBtn').addEventListener('click', () => {
+      stake = 0;
+      render();
+    });
+  }
+  function updateStats() {
+    el.mStake.textContent = String(round ? round.baseStake : stake);
+    el.mLastDelta.textContent = `${stats.lastDelta >= 0 ? '+' : ''}${stats.lastDelta.toFixed(2)}`;
+    el.mLastDelta.className = `v ${stats.lastDelta >= 0 ? 'good' : 'bad'}`;
+    el.mRounds.textContent = `${stats.rounds} / ${stats.wins}`;
+    const roi = stats.totalStake > 0 ? (stats.totalDelta / stats.totalStake) * 100 : 0;
+    el.mROI.textContent = `${roi.toFixed(2)}%`;
+    el.mROI.className = `v ${roi >= 0 ? 'good' : 'bad'}`;
+    el.mBlackjacks.textContent = String(stats.blackjacks);
+    el.mNet.textContent = `${stats.totalDelta >= 0 ? '+' : ''}${stats.totalDelta.toFixed(2)}`;
+    el.mNet.className = `v ${stats.totalDelta >= 0 ? 'good' : 'bad'}`;
+    el.history.innerHTML = '';
+    if (!stats.history.length) {
+      el.history.innerHTML = '<span class="S">暂无记录</span>';
+      return;
+    }
+    stats.history.forEach((entry) => {
+      const item = document.createElement('span');
+      item.className = entry.code;
+      item.textContent = entry.label;
+      item.title = entry.detail;
+      el.history.appendChild(item);
+    });
+  }
+  function canDouble() {
+    const hand = activeHand();
+    return Boolean(round && round.phase === 'player' && hand && !hand.finished && hand.cards.length === 2 && hand.canDouble && balance >= hand.bet);
+  }
+  function splitValue(card) { return card.rank >= 10 ? 10 : card.rank; }
+  function canSplit() {
+    const hand = activeHand();
+    if (!round || round.phase !== 'player' || !hand || hand.finished) return false;
+    if (round.hands.length > 1) return false;
+    if (hand.cards.length !== 2 || balance < hand.bet) return false;
+    return splitValue(hand.cards[0]) === splitValue(hand.cards[1]);
+  }
+  function canBuyInsurance() {
+    return Boolean(round && round.phase === 'insurance' && round.insuranceAvailable && round.insuranceBet === 0 && balance >= round.baseStake / 2);
+  }
+  function updatePromptBoard() {
+    const phase = round ? round.phase : 'idle';
+    const [phaseTitle, phaseDesc] = PHASE_TEXT[phase];
+    el.phaseView.textContent = phaseTitle;
+    el.phaseSub.textContent = phaseDesc;
+    if (!round) {
+      el.turnView.textContent = '玩家主手';
+      el.turnSub.textContent = '开局后会标记正在操作的手牌。';
+      el.sideView.textContent = '无';
+      el.sideSub.textContent = '庄家明牌 A 时可以购买保险，双倍和分牌会在合规时开放。';
+      return;
+    }
+    const hand = activeHand();
+    el.turnView.textContent = round.phase === 'player' && hand ? hand.label : round.phase === 'dealer' ? '庄家' : '等待结算';
+    el.turnSub.textContent = round.phase === 'player' && hand ? `当前操作手点数 ${handPoint(hand.cards)}，主注 ${hand.bet}。` : round.phase === 'dealer' ? '庄家正在翻暗牌并按规则补牌。' : '本手已暂时停住，等待下一阶段。';
+    if (round.phase === 'insurance') {
+      el.sideView.textContent = '保险可选';
+      el.sideSub.textContent = `保险金额固定为 ${round.baseStake / 2}，庄家若为黑杰克按 2:1 支付。`;
+    } else if (round.insuranceBet > 0) {
+      el.sideView.textContent = `保险 ${round.insuranceBet}`;
+      el.sideSub.textContent = round.insuranceResolved ? round.insuranceResultText : '保险已购买，等待庄家确认是否黑杰克。';
+    } else {
+      el.sideView.textContent = canDouble() ? '可双倍' : canSplit() ? '可分牌' : '无';
+      el.sideSub.textContent = canDouble() ? '当前手还保持两张牌，可直接加倍并只补一张。' : canSplit() ? '当前两张牌点值相同，可以拆成两手。' : '当前没有额外投注动作。';
+    }
+  }
+  function updateActionBtns() {
+    const playerTurn = Boolean(round && round.phase === 'player' && !running);
+    el.hitBtn.disabled = !playerTurn;
+    el.standBtn.disabled = !playerTurn;
+    el.doubleBtn.disabled = !canDouble() || running;
+    el.splitBtn.disabled = !canSplit() || running;
+    el.insuranceBtn.disabled = !canBuyInsurance() || running;
+    el.skipInsuranceBtn.disabled = !(round && round.phase === 'insurance' && !running);
+    el.dealBtn.disabled = roundActive() || running || stake <= 0 || balance < stake;
+    el.clearBetBtn.disabled = roundActive() || running || stake <= 0;
+    el.stakeInput.disabled = roundActive() || running;
+    el.applyInitBtn.disabled = roundActive() || running;
+  }
+  function renderTop() {
+    el.balance.textContent = balance.toFixed(2);
+    el.stakeInput.value = String(stake);
+    updatePromptBoard();
+  }
+  function render() {
+    renderTop();
+    renderChipRack();
+    renderSlip();
+    renderDealer();
+    renderPlayerHands();
+    updateStats();
+    updateActionBtns();
+  }
+  function newRound(baseStake) {
+    return { deck: newDeck(), dealer: [], dealerNewCardIndex: -1, hands: [createHand('玩家主手', baseStake)], activeHandIndex: 0, phase: 'dealing', revealDealer: false, baseStake, insuranceAvailable: false, insuranceBet: 0, insuranceResolved: false, insuranceResultText: '', splitPerformed: false };
+  }
+  function upcardNeedsPeek() {
+    if (!round || !round.dealer.length) return false;
+    const rank = round.dealer[0].rank;
+    return rank === 1 || rank >= 10;
+  }
+  async function stagedDraw(targetCards, text, options = {}) {
+    const { revealDealer = false, dealerCard = false, duration = DEAL_DELAY } = options;
+    setBar(true, duration);
+    setMsg(text);
+    await delay(duration);
+    const card = draw();
+    targetCards.push(card);
+    if (dealerCard) round.dealerNewCardIndex = targetCards.length - 1;
+    else if (round && round.hands.length) {
+      round.hands.forEach((hand) => { hand.newCardIndex = -1; });
+      const hand = round.hands.find((item) => item.cards === targetCards);
+      if (hand) hand.newCardIndex = targetCards.length - 1;
+    }
+    if (round) round.revealDealer = revealDealer;
+    render();
+    setBar(false);
+    await delay(120);
+    if (dealerCard) round.dealerNewCardIndex = -1;
+    round.hands.forEach((hand) => { hand.newCardIndex = -1; });
+    return card;
+  }
+  function markActiveHandFinished(label, busted = false) {
+    const hand = activeHand();
+    if (!hand) return;
+    hand.finished = true;
+    hand.busted = busted;
+    hand.resultLabel = label;
+  }
+  function advanceHandOrDealer() {
+    while (round.activeHandIndex < round.hands.length && round.hands[round.activeHandIndex].finished) {
+      round.activeHandIndex += 1;
+    }
+    if (round.activeHandIndex >= round.hands.length) {
+      finishDealer();
+      return;
+    }
+    const hand = activeHand();
+    setMsg(`轮到 ${hand.label}，当前 ${handPoint(hand.cards)} 点。你可以继续操作。`);
+    render();
+  }
+  function settleInsurance(dealerBlackjack) {
+    if (!round || round.insuranceBet <= 0) return { delta: 0, text: '未购买保险。' };
+    round.insuranceResolved = true;
+    if (dealerBlackjack) {
+      const payout = round.insuranceBet * 3;
+      balance = Math.round((balance + payout) * 100) / 100;
+      round.insuranceResultText = `庄家黑杰克，保险净赢 ${round.insuranceBet * 2}。`;
+      return { delta: round.insuranceBet * 2, text: round.insuranceResultText };
+    }
+    round.insuranceResultText = `庄家不是黑杰克，保险输掉 ${round.insuranceBet}。`;
+    return { delta: -round.insuranceBet, text: round.insuranceResultText };
+  }
+  function summarizeRound(handOutcomes, insuranceDelta) {
+    const detailParts = [];
+    const wins = handOutcomes.filter((item) => item.outcome === 'win' || item.outcome === 'blackjack').length;
+    handOutcomes.forEach((item) => detailParts.push(`${item.label}${item.text}`));
+    if (insuranceDelta !== 0) detailParts.push(`保险${insuranceDelta > 0 ? `净赢 ${insuranceDelta}` : `净输 ${Math.abs(insuranceDelta)}`}`);
+    const code = round && round.hands.length > 1 ? 'S' : handOutcomes[0]?.code || 'T';
+    const label = round && round.hands.length > 1 ? `${wins}/${handOutcomes.length}` : handOutcomes[0]?.label || 'PUSH';
+    return { code, label, detail: detailParts.join('；') };
+  }
+  function settleHandsAndRound(dealerBlackjack = false) {
+    const handOutcomes = [];
+    let roundDelta = 0;
+    round.hands.forEach((hand) => {
+      const playerTotal = handPoint(hand.cards);
+      const dealerTotal = handPoint(round.dealer);
+      let payout = 0;
+      let outcome = 'push';
+      let label = hand.label;
+      let code = 'T';
+      let text = '和局';
+      if (hand.busted) {
+        payout = 0;
+        outcome = 'lose';
+        code = 'D';
+        text = `爆牌，输掉 ${hand.bet}`;
+      } else if (dealerBlackjack) {
+        if (hand.naturalBlackjack) {
+          payout = hand.bet;
+          outcome = 'push';
+          code = 'T';
+          text = '与庄家同为黑杰克，主注退回';
+        } else {
+          payout = 0;
+          outcome = 'lose';
+          code = 'DB';
+          text = `庄家黑杰克，输掉 ${hand.bet}`;
+        }
+      } else if (hand.naturalBlackjack) {
+        payout = hand.bet * 2.5;
+        outcome = 'blackjack';
+        code = 'PB';
+        text = `自然黑杰克，净赢 ${(hand.bet * 1.5).toFixed(2)}`;
+        stats.blackjacks += 1;
+        stats.wins += 1;
+      } else if (dealerTotal > 21 || playerTotal > dealerTotal) {
+        payout = hand.bet * 2;
+        outcome = 'win';
+        code = 'P';
+        text = `胜出，净赢 ${hand.bet.toFixed(2)}`;
+        stats.wins += 1;
+      } else if (playerTotal < dealerTotal) {
+        payout = 0;
+        outcome = 'lose';
+        code = dealerBlackjack ? 'DB' : 'D';
+        text = `落后于庄家，输掉 ${hand.bet}`;
+      } else {
+        payout = hand.bet;
+        outcome = 'push';
+        code = 'T';
+        text = '平局，主注退回';
+      }
+      balance = Math.round((balance + payout) * 100) / 100;
+      roundDelta += payout - hand.bet;
+      hand.resultLabel = text;
+      hand.finished = true;
+      handOutcomes.push({ outcome, label, code, text });
+    });
+    const insurance = settleInsurance(dealerBlackjack);
+    roundDelta += insurance.delta;
+    stats.rounds += 1;
+    stats.totalStake += totalCommittedStake();
+    stats.totalDelta += roundDelta;
+    stats.lastDelta = roundDelta;
+    const summary = summarizeRound(handOutcomes, insurance.delta);
+    stats.history.push(summary);
+    if (stats.history.length > 20) stats.history.shift();
+    round.phase = 'done';
+    round.revealDealer = true;
+    setMsg(`${summary.detail}。本轮净${roundDelta >= 0 ? '赢' : '输'} ${Math.abs(roundDelta).toFixed(2)}。`);
+    render();
+  }
+  async function finishDealer() {
+    if (!round) return;
+    running = true;
+    round.phase = 'dealer';
+    round.revealDealer = true;
+    render();
+    setMsg('庄家翻开暗牌，开始按标准规则补牌。');
+    await delay(320);
+    while (true) {
+      const total = handPoint(round.dealer);
+      const soft17 = isSoftTotal(round.dealer, 17);
+      if (total < 17 || (total === 17 && soft17 && !DEALER_STAND_SOFT_17)) {
+        await stagedDraw(round.dealer, '庄家补牌中...', { revealDealer: true, dealerCard: true });
+      } else {
+        break;
+      }
+    }
+    running = false;
+    settleHandsAndRound(false);
+  }
+  async function resolvePeekFlow(fromInsurance = false) {
+    if (!round) return;
+    running = true;
+    setBar(true, 280);
+    setMsg(fromInsurance ? '庄家查看暗牌，确认是否黑杰克...' : '庄家查看暗牌...');
+    await delay(300);
+    setBar(false);
+    const dealerBlackjack = isBlackjack(round.dealer);
+    if (dealerBlackjack) {
+      round.revealDealer = true;
+      render();
+      running = false;
+      settleHandsAndRound(true);
+      return;
+    }
+    if (round.insuranceBet > 0) settleInsurance(false);
+    if (round.hands[0].naturalBlackjack) {
+      round.revealDealer = true;
+      running = false;
+      settleHandsAndRound(false);
+      return;
+    }
+    round.phase = 'player';
+    round.revealDealer = false;
+    running = false;
+    setMsg('庄家不是黑杰克。现在进入玩家回合。');
+    render();
+  }
+  async function deal() {
+    if (roundActive() || running) return;
+    const baseStake = clamp(stake, 0);
+    if (baseStake <= 0) return setMsg('请先设置大于 0 的主注。');
+    if (balance < baseStake) return setMsg(`余额不足：主注 ${baseStake}，当前余额 ${balance.toFixed(2)}。`);
+    running = true;
+    balance = Math.round((balance - baseStake) * 100) / 100;
+    round = newRound(baseStake);
+    render();
+    await stagedDraw(round.hands[0].cards, '阶段 1/4：给玩家主手发第一张明牌。');
+    await stagedDraw(round.dealer, '阶段 2/4：给庄家发第一张明牌。', { dealerCard: true });
+    await stagedDraw(round.hands[0].cards, '阶段 3/4：给玩家主手发第二张明牌。');
+    await stagedDraw(round.dealer, '阶段 4/4：庄家拿到暗牌。', { dealerCard: true });
+    round.hands[0].naturalBlackjack = isBlackjack(round.hands[0].cards);
+    if (round.dealer[0].rank === 1) {
+      round.phase = 'insurance';
+      round.insuranceAvailable = true;
+      running = false;
+      setMsg(`庄家明牌是 A，可以选择是否购买保险。保险金额固定为 ${round.baseStake / 2}。`);
+      render();
+      return;
+    }
+    if (upcardNeedsPeek()) {
+      await resolvePeekFlow(false);
+      return;
+    }
+    if (round.hands[0].naturalBlackjack) {
+      round.revealDealer = true;
+      running = false;
+      settleHandsAndRound(false);
+      return;
+    }
+    round.phase = 'player';
+    running = false;
+    setMsg('发牌完成。现在进入玩家回合，你可以选择要牌、停牌、双倍或分牌。');
+    render();
+  }
+  async function buyInsurance() {
+    if (!canBuyInsurance()) return;
+    const insuranceBet = round.baseStake / 2;
+    balance = Math.round((balance - insuranceBet) * 100) / 100;
+    round.insuranceBet = insuranceBet;
+    setMsg(`已购买保险 ${insuranceBet}，庄家现在查看暗牌。`);
+    render();
+    await resolvePeekFlow(true);
+  }
+  async function skipInsurance() {
+    if (!round || round.phase !== 'insurance' || running) return;
+    setMsg('已跳过保险，庄家现在查看暗牌。');
+    render();
+    await resolvePeekFlow(true);
+  }
+  async function hit() {
+    if (!round || round.phase !== 'player' || running) return;
+    const hand = activeHand();
+    running = true;
+    hand.canDouble = false;
+    await stagedDraw(hand.cards, `${hand.label} 要牌中...`);
+    const total = handPoint(hand.cards);
+    if (total > 21) {
+      markActiveHandFinished(`爆牌（${total}）`, true);
+      running = false;
+      advanceHandOrDealer();
+      return;
+    }
+    if (total === 21) {
+      markActiveHandFinished('21 点，自动停牌');
+      running = false;
+      advanceHandOrDealer();
+      return;
+    }
+    running = false;
+    setMsg(`${hand.label} 当前 ${total} 点。可以继续要牌、停牌，或如果仍符合规则则双倍。`);
+    render();
+  }
+  function stand() {
+    if (!round || round.phase !== 'player' || running) return;
+    markActiveHandFinished('主动停牌');
+    advanceHandOrDealer();
+  }
+  async function doubleDown() {
+    if (!canDouble()) return;
+    const hand = activeHand();
+    balance = Math.round((balance - hand.bet) * 100) / 100;
+    hand.bet *= 2;
+    hand.doubled = true;
+    hand.canDouble = false;
+    setMsg(`${hand.label} 已双倍下注，追加 ${hand.bet / 2}，现在只会再补一张牌。`);
+    render();
+    running = true;
+    await stagedDraw(hand.cards, `${hand.label} 双倍下注补牌中...`);
+    const total = handPoint(hand.cards);
+    markActiveHandFinished(total > 21 ? `双倍后爆牌（${total}）` : `双倍后停牌（${total}）`, total > 21);
+    running = false;
+    advanceHandOrDealer();
+  }
+  async function split() {
+    if (!canSplit()) return;
+    const hand = activeHand();
+    balance = Math.round((balance - hand.bet) * 100) / 100;
+    const [firstCard, secondCard] = hand.cards;
+    round.hands = [createHand('玩家手 1', hand.bet, [firstCard], { fromSplit: true }), createHand('玩家手 2', hand.bet, [secondCard], { fromSplit: true })];
+    round.activeHandIndex = 0;
+    setMsg('已完成分牌。现在为两手分别补一张牌。');
+    render();
+    running = true;
+    await stagedDraw(round.hands[0].cards, '分牌后，为玩家手 1 补牌。');
+    round.activeHandIndex = 1;
+    render();
+    await stagedDraw(round.hands[1].cards, '分牌后，为玩家手 2 补牌。');
+    round.activeHandIndex = 0;
+    round.phase = 'player';
+    running = false;
+    setMsg('分牌完成。现在从玩家手 1 开始依次操作。');
+    render();
+  }
+  function clearBet() {
+    if (roundActive() || running) return;
+    stake = 0;
+    setMsg('已清空基础主注。重新输入金额后可继续开局。');
+    render();
+  }
+  function resetGame() {
+    if (running) return;
+    balance = initialBankroll;
+    round = null;
+    Object.assign(stats, { rounds: 0, wins: 0, blackjacks: 0, totalStake: 0, totalDelta: 0, lastDelta: 0, history: [] });
+    setMsg('已重置局面。现在是完整 21 点等待开局状态。');
+    render();
+  }
+  function applyInit() {
+    if (roundActive() || running) return;
+    initialBankroll = clamp(el.initialBankrollInput.value, 1000);
+    chips = parseChips(el.initialChipsInput.value);
+    if (!chips.length) chips = [10, 25, 50, 100, 250];
+    if (!chips.includes(stake)) stake = chips[0];
+    balance = initialBankroll;
+    round = null;
+    Object.assign(stats, { rounds: 0, wins: 0, blackjacks: 0, totalStake: 0, totalDelta: 0, lastDelta: 0, history: [] });
+    setMsg('已应用初始设置，统计与牌局一并重置。');
+    render();
+  }
+  el.stakeInput.addEventListener('input', (event) => {
+    if (roundActive() || running) return;
+    stake = clamp(event.target.value, 0);
+    render();
+  });
+  el.dealBtn.addEventListener('click', deal);
+  el.hitBtn.addEventListener('click', hit);
+  el.standBtn.addEventListener('click', stand);
+  el.doubleBtn.addEventListener('click', doubleDown);
+  el.splitBtn.addEventListener('click', split);
+  el.insuranceBtn.addEventListener('click', buyInsurance);
+  el.skipInsuranceBtn.addEventListener('click', skipInsurance);
+  el.clearBetBtn.addEventListener('click', clearBet);
+  el.resetBtn.addEventListener('click', resetGame);
+  el.applyInitBtn.addEventListener('click', applyInit);
+  el.helpBtn.addEventListener('click', () => el.rulesDialog.showModal());
+  el.closeRulesBtn.addEventListener('click', () => el.rulesDialog.close());
+  setMsg('先设置主注，再点击“发牌开局”。发牌会按标准顺序逐张展示，并在提示区显示当前阶段。');
+  render();
+})();
+
+</script>
+</body>
+</html>
+

@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
@@ -14,11 +14,11 @@
         <div>
           <p class="eyebrow">TaihuCasino</p>
           <h1>离线赌场原型项目</h1>
-          <p class="hero__copy">把零散的单文件页面整理成一个可继续扩展的静态项目骨架。</p>
+          <p class="hero__copy">整合现有单页游戏，并持续扩展新玩法与互动模块。</p>
         </div>
       </div>
       <div class="hero__actions">
-        <a class="button button--primary" href="./pages/roulette.html">进入欧式轮盘</a>
+        <a class="button button--primary" href="./pages/roulette.html">进入轮盘</a>
         <a class="button" href="./pages/baccarat.html">进入百家乐</a>
       </div>
     </header>
@@ -26,11 +26,15 @@
     <main class="grid">
       <section class="card">
         <p class="eyebrow">Games</p>
-        <h2>当前页面</h2>
+        <h2>全部页面</h2>
         <div class="link-list">
-          <a href="./pages/roulette.html">Roulette / 欧式轮盘</a>
-          <a href="./pages/baccarat.html">Baccarat / 百家乐主版本</a>
-          <a href="./pages/baccarat2.html">Baccarat 2 / 百家乐备选版本</a>
+          <a href="./pages/roulette.html">Roulette / 轮盘</a>
+          <a href="./pages/baccarat.html">Baccarat / 百家乐（版本1）</a>
+          <a href="./pages/baccarat2.html">Baccarat / 百家乐（版本2）</a>
+          <a href="./pages/dice.html">Dice / 骰子</a>
+          <a href="./pages/blackjack.html">Blackjack / 21点</a>
+          <a href="./pages/cocktail-bar.html">Cocktail Bar / 鸡尾酒吧台</a>
+          <a href="./pages/casino-cocktail-service.html">Casino Roaming Bar / 赌场巡回鸡尾酒吧</a>
         </div>
       </section>
 
@@ -38,7 +42,7 @@
         <p class="eyebrow">Structure</p>
         <h2>项目分层</h2>
         <ul class="plain-list">
-          <li><code>pages/</code> 存放实际游戏页面</li>
+          <li><code>pages/</code> 存放实际页面（游戏与互动模块）</li>
           <li><code>assets/css</code> 与 <code>assets/js</code> 存放公共资源</li>
           <li><code>assets/images</code> 存放 logo 和图形素材</li>
           <li><code>docs/</code> 存放结构说明与后续文档</li>
@@ -47,11 +51,11 @@
 
       <section class="card card--wide">
         <p class="eyebrow">Next</p>
-        <h2>接下来适合做的事</h2>
+        <h2>建议下一步</h2>
         <ul class="plain-list">
-          <li>确定 `baccarat.html` 与 `baccarat2.html` 的主从关系，避免双份维护。</li>
-          <li>把公共主题样式逐步从各页面内联 CSS 中抽出来。</li>
-          <li>给每个游戏补一个独立的脚本文件，逐步替换内联脚本。</li>
+          <li>将各页面内联样式逐步抽离为可复用主题文件。</li>
+          <li>为每个页面拆分独立脚本，减少单文件体积。</li>
+          <li>统一记录与统计模块，支持跨玩法总览。</li>
         </ul>
       </section>
     </main>

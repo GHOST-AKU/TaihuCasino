@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="420" viewBox="0 0 1400 420" role="img" aria-labelledby="title desc">
+  <title id="title">Taihu Casino Logo V2</title>
+  <desc id="desc">A refined Taihu Casino logo featuring a jade and gold casino chip emblem with a lake-inspired wave motif and a luxury wordmark.</desc>
+  <defs>
+    <linearGradient id="chipStroke" x1="70" y1="60" x2="350" y2="340" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f7e3a1" />
+      <stop offset="0.5" stop-color="#caa24a" />
+      <stop offset="1" stop-color="#8e6928" />
+    </linearGradient>
+    <linearGradient id="chipFill" x1="110" y1="100" x2="310" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#113b35" />
+      <stop offset="1" stop-color="#051916" />
+    </linearGradient>
+    <linearGradient id="waveFill" x1="110" y1="120" x2="300" y2="265" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#86d3bf" />
+      <stop offset="1" stop-color="#1a8b74" />
+    </linearGradient>
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#000000" flood-opacity="0.18" />
+    </filter>
+  </defs>
+
+  <rect width="1400" height="420" fill="none" />
+
+  <g filter="url(#softGlow)">
+    <circle cx="210" cy="210" r="136" fill="url(#chipFill)" stroke="url(#chipStroke)" stroke-width="12" />
+    <circle cx="210" cy="210" r="112" fill="none" stroke="#d7be79" stroke-width="2.5" stroke-dasharray="10 12" opacity="0.85" />
+
+    <g fill="#d7be79">
+      <rect x="201" y="66" width="18" height="34" rx="8" />
+      <rect x="201" y="320" width="18" height="34" rx="8" />
+      <rect x="320" y="201" width="34" height="18" rx="8" />
+      <rect x="66" y="201" width="34" height="18" rx="8" />
+
+      <rect x="290" y="97" width="18" height="34" rx="8" transform="rotate(45 299 114)" />
+      <rect x="112" y="275" width="18" height="34" rx="8" transform="rotate(45 121 292)" />
+      <rect x="290" y="289" width="18" height="34" rx="8" transform="rotate(135 299 306)" />
+      <rect x="112" y="111" width="18" height="34" rx="8" transform="rotate(135 121 128)" />
+    </g>
+
+    <path d="M129 236c24-26 49-39 76-39 25 0 45 7 63 22 17 13 34 20 51 20 18 0 36-7 56-21v34c-18 13-38 19-60 19-24 0-45-7-63-21-17-13-34-19-51-19-22 0-44 11-66 34z" fill="url(#waveFill)" />
+    <path d="M124 194c18-35 45-57 82-66 21-5 42-5 63 0 20 5 39 16 58 33l-21 24c-15-13-29-22-42-25-14-3-28-3-43 1-23 5-41 19-55 41 19-7 38-9 58-6 18 2 37 9 56 19l-13 27c-17-9-33-14-49-16-29-4-54 4-76 24l-29-9c2-20 6-36 11-47z" fill="#d6c286" />
+    <path d="M183 132h54l20 36h-30l-17-14-17 14h-30z" fill="#f5df9a" opacity="0.95" />
+  </g>
+
+  <g transform="translate(420 0)">
+    <text x="0" y="188" font-family="Georgia, 'Times New Roman', 'Noto Serif SC', serif" font-size="86" font-weight="700" letter-spacing="7" fill="#0d1715">
+      TAIHU
+    </text>
+    <text x="0" y="282" font-family="Georgia, 'Times New Roman', 'Noto Serif SC', serif" font-size="86" font-weight="700" letter-spacing="7" fill="#0d1715">
+      CASINO
+    </text>
+    <path d="M4 316h762" stroke="#c7a24d" stroke-width="5" stroke-linecap="round" opacity="0.8" />
+  </g>
+</svg>

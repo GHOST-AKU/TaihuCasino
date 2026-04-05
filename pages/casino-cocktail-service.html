@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>赌场巡回鸡尾酒吧</title>
+  <style>
+    :root{
+      --bg:#07130f;
+      --panel:rgba(255,255,255,.04);
+      --panel-2:rgba(255,255,255,.025);
+      --line:rgba(216,183,113,.26);
+      --gold:#dfbe79;
+      --gold-2:#f5db9e;
+      --text:#f4ead1;
+      --muted:#b7aa86;
+      --green:#1f915c;
+      --green-2:#33c47c;
+      --red:#b6444d;
+      --blue:#4d8ad8;
+      --shadow:0 22px 64px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      color:var(--text);
+      font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+      background:
+        radial-gradient(1100px 680px at 15% 0%, rgba(33,102,72,.86) 0%, transparent 56%),
+        radial-gradient(980px 680px at 100% 0%, rgba(96,50,26,.78) 0%, transparent 52%),
+        radial-gradient(760px 540px at 50% 100%, rgba(50,127,92,.14) 0%, transparent 58%),
+        linear-gradient(180deg, #0a1d17 0%, var(--bg) 100%);
+    }
+    button,input,select{font:inherit}
+    .wrap{max-width:1440px;margin:0 auto;padding:16px;display:grid;gap:12px}
+    .panel{
+      border:1px solid var(--line);
+      border-radius:20px;
+      padding:14px;
+      background:linear-gradient(180deg,var(--panel),var(--panel-2));
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(8px);
+    }
+    .top{display:grid;grid-template-columns:1.2fr .8fr;gap:12px}
+    .main{display:grid;grid-template-columns:1.1fr .9fr;gap:12px;align-items:start}
+    .stack{display:grid;gap:12px}
+    .title{margin:0 0 10px;color:var(--muted);font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:800}
+    .heroRow{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+    .heroCopy h1{margin:0;font-size:34px;line-height:1.04;color:var(--gold-2)}
+    .heroCopy p{margin:10px 0 0;max-width:70ch;color:var(--muted);line-height:1.65;font-size:14px}
+    .heroActions{display:grid;gap:10px;justify-items:end}
+    .clock{min-width:250px;text-align:right;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px;background:rgba(0,0,0,.18)}
+    .clock .big{font-size:30px;font-weight:900;color:var(--gold-2);line-height:1}
+    .clock .small{margin-top:4px;color:var(--muted);font-size:12px}
+    .btnRow{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    button{
+      border:1px solid rgba(223,190,121,.35);
+      border-radius:12px;
+      padding:9px 12px;
+      cursor:pointer;
+      color:#33230a;
+      font-weight:800;
+      background:linear-gradient(180deg,#f0d18c,#c99d56);
+    }
+    button.secondary{color:var(--text);background:linear-gradient(180deg,#1b3b2c,#12241b)}
+    button.ghost{color:var(--text);background:rgba(255,255,255,.04)}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .stat{min-height:92px;border:1px solid rgba(255,255,255,.11);border-radius:14px;padding:10px;background:rgba(0,0,0,.14)}
+    .stat .k{color:var(--muted);font-size:12px}
+    .stat .v{margin-top:4px;font-size:25px;font-weight:900;color:var(--gold-2)}
+    .stat .sub{margin-top:4px;font-size:12px;color:rgba(255,255,255,.74);line-height:1.5}
+    .signature{grid-column:1 / -1;border:1px solid rgba(223,190,121,.24);border-radius:14px;padding:10px;background:linear-gradient(180deg,rgba(223,190,121,.08),rgba(0,0,0,.15))}
+    .signature .name{margin-top:4px;font-size:18px;font-weight:900;color:#ffe8aa}
+    .signature .desc{margin-top:4px;color:var(--muted);font-size:13px;line-height:1.55}
+    .floorGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .guestCard{border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:12px;background:rgba(0,0,0,.15);display:grid;gap:10px;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+    .guestCard.active{border-color:rgba(245,219,158,.72);box-shadow:0 0 0 1px rgba(0,0,0,.4) inset, 0 12px 28px rgba(0,0,0,.18);transform:translateY(-1px)}
+    .guestTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .guestName{font-size:18px;font-weight:900}
+    .guestMeta{margin-top:3px;color:var(--muted);font-size:12px;line-height:1.5}
+    .badge{border-radius:999px;padding:3px 8px;font-size:11px;font-weight:800;white-space:nowrap;color:#0c160f;background:linear-gradient(180deg,#f0d18c,#c99d56)}
+    .guestBars{display:grid;gap:8px}
+    .meterLine{display:grid;gap:4px}
+    .meterLabel{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:12px}
+    .meter{height:8px;border-radius:999px;overflow:hidden;border:1px solid rgba(255,255,255,.09);background:rgba(0,0,0,.18)}
+    .meter > div{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--green),var(--gold))}
+    .guestActions{display:flex;gap:8px;flex-wrap:wrap}
+    .menuGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .menuCard{border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:12px;background:rgba(0,0,0,.14);display:grid;gap:8px}
+    .menuHead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .menuName{font-size:18px;font-weight:900}
+    .menuSub{margin-top:3px;color:var(--muted);font-size:12px}
+    .tagRow{display:flex;flex-wrap:wrap;gap:6px}
+    .tag{padding:3px 8px;border-radius:999px;font-size:11px;border:1px solid rgba(223,190,121,.18);background:rgba(223,190,121,.1);color:#f7e7c4}
+    .menuDesc{font-size:13px;line-height:1.6;color:rgba(255,255,255,.84)}
+    .menuFoot{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+    .menuFoot .price{font-size:22px;font-weight:900;color:var(--gold-2)}
+    .opsGrid,.dispatchBox,.runnerList,.queueList,.feedList{display:grid;gap:8px}
+    .runnerCard,.queueCard,.feedItem{border:1px solid rgba(255,255,255,.11);border-radius:14px;padding:10px;background:rgba(0,0,0,.14)}
+    .runnerHead,.queueHead,.feedHead{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+    .runnerName,.queueTitle{font-weight:900}
+    .status{font-size:11px;font-weight:800;border-radius:999px;padding:3px 8px;background:rgba(255,255,255,.08);color:#f4ead1}
+    .status.good{background:rgba(51,196,124,.15);color:#8af0b6}
+    .status.warn{background:rgba(245,161,70,.14);color:#ffd18e}
+    .status.bad{background:rgba(182,68,77,.16);color:#ffabb1}
+    .route{margin-top:8px;color:var(--muted);font-size:12px;line-height:1.55}
+    .progress{margin-top:8px;height:8px;border-radius:999px;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.18)}
+    .progress > div{width:0%;height:100%;background:linear-gradient(90deg,var(--blue),var(--green-2),var(--gold))}
+    .queueMeta,.feedBody{margin-top:6px;color:var(--muted);font-size:12px;line-height:1.55}
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .controlBox{border:1px solid rgba(223,190,121,.2);border-radius:16px;padding:12px;background:rgba(0,0,0,.16);display:grid;gap:10px}
+    .controlBox h3{margin:0;font-size:18px;color:var(--gold-2)}
+    .controlBox p{margin:0;color:var(--muted);font-size:13px;line-height:1.6}
+    .selection{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .selectionCell{border:1px solid rgba(255,255,255,.11);border-radius:12px;padding:10px;background:rgba(255,255,255,.03);min-height:74px}
+    .selectionCell .k{color:var(--muted);font-size:12px}
+    .selectionCell .v{margin-top:4px;font-weight:900}
+    .switchRow{display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 12px;background:rgba(255,255,255,.03)}
+    .switchRow label{display:flex;align-items:center;gap:8px;color:var(--text)}
+    input[type="checkbox"]{width:18px;height:18px;accent-color:var(--green-2);cursor:pointer}
+    .empty{padding:14px;border:1px dashed rgba(255,255,255,.14);border-radius:14px;color:var(--muted);font-size:13px;line-height:1.6;text-align:center;background:rgba(255,255,255,.02)}
+    .footer{color:rgba(255,255,255,.65);font-size:12px;line-height:1.6}
+    @media (max-width:1160px){
+      .top,.main,.split{grid-template-columns:1fr}
+      .heroActions{justify-items:start}
+      .clock{text-align:left;min-width:0;width:100%}
+    }
+    @media (max-width:760px){
+      .wrap{padding:12px}
+      .floorGrid,.menuGrid,.stats,.selection{grid-template-columns:1fr}
+      .btnRow,.guestActions{width:100%}
+      button{width:100%}
+      .heroCopy h1{font-size:28px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="panel">
+      <div class="heroRow">
+        <div class="heroCopy">
+          <h1>赌场巡回鸡尾酒吧</h1>
+          <p>这是另一个更贴近“数字赌场场内服务”的酒吧版本。客人在不同赌桌和休息区点单，订单先进入吧台配制，再由巡回服务员沿着场内路线送达。重点不再是调酒参数本身，而是桌边点单、派单节奏、巡回路线和高价值客区服务效率。</p>
+        </div>
+        <div class="heroActions">
+          <div class="clock">
+            <div class="big" id="clockText">--:--</div>
+            <div class="small" id="clockSub">巡回服务网络待命中</div>
+          </div>
+          <div class="btnRow">
+            <button class="secondary" id="surgeBtn">生成客流波次</button>
+            <button class="secondary" id="resetBtn">重置本日运营</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="top">
+      <div class="panel">
+        <div class="title">场内客区</div>
+        <div class="floorGrid" id="guestGrid"></div>
+      </div>
+
+      <div class="panel">
+        <div class="title">运营总览</div>
+        <div class="stats">
+          <div class="stat"><div class="k">今日订单</div><div class="v" id="statOrders">0</div><div class="sub">已创建的桌边点单总数。</div></div>
+          <div class="stat"><div class="k">已送达</div><div class="v" id="statDelivered">0</div><div class="sub">巡回服务员成功派送的酒水数量。</div></div>
+          <div class="stat"><div class="k">酒水收入</div><div class="v" id="statRevenue">¥0</div><div class="sub">按当前虚拟酒单累计营收。</div></div>
+          <div class="stat"><div class="k">满意度</div><div class="v" id="statSatisfaction">0%</div><div class="sub">看等待时长、客区等级和酒水匹配度。</div></div>
+          <div class="signature">
+            <div class="k">当前重点客区</div>
+            <div class="name" id="focusZone">等待首单</div>
+            <div class="desc" id="focusDesc">系统会根据订单量与客区等级，自动判断当前应该优先照顾哪个区域。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="main">
+      <div class="stack">
+        <section class="panel">
+          <div class="title">酒单</div>
+          <div class="menuGrid" id="menuGrid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="title">下单与派送逻辑</div>
+          <div class="split">
+            <div class="controlBox">
+              <h3>当前点单目标</h3>
+              <p>先从场内客区选中一位客人，再从酒单中为 TA 创建一单。这个版本强调赌场场内服务，不强调手动配方调制。</p>
+              <div class="selection">
+                <div class="selectionCell">
+                  <div class="k">客人</div>
+                  <div class="v" id="selectedGuestText">未选择</div>
+                </div>
+                <div class="selectionCell">
+                  <div class="k">酒水</div>
+                  <div class="v" id="selectedDrinkText">未选择</div>
+                </div>
+              </div>
+              <div class="switchRow">
+                <label><input type="checkbox" id="autoDispatchToggle" checked /> 自动派送</label>
+                <span id="autoDispatchText">空闲巡回员会自动接单</span>
+              </div>
+              <div class="btnRow" style="justify-content:flex-start;">
+                <button id="placeOrderBtn">为当前客人下单</button>
+                <button class="ghost" id="manualDispatchBtn">手动派送最早待送单</button>
+              </div>
+            </div>
+
+            <div class="controlBox">
+              <h3>吧台工作流</h3>
+              <p>订单会先进入待配制队列。吧台最多同时制作 2 杯，制作完成后进入待送达队列，由巡回服务员按照“吧台 → 客区”的路线推进。</p>
+              <div class="dispatchBox" id="mixBoard"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="stack">
+        <section class="panel">
+          <div class="title">巡回派送</div>
+          <div class="runnerList" id="runnerList"></div>
+        </section>
+
+        <section class="panel">
+          <div class="title">订单看板</div>
+          <div class="queueList" id="queueList"></div>
+        </section>
+
+        <section class="panel">
+          <div class="title">场内播报</div>
+          <div class="feedList" id="feedList"></div>
+        </section>
+
+        <section class="panel">
+          <div class="title">说明</div>
+          <div class="footer">这个版本把“鸡尾酒吧”改造成赌场内服务系统：订单来自赌桌和 VIP 区，吧台负责出杯，巡回员负责派送。适合你后面继续扩成“桌边加购”“VIP 连单”“夜场活动联动”的产品线。</div>
+        </section>
+      </div>
+    </section>
+  </div>
+  <script>
+  (() => {
+    const STORAGE_KEY = 'taihu-casino-roaming-bar';
+    const BARTENDER_CAPACITY = 2;
+    const RUNNERS = [
+      { id:'runner-1', name:'Luna', style:'快线巡回员' },
+      { id:'runner-2', name:'Miro', style:'VIP 专线巡回员' }
+    ];
+    const GUESTS = [
+      { id:'g1', name:'顾客 A17', zone:'轮盘区', zoneType:'高流量桌区', mood:'手气正热', thirst:78, spend:2, favorite:['sparkHighball','casinoSpritz'] },
+      { id:'g2', name:'顾客 B03', zone:'百家乐区', zoneType:'高价值桌区', mood:'连开三靴', thirst:64, spend:3, favorite:['oldFashioned','smokedManhattan'] },
+      { id:'g3', name:'顾客 C11', zone:'老虎机廊', zoneType:'长时停留区', mood:'准备续玩', thirst:53, spend:1, favorite:['paloma','casinoSpritz'] },
+      { id:'g4', name:'顾客 D09', zone:'VIP 包厢', zoneType:'高优先级包厢', mood:'等人开桌', thirst:81, spend:4, favorite:['smokedManhattan','nightNegroni'] },
+      { id:'g5', name:'顾客 E22', zone:'德州吧台', zoneType:'社交互动区', mood:'正在聊天', thirst:59, spend:2, favorite:['casinoSpritz','sparkHighball'] },
+      { id:'g6', name:'顾客 F08', zone:'高额投注厅', zoneType:'高优先级桌区', mood:'希望被照顾', thirst:71, spend:4, favorite:['nightNegroni','oldFashioned'] }
+    ];
+    const MENU = [
+      { id:'casinoSpritz', name:'Casino Spritz', cn:'赌场气泡', price:88, prepMs:3600, deliverMs:3600, strength:'轻盈', tags:['高流转','气泡','适合桌边'], desc:'适合轮盘和社交桌区，清爽、好入口，适合边玩边喝。' },
+      { id:'sparkHighball', name:'Spark Highball', cn:'火花高球', price:96, prepMs:3200, deliverMs:3400, strength:'清爽', tags:['快速出杯','满冰','派送稳定'], desc:'高球路线友好，适合大面积巡回派送，客单转换效率高。' },
+      { id:'paloma', name:'Paloma', cn:'帕洛玛', price:108, prepMs:4200, deliverMs:3800, strength:'明亮', tags:['柑橘感','中高接受度'], desc:'适合老虎机廊和休闲区，酸甜感比较讨喜。' },
+      { id:'oldFashioned', name:'Old Fashioned', cn:'古典鸡尾酒', price:148, prepMs:5200, deliverMs:4200, strength:'厚重', tags:['高客单','威士忌','慢节奏'], desc:'更适合高价值桌区和连续下注客人，强调陪玩时长。' },
+      { id:'smokedManhattan', name:'Smoked Manhattan', cn:'烟熏曼哈顿', price:188, prepMs:6400, deliverMs:4600, strength:'浓烈', tags:['VIP','仪式感','高毛利'], desc:'适合 VIP 包厢和高额投注厅，强调专属感和仪式感。' },
+      { id:'nightNegroni', name:'Night Negroni', cn:'夜场内格罗尼', price:166, prepMs:5600, deliverMs:4300, strength:'苦香', tags:['复古','高辨识度'], desc:'适合高额区和深夜场景，服务员送达时也有存在感。' }
+    ];
+
+    const $ = id => document.getElementById(id);
+    const el = {
+      clockText:$('clockText'),
+      clockSub:$('clockSub'),
+      surgeBtn:$('surgeBtn'),
+      resetBtn:$('resetBtn'),
+      guestGrid:$('guestGrid'),
+      menuGrid:$('menuGrid'),
+      statOrders:$('statOrders'),
+      statDelivered:$('statDelivered'),
+      statRevenue:$('statRevenue'),
+      statSatisfaction:$('statSatisfaction'),
+      focusZone:$('focusZone'),
+      focusDesc:$('focusDesc'),
+      selectedGuestText:$('selectedGuestText'),
+      selectedDrinkText:$('selectedDrinkText'),
+      autoDispatchToggle:$('autoDispatchToggle'),
+      autoDispatchText:$('autoDispatchText'),
+      placeOrderBtn:$('placeOrderBtn'),
+      manualDispatchBtn:$('manualDispatchBtn'),
+      mixBoard:$('mixBoard'),
+      runnerList:$('runnerList'),
+      queueList:$('queueList'),
+      feedList:$('feedList')
+    };
+
+    function dateKey(date = new Date()) {
+      return new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Shanghai', year:'numeric', month:'2-digit', day:'2-digit' }).format(date);
+    }
+
+    function clockText(date = new Date()) {
+      return new Intl.DateTimeFormat('zh-CN', { timeZone:'Asia/Shanghai', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }).format(date);
+    }
+
+    function defaultState() {
+      return {
+        dateKey:dateKey(),
+        selectedGuestId:null,
+        selectedDrinkId:null,
+        autoDispatch:true,
+        orders:[],
+        runners:RUNNERS.map(item => ({ ...item, currentOrderId:null, stage:'idle', startedAt:0, endsAt:0 })),
+        feed:[{
+          id:'feed-init',
+          time:Date.now(),
+          title:'吧台已开场',
+          body:'等待首批桌边点单。你可以先选中客区，再从酒单派一单试试。'
+        }],
+        stats:{ orders:0, delivered:0, revenue:0, satisfactionTotal:0 }
+      };
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return defaultState();
+        const parsed = JSON.parse(raw);
+        if (!parsed || parsed.dateKey !== dateKey()) return defaultState();
+        return {
+          ...defaultState(),
+          ...parsed,
+          runners:RUNNERS.map(base => {
+            const saved = (parsed.runners || []).find(item => item.id === base.id);
+            return { ...base, currentOrderId:null, stage:'idle', startedAt:0, endsAt:0, ...(saved || {}) };
+          }),
+          orders:Array.isArray(parsed.orders) ? parsed.orders : [],
+          feed:Array.isArray(parsed.feed) ? parsed.feed.slice(0, 12) : defaultState().feed
+        };
+      } catch {
+        return defaultState();
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function guestById(id) {
+      return GUESTS.find(item => item.id === id) || null;
+    }
+
+    function drinkById(id) {
+      return MENU.find(item => item.id === id) || null;
+    }
+
+    function orderById(id) {
+      return state.orders.find(item => item.id === id) || null;
+    }
+
+    function addFeed(title, body) {
+      state.feed.unshift({
+        id:`feed-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`,
+        time:Date.now(),
+        title,
+        body
+      });
+      state.feed = state.feed.slice(0, 14);
+    }
+
+    function formatAgo(ts) {
+      const diff = Math.max(0, Date.now() - ts);
+      const sec = Math.floor(diff / 1000);
+      if (sec < 60) return `${sec} 秒前`;
+      const min = Math.floor(sec / 60);
+      if (min < 60) return `${min} 分钟前`;
+      return `${Math.floor(min / 60)} 小时前`;
+    }
+
+    function formatMoney(value) {
+      return `¥${value}`;
+    }
+
+    function randomChoice(list) {
+      return list[Math.floor(Math.random() * list.length)];
+    }
+
+    function getPriorityScore(guest, drink) {
+      const zoneBonus = guest.spend * 14;
+      const thirstBonus = guest.thirst * .35;
+      const favoriteBonus = guest.favorite.includes(drink.id) ? 12 : 0;
+      return Math.round(zoneBonus + thirstBonus + favoriteBonus);
+    }
+
+    function getFocusZone() {
+      if (!state.orders.length) {
+        return { name:'等待首单', desc:'当前还没有场内点单，客区关注点尚未形成。' };
+      }
+      const zoneMap = new Map();
+      state.orders.filter(order => order.status !== 'delivered').forEach(order => {
+        const current = zoneMap.get(order.zone) || 0;
+        zoneMap.set(order.zone, current + order.priority);
+      });
+      if (!zoneMap.size) {
+        return { name:'服务压力已释放', desc:'暂时没有未送达订单，场内客区都处于较平稳状态。' };
+      }
+      const [zone, score] = [...zoneMap.entries()].sort((a, b) => b[1] - a[1])[0];
+      return {
+        name:zone,
+        desc:`当前该区域的订单优先级最高，综合压力分 ${score}。更适合继续推巡回服务和二次点单。`
+      };
+    }
+
+    function getOrderStatusMeta(order) {
+      if (order.status === 'queued') return { text:'待配制', cls:'warn' };
+      if (order.status === 'mixing') return { text:'制作中', cls:'warn' };
+      if (order.status === 'ready') return { text:'待派送', cls:'good' };
+      if (order.status === 'enroute') return { text:'派送中', cls:'good' };
+      return { text:'已送达', cls:'' };
+    }
+
+    function satisfactionFor(order) {
+      const guest = guestById(order.guestId);
+      const drink = drinkById(order.drinkId);
+      const waitMs = (order.deliveredAt || Date.now()) - order.createdAt;
+      const waitPenalty = Math.min(32, Math.round(waitMs / 1000 / 3));
+      const matchBonus = guest.favorite.includes(drink.id) ? 12 : 0;
+      const vipBonus = guest.spend >= 4 ? 8 : guest.spend >= 3 ? 4 : 0;
+      return Math.max(52, Math.min(99, 86 + matchBonus + vipBonus - waitPenalty));
+    }
+
+    function createOrder(guestId, drinkId) {
+      const guest = guestById(guestId);
+      const drink = drinkById(drinkId);
+      if (!guest || !drink) return false;
+      const order = {
+        id:`order-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
+        guestId,
+        guestName:guest.name,
+        zone:guest.zone,
+        zoneType:guest.zoneType,
+        drinkId,
+        drinkName:drink.cn,
+        price:drink.price,
+        priority:getPriorityScore(guest, drink),
+        createdAt:Date.now(),
+        startedAt:0,
+        readyAt:0,
+        dispatchedAt:0,
+        deliveredAt:0,
+        deliveryStartedAt:0,
+        deliveryEndsAt:0,
+        status:'queued'
+      };
+      state.orders.unshift(order);
+      state.stats.orders += 1;
+      addFeed('桌边点单', `${guest.zone} 的 ${guest.name} 点了 ${drink.cn}，订单已经进入吧台队列。`);
+      saveState();
+      renderAll();
+      return true;
+    }
+
+    function startQueuedOrders() {
+      const inProgress = state.orders.filter(order => order.status === 'mixing').length;
+      const slots = Math.max(0, BARTENDER_CAPACITY - inProgress);
+      if (!slots) return;
+      const queued = state.orders
+        .filter(order => order.status === 'queued')
+        .sort((a, b) => b.priority - a.priority || a.createdAt - b.createdAt)
+        .slice(0, slots);
+      queued.forEach(order => {
+        const drink = drinkById(order.drinkId);
+        order.status = 'mixing';
+        order.startedAt = Date.now();
+        order.readyAt = Date.now() + drink.prepMs;
+        addFeed('吧台开始制作', `${order.drinkName} 已进入制作，目标送往 ${order.zone}。`);
+      });
+    }
+
+    function finishMixingOrders() {
+      const now = Date.now();
+      state.orders.filter(order => order.status === 'mixing' && order.readyAt <= now).forEach(order => {
+        order.status = 'ready';
+        addFeed('出杯完成', `${order.drinkName} 已经做好，等待巡回服务员前往 ${order.zone} 派送。`);
+      });
+    }
+
+    function assignDelivery(order) {
+      const runner = state.runners.find(item => item.stage === 'idle');
+      if (!runner || !order || order.status !== 'ready') return false;
+      const drink = drinkById(order.drinkId);
+      runner.currentOrderId = order.id;
+      runner.stage = 'enroute';
+      runner.startedAt = Date.now();
+      runner.endsAt = Date.now() + drink.deliverMs + Math.max(0, order.priority - 40) * 18;
+      order.status = 'enroute';
+      order.dispatchedAt = Date.now();
+      order.deliveryStartedAt = runner.startedAt;
+      order.deliveryEndsAt = runner.endsAt;
+      addFeed('巡回派送出发', `${runner.name} 正从吧台前往 ${order.zone}，为 ${order.guestName} 送 ${order.drinkName}。`);
+      return true;
+    }
+
+    function autoAssignDeliveries() {
+      if (!state.autoDispatch) return;
+      const readyOrders = state.orders
+        .filter(order => order.status === 'ready')
+        .sort((a, b) => b.priority - a.priority || a.createdAt - b.createdAt);
+      readyOrders.forEach(order => {
+        assignDelivery(order);
+      });
+    }
+
+    function finishDeliveries() {
+      const now = Date.now();
+      state.runners.forEach(runner => {
+        if (runner.stage !== 'enroute' || runner.endsAt > now) return;
+        const order = orderById(runner.currentOrderId);
+        if (order) {
+          order.status = 'delivered';
+          order.deliveredAt = now;
+          const score = satisfactionFor(order);
+          state.stats.delivered += 1;
+          state.stats.revenue += order.price;
+          state.stats.satisfactionTotal += score;
+          addFeed('送达完成', `${runner.name} 已在 ${order.zone} 成功送达 ${order.drinkName}，本单满意度 ${score} 分。`);
+        }
+        runner.currentOrderId = null;
+        runner.stage = 'idle';
+        runner.startedAt = 0;
+        runner.endsAt = 0;
+      });
+    }
+
+    function createSurgeOrders() {
+      const candidates = [...GUESTS].sort((a, b) => b.thirst - a.thirst).slice(0, 4);
+      const count = 2 + Math.floor(Math.random() * 2);
+      const selectedGuests = candidates.sort(() => Math.random() - .5).slice(0, count);
+      selectedGuests.forEach(guest => {
+        createOrder(guest.id, randomChoice(guest.favorite));
+      });
+      addFeed('客流波次', `场内出现一轮新的点单高峰，本轮自动生成 ${selectedGuests.length} 单。`);
+      renderAll();
+    }
+
+    function resetDay() {
+      state = defaultState();
+      saveState();
+      renderAll();
+    }
+
+    function handleDayBoundary() {
+      if (state.dateKey === dateKey()) return;
+      state = defaultState();
+      addFeed('跨天重置', '已切换到新的一天，吧台统计和派送队列已重置。');
+      saveState();
+      renderAll();
+    }
+
+    function renderClock() {
+      el.clockText.textContent = clockText();
+      el.clockSub.textContent = `${dateKey()} 场内巡回服务运行中`;
+    }
+
+    function renderGuests() {
+      el.guestGrid.innerHTML = '';
+      GUESTS.forEach(guest => {
+        const activeOrders = state.orders.filter(order => order.guestId === guest.id && order.status !== 'delivered').length;
+        const card = document.createElement('div');
+        card.className = `guestCard ${state.selectedGuestId === guest.id ? 'active' : ''}`;
+        card.innerHTML = `
+          <div class="guestTop">
+            <div>
+              <div class="guestName">${guest.name}</div>
+              <div class="guestMeta">${guest.zone} · ${guest.zoneType}<br>状态：${guest.mood}</div>
+            </div>
+            <div class="badge">${guest.spend >= 4 ? '高优先' : guest.spend >= 3 ? '重点客' : '常规客'}</div>
+          </div>
+          <div class="guestBars">
+            <div class="meterLine">
+              <div class="meterLabel"><span>续杯意愿</span><span>${guest.thirst}</span></div>
+              <div class="meter"><div style="width:${guest.thirst}%;"></div></div>
+            </div>
+            <div class="meterLine">
+              <div class="meterLabel"><span>当前待送单</span><span>${activeOrders} 单</span></div>
+              <div class="meter"><div style="width:${Math.min(100, activeOrders * 28)}%; background:linear-gradient(90deg,var(--blue),var(--gold));"></div></div>
+            </div>
+          </div>
+          <div class="guestActions">
+            <button class="secondary" data-guest-select="${guest.id}">选中客人</button>
+            <button class="ghost" data-guest-order="${guest.id}">按偏好下一单</button>
+          </div>
+        `;
+        el.guestGrid.appendChild(card);
+      });
+    }
+
+    function renderMenu() {
+      el.menuGrid.innerHTML = '';
+      MENU.forEach(drink => {
+        const selected = state.selectedDrinkId === drink.id;
+        const card = document.createElement('div');
+        card.className = 'menuCard';
+        card.style.borderColor = selected ? 'rgba(245,219,158,.72)' : 'rgba(255,255,255,.12)';
+        card.innerHTML = `
+          <div class="menuHead">
+            <div>
+              <div class="menuName">${drink.cn}</div>
+              <div class="menuSub">${drink.name} · ${drink.strength}</div>
+            </div>
+            <div class="badge">${formatMoney(drink.price)}</div>
+          </div>
+          <div class="tagRow">${drink.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div>
+          <div class="menuDesc">${drink.desc}</div>
+          <div class="menuFoot">
+            <div class="price">${drink.prepMs / 1000}s 配制</div>
+            <button class="${selected ? 'secondary' : ''}" data-drink-select="${drink.id}">${selected ? '已选中' : '选这杯'}</button>
+          </div>
+        `;
+        el.menuGrid.appendChild(card);
+      });
+    }
+
+    function renderSelection() {
+      const guest = guestById(state.selectedGuestId);
+      const drink = drinkById(state.selectedDrinkId);
+      el.selectedGuestText.textContent = guest ? `${guest.name} · ${guest.zone}` : '未选择';
+      el.selectedDrinkText.textContent = drink ? `${drink.cn} · ${formatMoney(drink.price)}` : '未选择';
+      el.autoDispatchToggle.checked = state.autoDispatch;
+      el.autoDispatchText.textContent = state.autoDispatch ? '空闲巡回员会自动接单' : '待送单需要你手动触发派送';
+    }
+
+    function renderStats() {
+      const stats = state.stats;
+      el.statOrders.textContent = String(stats.orders);
+      el.statDelivered.textContent = String(stats.delivered);
+      el.statRevenue.textContent = formatMoney(stats.revenue);
+      el.statSatisfaction.textContent = `${stats.delivered ? Math.round(stats.satisfactionTotal / stats.delivered) : 0}%`;
+      const focus = getFocusZone();
+      el.focusZone.textContent = focus.name;
+      el.focusDesc.textContent = focus.desc;
+    }
+
+    function renderMixBoard() {
+      const mixing = state.orders.filter(order => order.status === 'mixing').sort((a, b) => a.readyAt - b.readyAt);
+      const queued = state.orders.filter(order => order.status === 'queued').sort((a, b) => b.priority - a.priority || a.createdAt - b.createdAt).slice(0, 4);
+      if (!mixing.length && !queued.length) {
+        el.mixBoard.innerHTML = '<div class="empty">当前吧台空闲，等待新单进入。</div>';
+        return;
+      }
+      const cards = [];
+      mixing.forEach(order => {
+        const progress = Math.max(0, Math.min(100, Math.round((Date.now() - order.startedAt) / (order.readyAt - order.startedAt) * 100)));
+        cards.push(`
+          <div class="queueCard">
+            <div class="queueHead">
+              <div class="queueTitle">${order.drinkName}</div>
+              <div class="status warn">制作中</div>
+            </div>
+            <div class="queueMeta">${order.guestName} · ${order.zone} · 优先级 ${order.priority}</div>
+            <div class="progress"><div style="width:${progress}%;"></div></div>
+          </div>
+        `);
+      });
+      queued.forEach(order => {
+        cards.push(`
+          <div class="queueCard">
+            <div class="queueHead">
+              <div class="queueTitle">${order.drinkName}</div>
+              <div class="status">待配制</div>
+            </div>
+            <div class="queueMeta">${order.guestName} · ${order.zone} · 优先级 ${order.priority}</div>
+          </div>
+        `);
+      });
+      el.mixBoard.innerHTML = cards.join('');
+    }
+
+    function renderRunners() {
+      el.runnerList.innerHTML = '';
+      state.runners.forEach(runner => {
+        const order = runner.currentOrderId ? orderById(runner.currentOrderId) : null;
+        const progress = runner.stage === 'enroute' && order ? Math.max(0, Math.min(100, Math.round((Date.now() - runner.startedAt) / (runner.endsAt - runner.startedAt) * 100))) : 0;
+        const card = document.createElement('div');
+        card.className = 'runnerCard';
+        card.innerHTML = `
+          <div class="runnerHead">
+            <div>
+              <div class="runnerName">${runner.name}</div>
+              <div class="queueMeta">${runner.style}</div>
+            </div>
+            <div class="status ${runner.stage === 'idle' ? '' : 'good'}">${runner.stage === 'idle' ? '空闲' : '派送中'}</div>
+          </div>
+          <div class="route">${order ? `路线：吧台 → ${order.zone} · 当前订单 ${order.drinkName}` : '当前没有正在执行的派送路线。'}</div>
+          <div class="progress"><div style="width:${progress}%;"></div></div>
+        `;
+        el.runnerList.appendChild(card);
+      });
+    }
+
+    function renderQueue() {
+      const view = state.orders.slice(0, 8);
+      if (!view.length) {
+        el.queueList.innerHTML = '<div class="empty">订单看板为空。先从场内客区为客人点一单。</div>';
+        return;
+      }
+      el.queueList.innerHTML = view.map(order => {
+        const meta = getOrderStatusMeta(order);
+        return `
+          <div class="queueCard">
+            <div class="queueHead">
+              <div class="queueTitle">${order.drinkName} · ${order.guestName}</div>
+              <div class="status ${meta.cls}">${meta.text}</div>
+            </div>
+            <div class="queueMeta">${order.zone} · ${order.zoneType} · 优先级 ${order.priority}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderFeed() {
+      el.feedList.innerHTML = state.feed.map(item => `
+        <div class="feedItem">
+          <div class="feedHead">
+            <div class="queueTitle">${item.title}</div>
+            <div class="status">${formatAgo(item.time)}</div>
+          </div>
+          <div class="feedBody">${item.body}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderAll() {
+      renderClock();
+      renderGuests();
+      renderMenu();
+      renderSelection();
+      renderStats();
+      renderMixBoard();
+      renderRunners();
+      renderQueue();
+      renderFeed();
+    }
+
+    function pulse() {
+      handleDayBoundary();
+      finishMixingOrders();
+      startQueuedOrders();
+      finishDeliveries();
+      autoAssignDeliveries();
+      renderClock();
+      renderMixBoard();
+      renderRunners();
+      renderQueue();
+      renderStats();
+      saveState();
+    }
+
+    let state = loadState();
+
+    el.guestGrid.addEventListener('click', event => {
+      const selectId = event.target.getAttribute('data-guest-select');
+      const orderId = event.target.getAttribute('data-guest-order');
+      if (selectId) {
+        state.selectedGuestId = selectId;
+        saveState();
+        renderAll();
+        return;
+      }
+      if (orderId) {
+        const guest = guestById(orderId);
+        if (!guest) return;
+        createOrder(guest.id, randomChoice(guest.favorite));
+      }
+    });
+
+    el.menuGrid.addEventListener('click', event => {
+      const drinkId = event.target.getAttribute('data-drink-select');
+      if (!drinkId) return;
+      state.selectedDrinkId = drinkId;
+      saveState();
+      renderAll();
+    });
+
+    el.placeOrderBtn.addEventListener('click', () => {
+      if (!state.selectedGuestId || !state.selectedDrinkId) return;
+      createOrder(state.selectedGuestId, state.selectedDrinkId);
+    });
+
+    el.manualDispatchBtn.addEventListener('click', () => {
+      const readyOrder = state.orders.filter(order => order.status === 'ready').sort((a, b) => b.priority - a.priority || a.createdAt - b.createdAt)[0];
+      if (!readyOrder) return;
+      if (assignDelivery(readyOrder)) {
+        saveState();
+        renderAll();
+      }
+    });
+
+    el.autoDispatchToggle.addEventListener('change', () => {
+      state.autoDispatch = el.autoDispatchToggle.checked;
+      saveState();
+      renderSelection();
+    });
+
+    el.surgeBtn.addEventListener('click', createSurgeOrders);
+    el.resetBtn.addEventListener('click', resetDay);
+
+    renderAll();
+    setInterval(pulse, 400);
+  })();
+  </script>
+</body>
+</html>

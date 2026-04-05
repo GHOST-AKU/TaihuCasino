@@ -1,0 +1,502 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>独立鸡尾酒吧台</title>
+  <style>
+    :root{
+      --bg:#08130f;--line:#d0b06e;--text:#f5ecd6;--muted:#bcae86;--green:#1f8a56;--green2:#2da76b;--red:#b2333f;--gold:#efcf8c;--gold2:#c59c54;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans","PingFang SC","Microsoft YaHei",sans-serif;
+      background:radial-gradient(1200px 700px at 20% 0%,#29533f 0%,transparent 60%),radial-gradient(900px 700px at 100% 0%,#4b2a1d 0%,transparent 55%),linear-gradient(180deg,var(--bg),#050b08 70%);
+    }
+    .wrap{max-width:1380px;margin:0 auto;padding:16px;display:grid;gap:12px}
+    .panel{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));border:1px solid rgba(208,176,110,.28);border-radius:16px;padding:12px;box-shadow:0 14px 38px rgba(0,0,0,.32)}
+    .title{font-size:13px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;font-weight:700}
+    .top{display:grid;grid-template-columns:1.25fr .75fr;gap:12px}
+    .mid{display:grid;grid-template-columns:1.15fr .85fr;gap:12px;align-items:start}
+    .heroRow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+    .heroTitle{display:grid;gap:6px}
+    .heroTitle h1{margin:0;font-size:32px;line-height:1.08;color:#f8e8c0;letter-spacing:.02em}
+    .heroTitle p{margin:0;color:var(--muted);max-width:64ch;line-height:1.55;font-size:13px}
+    .btns{display:flex;gap:8px;flex-wrap:wrap}
+    button{border-radius:10px;padding:8px 11px;border:1px solid rgba(208,176,110,.35);background:linear-gradient(180deg,#ebc982,#c59c54);color:#362506;font-weight:800;cursor:pointer}
+    button.secondary{background:linear-gradient(180deg,#1b3a2b,#12261c);color:var(--text)}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .topActions{display:grid;gap:10px;justify-items:end}
+    .clockBox{border:1px solid rgba(208,176,110,.24);border-radius:12px;padding:10px 12px;background:rgba(0,0,0,.18);min-width:220px;text-align:right}
+    .clockBox .big{font-size:28px;font-weight:900;color:#f4d68d;line-height:1}
+    .clockBox .small{margin-top:4px;color:var(--muted);font-size:12px}
+    .statGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .statCard{border:1px solid rgba(208,176,110,.25);border-radius:12px;padding:10px;background:rgba(0,0,0,.16);min-height:84px}
+    .statCard .k{color:var(--muted);font-size:12px}.statCard .v{font-size:22px;font-weight:900;margin-top:4px;color:#f8e8c0}.statCard .sub{margin-top:4px;color:rgba(255,255,255,.72);font-size:12px;line-height:1.45}
+    .signature{grid-column:1 / -1;border:1px solid rgba(208,176,110,.25);border-radius:12px;padding:10px;background:linear-gradient(180deg,rgba(208,176,110,.08),rgba(0,0,0,.16))}
+    .signature .name{font-size:18px;font-weight:900;color:#ffd97c}.signature .desc{margin-top:4px;color:var(--muted);line-height:1.55;font-size:13px}
+    .inventoryGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+    .invCard{border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:10px;background:rgba(0,0,0,.18);display:grid;gap:8px;position:relative;min-height:130px}
+    .invCard::before{content:"";position:absolute;inset:0 auto auto 0;width:4px;height:100%;border-radius:12px 0 0 12px;background:linear-gradient(180deg,var(--gold),var(--green2));opacity:.8}
+    .invHead{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;padding-left:6px}
+    .invName{font-weight:900;font-size:16px}.invType{font-size:11px;color:#0d1b13;background:linear-gradient(180deg,#efcf8c,#c59c54);padding:3px 8px;border-radius:999px;white-space:nowrap;font-weight:800}
+    .invMeta{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:12px;padding-left:6px}
+    .invEdit{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding-left:6px}
+    .invEdit input[type="number"]{width:86px}
+    input[type="number"],select{border-radius:8px;border:1px solid rgba(208,176,110,.3);background:rgba(0,0,0,.22);color:var(--text);padding:8px 9px}
+    input[type="checkbox"]{width:18px;height:18px;accent-color:var(--green2);cursor:pointer}
+    .recipeGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}
+    .recipeCard{border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:10px;background:rgba(0,0,0,.18);cursor:pointer;user-select:none;display:grid;gap:8px;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+    .recipeCard:hover{transform:translateY(-2px);border-color:rgba(239,207,140,.6);box-shadow:0 10px 24px rgba(0,0,0,.22)}
+    .recipeCard.active{outline:2px solid #efcf8c;box-shadow:0 0 0 1px rgba(0,0,0,.35) inset}
+    .recipeName{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;font-weight:900;font-size:16px}.recipeName small{color:var(--muted);font-size:11px;font-weight:700;display:block;margin-top:2px}
+    .tagRow{display:flex;gap:6px;flex-wrap:wrap}.tag{padding:3px 7px;border-radius:999px;background:rgba(208,176,110,.12);border:1px solid rgba(208,176,110,.18);font-size:11px;color:#f5e7c7;white-space:nowrap}
+    .recipeSide{margin-top:10px;border:1px solid rgba(208,176,110,.22);border-radius:12px;padding:10px;background:rgba(0,0,0,.16)}
+    .recipeSide h3{margin:0 0 8px 0;color:#ffd97c}.recipeSide .meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px}
+    .metaBox{border:1px solid rgba(255,255,255,.13);border-radius:10px;padding:8px;background:rgba(255,255,255,.03)}.metaBox .k{font-size:12px;color:var(--muted)}.metaBox .v{font-size:14px;font-weight:800;margin-top:2px}
+    .recipeSide ul{margin:8px 0 0 18px;padding:0;color:rgba(255,255,255,.9);line-height:1.6}
+    .console{display:grid;gap:10px}
+    .selectorGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .selector{border:1px solid rgba(208,176,110,.22);border-radius:12px;padding:10px;background:rgba(0,0,0,.16);display:grid;gap:6px}
+    .selector label{font-size:12px;color:var(--muted)}.selector select{width:100%}
+    .mixCard{border:1px solid rgba(208,176,110,.28);border-radius:14px;padding:12px;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(0,0,0,.18));display:grid;gap:10px;overflow:hidden}
+    .mixHead{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap}.mixHead .left{display:grid;gap:4px}.mixHead .left .name{font-size:18px;font-weight:900;color:#ffe39c}.mixHead .left .sub{font-size:12px;color:var(--muted)}
+    .mixBtnRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .progress{height:10px;border:1px solid rgba(255,255,255,.1);border-radius:999px;overflow:hidden;background:rgba(0,0,0,.2)}.progress>div{width:0%;height:100%;background:linear-gradient(90deg,rgba(208,176,110,0),rgba(208,176,110,1),rgba(208,176,110,0))}
+    .resultBox{border:1px solid rgba(208,176,110,.25);border-radius:12px;padding:10px;background:rgba(0,0,0,.18);display:grid;gap:8px;min-height:160px}
+    .resultTop{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.resultTop .cell{border:1px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.03);padding:8px;min-height:68px}.resultTop .cell .k{color:var(--muted);font-size:12px}.resultTop .cell .v{font-size:18px;font-weight:900;margin-top:4px}.resultTop .cell .v.good{color:#34cc7b}.resultTop .cell .v.bad{color:#ee6a6a}
+    .resultMsg{color:#f3ead0;line-height:1.65;font-size:13px;min-height:48px}.missingLine{color:#f0c26c;font-size:12px;line-height:1.55}
+    .shake{animation:shake .42s ease-in-out}@keyframes shake{0%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}100%{transform:translateX(0)}}
+    .pulse{animation:pulse .8s ease-in-out}@keyframes pulse{0%{filter:brightness(1)}50%{filter:brightness(1.08)}100%{filter:brightness(1)}}
+    .footer{color:rgba(255,255,255,.64);font-size:12px;line-height:1.55}.note{color:var(--muted);font-size:12px;line-height:1.55}
+    @media (max-width:1120px){.top,.mid{grid-template-columns:1fr}.topActions{justify-items:start}.clockBox{text-align:left;min-width:0;width:100%}}
+    @media (max-width:860px){.selectorGrid,.resultTop,.statGrid{grid-template-columns:1fr 1fr}.recipeSide .meta{grid-template-columns:1fr}.heroTitle h1{font-size:26px}}
+    @media (max-width:640px){.wrap{padding:12px}.selectorGrid,.resultTop,.statGrid{grid-template-columns:1fr}.inventoryGrid,.recipeGrid{grid-template-columns:1fr}.mixBtnRow,.btns{width:100%}button{width:100%}.mixBtnRow button{width:100%}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="panel">
+      <div class="heroRow">
+        <div class="heroTitle">
+          <h1>独立鸡尾酒吧台</h1>
+          <p>这是一个离线的吧台调酒互动页，走赌场绿金主题，但内容是鸡尾酒经营和出杯模拟。你可以勾选库存、点选酒谱、调整调制参数，然后看系统给出成品评分、口感判断和今日经营数据。</p>
+        </div>
+        <div class="topActions">
+          <div class="clockBox">
+            <div class="big" id="todayClock">--:--</div>
+            <div class="small" id="todayText">今日吧台已就绪</div>
+          </div>
+          <div class="btns">
+            <button class="secondary" id="resetStatsBtn">新的一天</button>
+            <button class="secondary" id="restoreBtn">恢复默认库存</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="top">
+      <div class="panel">
+        <div class="title">酒水库存区</div>
+        <div class="note">勾选表示该材料可用，数量为当前库存。每次成功出杯会消耗对应材料 1 份，缺料时会直接提示。</div>
+        <div class="inventoryGrid" id="inventoryGrid" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="panel">
+        <div class="title">经营感数据</div>
+        <div class="statGrid">
+          <div class="statCard"><div class="k">今日服务杯数</div><div class="v" id="statServed">0</div><div class="sub">已成功完成并递出的鸡尾酒数量。</div></div>
+          <div class="statCard"><div class="k">好评率</div><div class="v" id="statPositive">0%</div><div class="sub">评分 80 分及以上记为好评。</div></div>
+          <div class="statCard"><div class="k">当前最高评分</div><div class="v" id="statBestScore">0</div><div class="sub">用于刷新今日招牌酒。</div></div>
+          <div class="statCard"><div class="k">库存状态</div><div class="v" id="statStock">正常</div><div class="sub">材料充足时更容易做出稳定出品。</div></div>
+          <div class="signature">
+            <div class="k" style="color:var(--muted);font-size:12px;">今日招牌酒</div>
+            <div class="name" id="signatureName">暂无</div>
+            <div class="desc" id="signatureDesc">先调一杯试试，评分最高的作品会自动成为今日招牌。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mid">
+      <div class="panel">
+        <div class="title">酒谱区</div>
+        <div class="note">点击卡片查看配方与步骤。当前选中的酒谱会进入调制台，作为本次出杯目标。</div>
+        <div class="recipeGrid" id="recipeGrid" style="margin-top:10px;"></div>
+        <div class="recipeSide" id="recipeDetail">
+          <h3 id="detailName">请选择一款鸡尾酒</h3>
+          <div class="meta">
+            <div class="metaBox"><div class="k">风格</div><div class="v" id="detailStyle">-</div></div>
+            <div class="metaBox"><div class="k">推荐杯型</div><div class="v" id="detailGlass">-</div></div>
+            <div class="metaBox"><div class="k">核心材料</div><div class="v" id="detailIngredients">-</div></div>
+            <div class="metaBox"><div class="k">操作提示</div><div class="v" id="detailTip">-</div></div>
+          </div>
+          <div class="note" id="detailNote">点选酒谱后，这里会显示配方、步骤和味型说明。</div>
+          <ul id="detailSteps"></ul>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="title">调制台</div>
+        <div class="console">
+          <div class="selectorGrid">
+            <div class="selector"><label for="cupSelect">杯型</label><select id="cupSelect"></select></div>
+            <div class="selector"><label for="iceSelect">冰块</label><select id="iceSelect"></select></div>
+            <div class="selector"><label for="sweetSelect">甜度</label><select id="sweetSelect"></select></div>
+            <div class="selector"><label for="sourSelect">酸度</label><select id="sourSelect"></select></div>
+          </div>
+
+          <div class="mixCard" id="mixCard">
+            <div class="mixHead">
+              <div class="left">
+                <div class="name" id="mixTitle">等待点单</div>
+                <div class="sub" id="mixSub">选一款酒谱，再点击“开始调制”。</div>
+              </div>
+              <div class="mixBtnRow">
+                <button id="mixBtn">开始调制</button>
+                <button class="secondary" id="clearSelectionBtn">清空当前选择</button>
+              </div>
+            </div>
+            <div class="progress"><div id="mixBar"></div></div>
+            <div class="resultBox" id="resultBox">
+              <div class="resultTop">
+                <div class="cell"><div class="k">结果</div><div class="v" id="resultStatus">未开始</div></div>
+                <div class="cell"><div class="k">预计口感</div><div class="v" id="resultTaste">-</div></div>
+                <div class="cell"><div class="k">评分</div><div class="v" id="resultScore">0</div></div>
+                <div class="cell"><div class="k">当前点单</div><div class="v" id="resultRecipe">-</div></div>
+              </div>
+              <div class="resultMsg" id="resultMsg">请先从酒谱里选一款鸡尾酒。系统会根据库存和参数，给出成品判断。</div>
+              <div class="missingLine" id="missingLine">缺料提示会显示在这里。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="title">调试说明</div>
+      <div class="footer">本页是完全离线的单文件页面，状态会按“今天”保存在本地。如果跨天打开，会自动重置统计并恢复默认库存。成功出杯会消耗库存，评分越高，越容易刷新今日招牌酒。</div>
+    </section>
+  </div>
+
+  <script>
+  (() => {
+    const STORAGE_KEY = 'taihu-cocktail-bar-state';
+
+    const INVENTORY_DEFAULTS = [
+      { key:'vodka', name:'伏特加', type:'基酒', stock:4 },
+      { key:'gin', name:'金酒', type:'基酒', stock:4 },
+      { key:'rum', name:'朗姆', type:'基酒', stock:4 },
+      { key:'tequila', name:'龙舌兰', type:'基酒', stock:4 },
+      { key:'whisky', name:'威士忌', type:'基酒', stock:4 },
+      { key:'limeJuice', name:'青柠汁', type:'配料', stock:6 },
+      { key:'lemonJuice', name:'柠檬汁', type:'配料', stock:6 },
+      { key:'syrup', name:'糖浆', type:'配料', stock:8 },
+      { key:'sodaWater', name:'苏打水', type:'配料', stock:8 },
+      { key:'cola', name:'可乐', type:'配料', stock:6 },
+      { key:'bitters', name:'苦精', type:'配料', stock:4 },
+      { key:'mint', name:'薄荷', type:'配料', stock:5 },
+      { key:'orangeLiqueur', name:'橙味利口酒', type:'配料', stock:4 },
+      { key:'sweetVermouth', name:'甜苦艾酒', type:'配料', stock:4 },
+      { key:'tonicWater', name:'通宁水', type:'配料', stock:6 },
+      { key:'orangeJuice', name:'橙汁', type:'配料', stock:6 },
+      { key:'grenadine', name:'石榴糖浆', type:'配料', stock:4 },
+      { key:'orangePeel', name:'橙皮', type:'装饰', stock:5 }
+    ];
+
+    const RECIPES = [
+      { id:'mojito', name:'Mojito', cn:'莫吉托', style:'清爽薄荷', glass:'高球杯', flavor:'清爽、草本、带一点酸甜平衡', difficulty:'中等', ideal:{cup:'highball',ice:'standard',sweet:2,sour:3}, required:['rum','limeJuice','syrup','sodaWater','mint'], tags:['朗姆','青柠','薄荷','苏打'], steps:['杯中放入薄荷与糖浆，轻轻按压出香气。','加入朗姆、青柠汁和足量冰块。','注入苏打水，轻轻搅匀后出杯。'], tip:'薄荷与苏打水越完整，口感越干净。' },
+      { id:'margarita', name:'Margarita', cn:'玛格丽特', style:'明亮酸甜', glass:'鸡尾酒杯', flavor:'柑橘感强，入口利落，尾段带酒感', difficulty:'中等', ideal:{cup:'coupe',ice:'light',sweet:3,sour:4}, required:['tequila','limeJuice','orangeLiqueur','syrup'], tags:['龙舌兰','青柠','橙香'], steps:['先把杯口准备好，营造一点边缘风味。','把龙舌兰、青柠汁、橙味利口酒和糖浆加入摇壶。','加冰摇匀后滤入杯中。'], tip:'酸度和甜度越接近，越像经典的派对开场酒。' },
+      { id:'oldFashioned', name:'Old Fashioned', cn:'古典鸡尾酒', style:'浓烈复古', glass:'岩石杯', flavor:'威士忌骨架明显，苦香和甜感都很收敛', difficulty:'简单', ideal:{cup:'rocks',ice:'light',sweet:2,sour:1}, required:['whisky','syrup','bitters','orangePeel'], tags:['威士忌','苦精','橙皮'], steps:['在杯中混合威士忌、糖浆和苦精。','加入大冰块或少量冰块，让酒体保持厚度。','以橙皮表达香气，最后轻搅即可。'], tip:'这杯讲究克制，别把甜度做得太高。' },
+      { id:'negroni', name:'Negroni', cn:'内格罗尼', style:'苦香复古', glass:'岩石杯', flavor:'苦、香、烈，结构很明确，回味偏长', difficulty:'中等', ideal:{cup:'rocks',ice:'standard',sweet:1,sour:1}, required:['gin','sweetVermouth','bitters','orangePeel'], tags:['金酒','甜苦艾酒','苦精'], steps:['将金酒、甜苦艾酒和苦精直接加入杯中。','放入冰块，轻轻搅动。','用橙皮表达香气后出杯。'], tip:'这杯的关键词是平衡苦味，而不是堆甜。' },
+      { id:'ginTonic', name:'Gin Tonic', cn:'金汤力', style:'清新利口', glass:'高球杯', flavor:'爽净、干脆，带明显气泡感', difficulty:'简单', ideal:{cup:'highball',ice:'standard',sweet:1,sour:2}, required:['gin','tonicWater','limeJuice'], tags:['金酒','通宁水','清爽'], steps:['先把杯中装满冰块。','加入金酒和少量青柠汁。','缓缓注入通宁水，轻搅即可。'], tip:'气泡感越稳定，整体就越“像样”。' },
+      { id:'cubaLibre', name:'Cuba Libre', cn:'自由古巴', style:'轻松顺口', glass:'高球杯', flavor:'可乐的甜和朗姆的香很容易被接受', difficulty:'简单', ideal:{cup:'highball',ice:'standard',sweet:3,sour:2}, required:['rum','cola','limeJuice'], tags:['朗姆','可乐','青柠'], steps:['杯中加入冰块。','倒入朗姆酒与青柠汁。','补入可乐并轻搅。'], tip:'这杯是典型的“容易被点第二杯”的类型。' },
+      { id:'whiskySour', name:'Whiskey Sour', cn:'威士忌酸酒', style:'酸甜平衡', glass:'鸡尾酒杯', flavor:'酸感更突出，但仍要保留威士忌骨架', difficulty:'中等', ideal:{cup:'coupe',ice:'light',sweet:3,sour:4}, required:['whisky','lemonJuice','syrup'], tags:['威士忌','柠檬汁','糖浆'], steps:['先把威士忌、柠檬汁和糖浆倒入摇壶。','加冰充分摇匀。','滤入预冷杯中，保持酸香明快。'], tip:'酸度到位，才会有“提神”的感觉。' },
+      { id:'tequilaSunrise', name:'Tequila Sunrise', cn:'龙舌兰日出', style:'热带甜润', glass:'高球杯', flavor:'果汁感明显，颜色层次漂亮，入口更柔和', difficulty:'简单', ideal:{cup:'highball',ice:'standard',sweet:4,sour:2}, required:['tequila','orangeJuice','grenadine'], tags:['龙舌兰','橙汁','石榴糖浆'], steps:['杯中加入冰块和龙舌兰。','倒入橙汁并轻轻混合。','最后缓慢加入石榴糖浆形成日出层次。'], tip:'甜度略高时更讨喜，但别做成糖水。' },
+      { id:'vodkaSoda', name:'Vodka Soda', cn:'伏特加苏打', style:'极简清爽', glass:'高球杯', flavor:'干净、轻盈，主要靠冰感和气泡感撑住', difficulty:'简单', ideal:{cup:'highball',ice:'lots',sweet:1,sour:2}, required:['vodka','sodaWater','lemonJuice'], tags:['伏特加','苏打水','柠檬'], steps:['装冰后直接加入伏特加。','加入柠檬汁提亮。','最后补入苏打水，保持气泡。'], tip:'最怕的是冰不够，口感会立刻散掉。' }
+    ];
+
+    const CUP_OPTIONS = [
+      { value:'highball', label:'高球杯' },
+      { value:'coupe', label:'鸡尾酒杯' },
+      { value:'rocks', label:'岩石杯' },
+      { value:'martini', label:'马天尼杯' },
+      { value:'tiki', label:'异域杯' }
+    ];
+    const ICE_OPTIONS = [
+      { value:'none', label:'无冰' },
+      { value:'light', label:'少冰' },
+      { value:'standard', label:'标准冰' },
+      { value:'lots', label:'满冰' }
+    ];
+    const SWEET_OPTIONS = [1,2,3,4,5].map(v => ({ value:v, label:`${v} 级` }));
+    const SOUR_OPTIONS = [1,2,3,4,5].map(v => ({ value:v, label:`${v} 级` }));
+
+    const $ = id => document.getElementById(id);
+    const el = {
+      todayClock:$('todayClock'),todayText:$('todayText'),resetStatsBtn:$('resetStatsBtn'),restoreBtn:$('restoreBtn'),inventoryGrid:$('inventoryGrid'),recipeGrid:$('recipeGrid'),detailName:$('detailName'),detailStyle:$('detailStyle'),detailGlass:$('detailGlass'),detailIngredients:$('detailIngredients'),detailTip:$('detailTip'),detailNote:$('detailNote'),detailSteps:$('detailSteps'),cupSelect:$('cupSelect'),iceSelect:$('iceSelect'),sweetSelect:$('sweetSelect'),sourSelect:$('sourSelect'),mixTitle:$('mixTitle'),mixSub:$('mixSub'),mixBtn:$('mixBtn'),clearSelectionBtn:$('clearSelectionBtn'),mixBar:$('mixBar'),resultBox:$('resultBox'),resultStatus:$('resultStatus'),resultTaste:$('resultTaste'),resultScore:$('resultScore'),resultRecipe:$('resultRecipe'),resultMsg:$('resultMsg'),missingLine:$('missingLine'),statServed:$('statServed'),statPositive:$('statPositive'),statBestScore:$('statBestScore'),statStock:$('statStock'),signatureName:$('signatureName'),signatureDesc:$('signatureDesc')
+    };
+
+    function getDateKey(date = new Date()) {
+      return new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Shanghai', year:'numeric', month:'2-digit', day:'2-digit' }).format(date);
+    }
+    function getClockText(date = new Date()) {
+      return new Intl.DateTimeFormat('zh-CN', { timeZone:'Asia/Shanghai', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }).format(date);
+    }
+    function defaultInventory() {
+      return INVENTORY_DEFAULTS.map(item => ({ ...item, enabled:item.stock > 0 }));
+    }
+    function defaultStats() {
+      return { served:0, positive:0, bestScore:0, signature:null, lastResult:null };
+    }
+    function byId(id) { return RECIPES.find(r => r.id === id) || RECIPES[0]; }
+    function byInventoryKey(key) { return state.inventory.find(item => item.key === key); }
+    function available(key) { const item = byInventoryKey(key); return Boolean(item && item.enabled && item.stock > 0); }
+    function clampInt(value, fallback = 0) { const n = Math.floor(Number(value)); return Number.isFinite(n) ? Math.max(fallback, n) : fallback; }
+    function fillSelect(select, options) { select.innerHTML = options.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join(''); }
+    function getUI() { return { cup:el.cupSelect.value, ice:el.iceSelect.value, sweet:Number(el.sweetSelect.value), sour:Number(el.sourSelect.value) }; }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { dateKey:getDateKey(), inventory:defaultInventory(), stats:defaultStats(), selectedRecipeId:RECIPES[0].id, ui:{ cup:'highball', ice:'standard', sweet:3, sour:3 } };
+        const parsed = JSON.parse(raw);
+        if (!parsed || parsed.dateKey !== getDateKey()) throw new Error('date');
+        const inventoryMap = new Map((parsed.inventory || []).map(item => [item.key, item]));
+        const inventory = INVENTORY_DEFAULTS.map(item => {
+          const saved = inventoryMap.get(item.key) || {};
+          const stock = Number.isFinite(Number(saved.stock)) ? Math.max(0, Math.floor(Number(saved.stock))) : item.stock;
+          const enabled = typeof saved.enabled === 'boolean' ? saved.enabled : stock > 0;
+          return { ...item, stock, enabled: enabled && stock > 0 };
+        });
+        return {
+          dateKey: parsed.dateKey,
+          inventory,
+          stats: { ...defaultStats(), ...(parsed.stats || {}) },
+          selectedRecipeId: RECIPES.some(r => r.id === parsed.selectedRecipeId) ? parsed.selectedRecipeId : RECIPES[0].id,
+          ui: { cup:'highball', ice:'standard', sweet:3, sour:3, ...(parsed.ui || {}) }
+        };
+      } catch {
+        return { dateKey:getDateKey(), inventory:defaultInventory(), stats:defaultStats(), selectedRecipeId:RECIPES[0].id, ui:{ cup:'highball', ice:'standard', sweet:3, sour:3 } };
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ dateKey:getDateKey(), inventory:state.inventory, stats:state.stats, selectedRecipeId, ui:getUI() }));
+    }
+
+    let state = loadState();
+    let selectedRecipeId = state.selectedRecipeId || RECIPES[0].id;
+    let mixing = false;
+
+    function renderClock() {
+      el.todayClock.textContent = getClockText();
+      el.todayText.textContent = `今天是 ${getDateKey()}，吧台正在离线运行`;
+    }
+
+    function renderInventory() {
+      el.inventoryGrid.innerHTML = '';
+      ['基酒','配料','装饰'].forEach(group => {
+        state.inventory.filter(item => item.type === group).forEach(item => {
+          const card = document.createElement('div');
+          card.className = 'invCard';
+          card.innerHTML = `
+            <div class="invHead"><div><div class="invName">${item.name}</div><div class="note">${group} · ${item.enabled && item.stock > 0 ? '可用' : '断货'}</div></div><div class="invType">${group}</div></div>
+            <div class="invMeta"><span>库存：${item.stock} 份</span><span>${item.enabled ? '已上柜' : '未启用'}</span></div>
+            <div class="invEdit"><input type="checkbox" ${item.enabled && item.stock > 0 ? 'checked' : ''}><input type="number" min="0" max="99" value="${item.stock}"><span class="note">份</span></div>
+          `;
+          const checkbox = card.querySelector('input[type="checkbox"]');
+          const number = card.querySelector('input[type="number"]');
+          checkbox.addEventListener('change', () => { item.enabled = checkbox.checked; if (item.enabled && item.stock === 0) item.stock = 1; renderAll(); });
+          number.addEventListener('input', () => { item.stock = clampInt(number.value, 0); if (item.stock <= 0) item.enabled = false; renderAll(); });
+          el.inventoryGrid.appendChild(card);
+        });
+      });
+    }
+
+    function fillConsoleDefaults(recipe) {
+      const preset = { mojito:{cup:'highball',ice:'standard',sweet:2,sour:3}, margarita:{cup:'coupe',ice:'light',sweet:3,sour:4}, oldFashioned:{cup:'rocks',ice:'light',sweet:2,sour:1}, negroni:{cup:'rocks',ice:'standard',sweet:1,sour:1}, ginTonic:{cup:'highball',ice:'standard',sweet:1,sour:2}, cubaLibre:{cup:'highball',ice:'standard',sweet:3,sour:2}, whiskySour:{cup:'coupe',ice:'light',sweet:3,sour:4}, tequilaSunrise:{cup:'highball',ice:'standard',sweet:4,sour:2}, vodkaSoda:{cup:'highball',ice:'lots',sweet:1,sour:2} }[recipe.id] || {cup:'highball',ice:'standard',sweet:3,sour:3};
+      el.cupSelect.value = preset.cup; el.iceSelect.value = preset.ice; el.sweetSelect.value = String(preset.sweet); el.sourSelect.value = String(preset.sour);
+    }
+
+    function renderRecipeDetail(recipe) {
+      el.detailName.textContent = `${recipe.name} / ${recipe.cn}`;
+      el.detailStyle.textContent = recipe.style;
+      el.detailGlass.textContent = recipe.glass;
+      el.detailIngredients.textContent = recipe.required.map(key => byInventoryKey(key)?.name || key).join('、');
+      el.detailTip.textContent = recipe.tip;
+      el.detailNote.textContent = `风味描述：${recipe.flavor}`;
+      el.detailSteps.innerHTML = recipe.steps.map(step => `<li>${step}</li>`).join('');
+    }
+
+    function renderRecipes() {
+      const current = byId(selectedRecipeId);
+      el.recipeGrid.innerHTML = '';
+      RECIPES.forEach(recipe => {
+        const card = document.createElement('div');
+        card.className = `recipeCard ${recipe.id === selectedRecipeId ? 'active' : ''}`;
+        const missing = recipe.required.filter(key => !available(key)).length;
+        card.innerHTML = `<div class="recipeName"><div>${recipe.name}<small>${recipe.cn}</small></div><div style="text-align:right;font-size:11px;color:var(--muted);">${recipe.difficulty}<br>${missing ? `缺 ${missing} 项` : '可调制'}</div></div><div class="tagRow">${recipe.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}</div><div class="note">${recipe.flavor}</div>`;
+        card.addEventListener('click', () => { selectedRecipeId = recipe.id; fillConsoleDefaults(recipe); renderAll(); saveState(); });
+        el.recipeGrid.appendChild(card);
+      });
+      renderRecipeDetail(current);
+      updateMixTitle();
+    }
+
+    function updateMixTitle() {
+      const recipe = byId(selectedRecipeId);
+      el.mixTitle.textContent = `${recipe.name} · ${recipe.cn}`;
+      el.mixSub.textContent = `当前目标：${recipe.style}。杯型和甜酸设置会影响评分和口感。`;
+      el.resultRecipe.textContent = recipe.cn;
+    }
+
+    function getMissing(recipe) { return recipe.required.filter(key => !available(key)).map(key => byInventoryKey(key)?.name || key); }
+    function useIngredients(recipe) { recipe.required.forEach(key => { const item = byInventoryKey(key); if (!item) return; item.stock = Math.max(0, item.stock - 1); if (item.stock === 0) item.enabled = false; }); }
+    function updateStatsFromResult(recipe, score, success) {
+      if (!success) return;
+      state.stats.served += 1;
+      if (score >= 80) state.stats.positive += 1;
+      if (score > state.stats.bestScore) state.stats = { ...state.stats, bestScore:score, signature:{ name:recipe.cn, score, desc:`${recipe.name} 以 ${score} 分成为今日最高评分，风味偏 ${recipe.style}。` } };
+      state.stats.lastResult = { recipeId:recipe.id, score, success };
+    }
+    function updateStockStatus() { const lowCount = state.inventory.filter(item => item.enabled && item.stock > 0 && item.stock <= 1).length; const outCount = state.inventory.filter(item => !item.enabled || item.stock <= 0).length; if (outCount >= 8) return '库存紧张'; if (lowCount >= 4) return '库存偏低'; return '正常'; }
+    function renderStats() {
+      const stats = state.stats;
+      el.statServed.textContent = String(stats.served);
+      el.statPositive.textContent = `${stats.served ? Math.round(stats.positive / stats.served * 100) : 0}%`;
+      el.statBestScore.textContent = String(stats.bestScore || 0);
+      el.statStock.textContent = updateStockStatus();
+      if (stats.signature) { el.signatureName.textContent = stats.signature.name; el.signatureDesc.textContent = stats.signature.desc; }
+      else { el.signatureName.textContent = '暂无'; el.signatureDesc.textContent = '先调一杯试试，评分最高的作品会自动成为今日招牌。'; }
+    }
+    function analyzeTaste(recipe, ui) {
+      const cupMatch = ui.cup === recipe.ideal.cup;
+      const iceScore = { none:0, light:1, standard:2, lots:3 }[ui.ice] ?? 2;
+      const iceIdeal = { none:0, light:1, standard:2, lots:3 }[recipe.ideal.ice] ?? 2;
+      const sweetDiff = Math.abs(ui.sweet - recipe.ideal.sweet);
+      const sourDiff = Math.abs(ui.sour - recipe.ideal.sour);
+      const iceDiff = Math.abs(iceScore - iceIdeal);
+      let score = 92 - sweetDiff * 6 - sourDiff * 6 - iceDiff * 5 - (cupMatch ? 0 : 8);
+      if (recipe.id === 'oldFashioned' || recipe.id === 'negroni') score += ui.sweet <= 2 ? 5 : -3;
+      if (recipe.id === 'mojito' || recipe.id === 'ginTonic' || recipe.id === 'vodkaSoda') score += ui.ice === 'standard' || ui.ice === 'lots' ? 4 : -2;
+      if (recipe.id === 'tequilaSunrise' || recipe.id === 'cubaLibre') score += ui.sweet >= 3 ? 4 : -2;
+      return Math.max(0, Math.min(100, Math.round(score)));
+    }
+    function getTasteLabel(recipe, ui, score, missingCount) {
+      if (missingCount > 0) return '缺料停摆';
+      if (score >= 90) return recipe.style.includes('浓烈') ? '浓烈顺滑' : '层次漂亮';
+      if (recipe.id === 'oldFashioned' || recipe.id === 'negroni') return score >= 80 ? '浓烈' : '苦香偏重';
+      if (recipe.id === 'mojito' || recipe.id === 'ginTonic' || recipe.id === 'vodkaSoda') return score >= 80 ? '清爽' : '轻盈';
+      if (ui.sweet >= 4) return '甜润';
+      if (ui.sour >= 4) return '酸爽';
+      if (ui.ice === 'lots') return '冰爽';
+      if (ui.ice === 'none') return '浓烈';
+      return '平衡';
+    }
+    function buildMessage(recipe, score, missing) {
+      if (missing.length) return `这杯 ${recipe.cn} 暂时缺料，先把库存补齐再上台。现在缺少：${missing.join('、')}。`;
+      if (score >= 90) return '这杯的平衡感很稳，香气、口感和收口都比较到位，属于可以直接上菜单的版本。';
+      if (score >= 80) return '整体已经很顺，客人接受度会不错，稍微再调一调甜酸比例就能更漂亮。';
+      if (score >= 65) return '味道有了，但层次还差一点，建议检查杯型和甜酸设置是否更贴近酒谱。';
+      if (score >= 45) return '这杯能喝，但结构不够干净，口感会显得松散一些。';
+      return '更像临时试制品，建议先从库存和参数两端一起修正。';
+    }
+    function renderResult(recipe, score, taste, missing, success) {
+      el.resultStatus.textContent = success ? '成功' : '缺料';
+      el.resultStatus.className = `v ${success ? 'good' : 'bad'}`;
+      el.resultTaste.textContent = taste;
+      el.resultScore.textContent = String(score);
+      el.resultScore.className = `v ${score >= 80 ? 'good' : score < 45 ? 'bad' : ''}`;
+      el.resultMsg.textContent = buildMessage(recipe, score, missing);
+      el.missingLine.textContent = missing.length ? `缺料清单：${missing.join('、')}` : '材料齐全，可以按配方正常出杯。';
+    }
+    function animateResult(success) { el.mixCard.classList.remove('shake', 'pulse'); void el.mixCard.offsetWidth; el.mixCard.classList.add(success ? 'pulse' : 'shake'); }
+
+    async function startMixing() {
+      if (mixing) return;
+      const recipe = byId(selectedRecipeId);
+      const ui = getUI();
+      state.ui = ui;
+      const missing = getMissing(recipe);
+      const success = missing.length === 0;
+      const score = analyzeTaste(recipe, ui);
+      const taste = getTasteLabel(recipe, ui, score, missing.length);
+      mixing = true;
+      el.mixBtn.disabled = true;
+      el.mixBar.style.transition = 'none';
+      el.mixBar.style.width = '0%';
+      el.resultBox.classList.remove('shake');
+      el.resultMsg.textContent = '吧台正在摇匀、试味和收尾，请稍等片刻...';
+      el.resultStatus.textContent = '调制中';
+      el.resultTaste.textContent = '分析中';
+      el.resultScore.textContent = '--';
+      el.missingLine.textContent = '系统正在校验库存与参数。';
+      el.mixTitle.textContent = `${recipe.name} · ${recipe.cn}`;
+      el.mixSub.textContent = '调制流程进行中，请等待结果。';
+      renderAll(false);
+      const start = performance.now();
+      await new Promise(resolve => {
+        const frame = now => {
+          const p = Math.min(1, (now - start) / 1100);
+          el.mixBar.style.width = `${Math.round(p * 100)}%`;
+          if (p < 1) requestAnimationFrame(frame); else resolve();
+        };
+        requestAnimationFrame(frame);
+      });
+      if (success) useIngredients(recipe);
+      updateStatsFromResult(recipe, score, success);
+      renderResult(recipe, score, taste, missing, success);
+      animateResult(success && score >= 75);
+      saveState();
+      renderAll();
+      mixing = false;
+      el.mixBtn.disabled = false;
+      setTimeout(() => { el.mixBar.style.transition = 'width .2s ease'; el.mixBar.style.width = '0%'; }, 120);
+    }
+
+    function setStatus(text) { el.todayText.textContent = text; setTimeout(() => { el.todayText.textContent = `今天是 ${getDateKey()}，吧台正在离线运行`; }, 1800); }
+    function resetStatsOnly() { state.stats = defaultStats(); state.inventory = defaultInventory(); selectedRecipeId = RECIPES[0].id; fillConsoleDefaults(byId(selectedRecipeId)); renderAll(); saveState(); setStatus('已切换到新的一天，统计和库存都已重置。'); }
+    function restoreDefaults() { state.inventory = defaultInventory(); renderAll(); saveState(); setStatus('库存已恢复为默认配置。'); }
+    function clearSelection() { selectedRecipeId = RECIPES[0].id; fillConsoleDefaults(byId(selectedRecipeId)); renderAll(); saveState(); setStatus('已清空当前选择，回到默认酒谱。'); }
+    function renderAll(skipSave = true) { renderClock(); renderInventory(); renderRecipes(); renderSelectors(); renderStats(); updateMixTitle(); if (skipSave) saveState(); }
+
+    function renderSelectors() {
+      fillSelect(el.cupSelect, CUP_OPTIONS);
+      fillSelect(el.iceSelect, ICE_OPTIONS);
+      fillSelect(el.sweetSelect, SWEET_OPTIONS);
+      fillSelect(el.sourSelect, SOUR_OPTIONS);
+      el.cupSelect.value = state.ui?.cup || 'highball';
+      el.iceSelect.value = state.ui?.ice || 'standard';
+      el.sweetSelect.value = String(state.ui?.sweet || 3);
+      el.sourSelect.value = String(state.ui?.sour || 3);
+    }
+
+    el.cupSelect.addEventListener('change', () => { state.ui = getUI(); saveState(); });
+    el.iceSelect.addEventListener('change', () => { state.ui = getUI(); saveState(); });
+    el.sweetSelect.addEventListener('change', () => { state.ui = getUI(); saveState(); });
+    el.sourSelect.addEventListener('change', () => { state.ui = getUI(); saveState(); });
+    el.mixBtn.addEventListener('click', startMixing);
+    el.resetStatsBtn.addEventListener('click', resetStatsOnly);
+    el.restoreBtn.addEventListener('click', restoreDefaults);
+    el.clearSelectionBtn.addEventListener('click', clearSelection);
+
+    if (!state.dateKey || state.dateKey !== getDateKey()) {
+      state = { dateKey:getDateKey(), inventory:defaultInventory(), stats:defaultStats(), selectedRecipeId:RECIPES[0].id, ui:{ cup:'highball', ice:'standard', sweet:3, sour:3 } };
+    }
+    if (state.ui) {
+      el.cupSelect.value = state.ui.cup || 'highball';
+      el.iceSelect.value = state.ui.ice || 'standard';
+      el.sweetSelect.value = String(state.ui.sweet || 3);
+      el.sourSelect.value = String(state.ui.sour || 3);
+    }
+    selectedRecipeId = state.selectedRecipeId || RECIPES[0].id;
+    fillConsoleDefaults(byId(selectedRecipeId));
+    renderAll(false);
+    saveState();
+    setInterval(renderClock, 1000);
+  })();
+  </script>
+</body>
+</html>
