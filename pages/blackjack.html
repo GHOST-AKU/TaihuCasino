@@ -16,8 +16,8 @@
     .statRow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
     .bank{font-size:34px;font-weight:900;color:#f1d28f}
     .btns{display:flex;gap:8px;flex-wrap:wrap}
-    button{border-radius:10px;padding:8px 11px;border:1px solid rgba(208,176,110,.35);background:linear-gradient(180deg,#ebc982,#c59c54);color:#362506;font-weight:800;cursor:pointer}
-    button.secondary{background:linear-gradient(180deg,#1b3a2b,#12261c);color:var(--text)}
+    button,.btns a{display:inline-flex;align-items:center;justify-content:center;border-radius:10px;padding:8px 11px;border:1px solid rgba(208,176,110,.35);background:linear-gradient(180deg,#ebc982,#c59c54);color:#362506;font-weight:800;cursor:pointer;text-decoration:none}
+    button.secondary,.btns a.secondary{background:linear-gradient(180deg,#1b3a2b,#12261c);color:var(--text)}
     button.ghost{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.18));color:var(--text)}
     button:disabled{opacity:.5;cursor:not-allowed}
     .msg{margin-top:8px;color:var(--muted);line-height:1.6;min-height:44px}
@@ -93,6 +93,7 @@
         <div class="statRow">
           <div><div style="color:var(--muted);font-size:13px;">余额</div><div class="bank" id="balance">1000</div></div>
           <div class="btns">
+            <a class="secondary" href="./casino-cocktail-service.html?source=blackjack">去酒吧点饮料</a>
             <button class="secondary" id="helpBtn">玩法说明 / Rules</button>
             <button class="secondary" id="clearBetBtn">清空主注</button>
             <button class="secondary" id="resetBtn">重置局面</button>
