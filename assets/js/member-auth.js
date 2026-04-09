@@ -124,9 +124,13 @@
 
   function setAvatar(user) {
     if (!elements.profileAvatar) return;
+    elements.profileAvatar.textContent = "";
 
     if (user && user.picture) {
-      elements.profileAvatar.innerHTML = `<img src="${user.picture}" alt="${(user.name || "member")} avatar" />`;
+      const avatar = document.createElement("img");
+      avatar.setAttribute("src", String(user.picture));
+      avatar.setAttribute("alt", `${String(user.name || "member")} avatar`);
+      elements.profileAvatar.appendChild(avatar);
       return;
     }
 
