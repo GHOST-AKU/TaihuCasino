@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TaihuCasino Roulette OpenUI v2</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css" />
+  <style>
+    :root {
+      --bg: #05090e;
+      --ink: #fef4df;
+      --muted: #c5b899;
+      --gold: #e2bb70;
+    }
+    body {
+      margin: 0;
+      color: var(--ink);
+      min-height: 100vh;
+      background:
+        radial-gradient(1000px 550px at 5% 0%, #18433a 0%, transparent 58%),
+        radial-gradient(900px 500px at 95% 0%, #512f18 0%, transparent 57%),
+        linear-gradient(180deg, var(--bg), #030507 70%);
+    }
+    .shell { max-width: 1500px; margin: 0 auto; padding: 14px; }
+    .bar {
+      border-radius: 16px;
+      border: 1px solid rgba(226, 187, 112, .4);
+      background: rgba(255,255,255,.03);
+      box-shadow: 0 14px 34px rgba(0,0,0,.35);
+      padding: 14px;
+    }
+    .label {
+      margin: 0;
+      color: var(--muted);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+    .frameWrap {
+      margin-top: 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(226, 187, 112, .35);
+      overflow: hidden;
+      box-shadow: 0 20px 44px rgba(0,0,0,.4);
+    }
+    iframe {
+      width: 100%;
+      height: calc(100vh - 150px);
+      min-height: 860px;
+      border: 0;
+      display: block;
+      background: #061212;
+    }
+    @media (max-width: 960px) {
+      iframe { min-height: 1050px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="bar">
+      <div class="d-flex flex-column flex-md-row gap-2 align-items-md-center justify-content-between">
+        <div>
+          <p class="label">Open UI v2</p>
+          <h1 class="h2 m-0">欧式轮盘视觉升级页</h1>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-amber" href="../home_openui.html">返回新首页</a>
+          <a class="btn btn-outline-light" href="./roulette.html">看原轮盘</a>
+          <a class="btn btn-outline-warning" href="../home.html">看原 Home</a>
+        </div>
+      </div>
+    </header>
+    <section class="frameWrap">
+      <iframe id="rouletteFrame" src="./roulette.html" title="roulette"></iframe>
+    </section>
+  </div>
+
+  <script>
+    const frame = document.getElementById("rouletteFrame");
+
+    function injectSkin(doc) {
+      const style = doc.createElement("style");
+      style.textContent = `
+        body {
+          background:
+            radial-gradient(1000px 550px at 10% 0%, #163c34 0%, transparent 60%),
+            radial-gradient(800px 500px at 90% 0%, #4f2d17 0%, transparent 56%),
+            linear-gradient(180deg, #071012, #04090b 70%) !important;
+          color: #fef4df !important;
+        }
+        .panel {
+          border: 1px solid rgba(226,187,112,.42) !important;
+          border-radius: 16px !important;
+          background: linear-gradient(165deg, rgba(255,255,255,.08), rgba(255,255,255,.02)) !important;
+          box-shadow: 0 16px 36px rgba(0,0,0,.42) !important;
+          padding: 14px !important;
+        }
+        .title {
+          font-size: 12px !important;
+          letter-spacing: .08em !important;
+          color: #c8bb9d !important;
+        }
+        button {
+          border-radius: 999px !important;
+          padding: 9px 14px !important;
+          border: 1px solid rgba(226,187,112,.55) !important;
+          background: linear-gradient(180deg, #f4d38f, #d9a955) !important;
+          color: #271907 !important;
+          font-weight: 800 !important;
+        }
+        button.secondary {
+          background: linear-gradient(180deg, #1f4d3c, #143228) !important;
+          color: #fef4df !important;
+        }
+        .numCell, .outsideCell, .dozenCell, .colCell, .zeroCell {
+          border-radius: 9px !important;
+          border-color: rgba(255,255,255,.24) !important;
+        }
+        .active {
+          outline: 2px solid #f3ce87 !important;
+          box-shadow: 0 0 0 2px rgba(243,206,135,.2) !important;
+        }
+        .metric {
+          border-radius: 12px !important;
+          border-color: rgba(226,187,112,.34) !important;
+        }
+        .bank {
+          color: #ffd891 !important;
+          text-shadow: 0 1px 0 rgba(0,0,0,.4);
+        }
+      `;
+      doc.head.appendChild(style);
+    }
+
+    frame.addEventListener("load", () => {
+      try {
+        injectSkin(frame.contentDocument);
+      } catch (err) {
+        console.error("skin inject failed", err);
+      }
+    });
+  </script>
+</body>
+</html>

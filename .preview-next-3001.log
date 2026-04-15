@@ -1,0 +1,11 @@
+
+> taihu-casino@0.1.0 dev E:\project\TaihuCasino
+> next dev "--hostname" "127.0.0.1" "--port" "3001"
+
+▲ Next.js 16.2.0 (Turbopack)
+- Local:         http://127.0.0.1:3001
+- Network:       http://127.0.0.1:3001
+✓ Ready in 1429ms
+
+ GET / 200 in 1127ms (next.js: 419ms, application-code: 708ms)
+ GET / 200 in 202ms (next.js: 12ms, application-code: 189ms)

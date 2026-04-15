@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TaihuCasino Live Home</title>
+  <style>
+    :root {
+      --bg0: #061014;
+      --bg1: #0a1d22;
+      --ink: #f6ecd4;
+      --muted: #8aa1a6;
+      --gold: #dcb778;
+      --hot: #f06a48;
+      --teal: #33d1c4;
+      --line: rgba(220, 183, 120, 0.36);
+      --panel: rgba(12, 20, 26, 0.64);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(900px 700px at 12% 0%, #174c46 0%, transparent 60%),
+        radial-gradient(700px 650px at 100% 10%, #5a311b 0%, transparent 55%),
+        linear-gradient(180deg, var(--bg1), var(--bg0) 70%);
+      overflow-x: hidden;
+    }
+    .ticker {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(8px);
+      background: rgba(5, 10, 12, 0.68);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+    .ticker__inner {
+      display: inline-flex;
+      gap: 42px;
+      white-space: nowrap;
+      padding: 9px 0;
+      min-width: 200%;
+      animation: roll 20s linear infinite;
+      color: #d7c8a6;
+      font-weight: 700;
+      letter-spacing: .04em;
+    }
+    @keyframes roll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+    main { scroll-snap-type: y mandatory; }
+    section {
+      min-height: 100vh;
+      padding: 18px;
+      scroll-snap-align: start;
+      position: relative;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-columns: 1fr 310px;
+      gap: 14px;
+      align-items: stretch;
+    }
+    .arena {
+      border-radius: 22px;
+      border: 1px solid var(--line);
+      background: radial-gradient(circle at center, rgba(22, 67, 61, 0.7), rgba(8, 17, 22, 0.92));
+      box-shadow: 0 20px 56px rgba(0,0,0,.45);
+      position: relative;
+      overflow: hidden;
+      min-height: calc(100vh - 86px);
+    }
+    .arena::after {
+      content: "";
+      position: absolute;
+      inset: auto auto -140px -100px;
+      width: 360px; height: 360px;
+      border-radius: 50%;
+      background: radial-gradient(circle at center, rgba(240,106,72,.35), transparent 65%);
+      pointer-events: none;
+    }
+    .ring {
+      position: absolute;
+      inset: 50% auto auto 50%;
+      width: min(70vmin, 620px);
+      aspect-ratio: 1 / 1;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      border: 1px dashed rgba(255,255,255,0.16);
+    }
+    .node {
+      position: absolute;
+      width: 130px;
+      height: 130px;
+      border-radius: 28px 40px 34px 20px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: var(--panel);
+      display: grid;
+      place-content: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: .18s ease;
+      user-select: none;
+    }
+    .node:hover { transform: translateY(-3px) scale(1.03); border-color: rgba(220,183,120,.8); }
+    .node strong { font-size: 24px; letter-spacing: .01em; }
+    .node span { color: #b7c4c7; font-size: 13px; }
+    .node.active {
+      box-shadow: 0 0 0 2px rgba(220,183,120,.5), 0 14px 34px rgba(0,0,0,.35);
+      border-color: var(--gold);
+    }
+    .n1 { left: 8%; top: 16%; }
+    .n2 { left: 74%; top: 20%; }
+    .n3 { left: 12%; top: 64%; }
+    .n4 { left: 72%; top: 62%; }
+
+    .pulse {
+      position: absolute;
+      inset: 50% auto auto 50%;
+      transform: translate(-50%, -50%);
+      width: min(34vmin, 300px);
+      aspect-ratio: 1 / 1;
+      border-radius: 50%;
+      border: 1px solid rgba(220,183,120,.35);
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at center, rgba(220,183,120,.2), rgba(220,183,120,0) 72%);
+    }
+    .pulse__val { font-size: clamp(30px, 7vmin, 72px); font-weight: 800; }
+    .pulse__k { color: #b3b7a5; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+
+    .rail {
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(7,12,14,.65);
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 10px;
+      padding: 12px;
+      min-height: calc(100vh - 86px);
+    }
+    .strip {
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 10px;
+      background: rgba(255,255,255,.02);
+    }
+    .strip .k {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      margin-bottom: 4px;
+    }
+    .strip .v { font-size: 28px; font-weight: 800; }
+    .cmds {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+    }
+    .btn {
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.03);
+      color: var(--ink);
+      padding: 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .btn:hover { border-color: var(--gold); }
+    .btn.primary { background: linear-gradient(180deg, #efce90, #d7a75b); color: #2a1a08; border-color: rgba(220,183,120,.9); }
+    .feed {
+      max-height: 280px;
+      overflow: auto;
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.4;
+      color: #d7d8cc;
+    }
+    .feed div { padding: 3px 0; border-bottom: 1px dashed rgba(255,255,255,.08); }
+
+    .section-title {
+      margin: 0 0 10px;
+      color: #c9b486;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+    }
+    .flow {
+      min-height: calc(100vh - 36px);
+      border-radius: 22px;
+      border: 1px solid var(--line);
+      background: linear-gradient(165deg, rgba(7,13,18,.9), rgba(12,22,28,.88));
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 16px;
+    }
+    .lane {
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+    .dot {
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 16px 32px 16px 32px;
+      padding: 12px;
+      background: rgba(255,255,255,.02);
+      cursor: pointer;
+      transition: .16s ease;
+    }
+    .dot:hover, .dot.active { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(51,209,196,.2); }
+    .board {
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 18px;
+      padding: 14px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 10px;
+      background: rgba(255,255,255,.02);
+    }
+    .nums {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0,1fr));
+      gap: 6px;
+    }
+    .cell {
+      text-align: center;
+      padding: 9px 0;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.12);
+      cursor: pointer;
+      font-weight: 700;
+      transition: .13s ease;
+      user-select: none;
+    }
+    .cell:hover { transform: translateY(-2px); border-color: var(--gold); }
+    .cell.hit { background: rgba(51,209,196,.22); border-color: var(--teal); }
+    .sliders {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: 8px;
+    }
+    .ctl {
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 12px;
+      padding: 9px;
+      background: rgba(255,255,255,.02);
+    }
+    .ctl label {
+      display: flex;
+      justify-content: space-between;
+      color: #c1c6bc;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    input[type="range"] { width: 100%; accent-color: #dcb778; }
+    .bottom {
+      min-height: calc(100vh - 36px);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(9,15,20,.85), rgba(5,9,11,.95));
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .orbit {
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 18px;
+      position: relative;
+      overflow: hidden;
+      background: rgba(255,255,255,.01);
+      min-height: 320px;
+    }
+    .chip {
+      position: absolute;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      border: 2px dashed rgba(255,255,255,.5);
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      color: #201508;
+      background: radial-gradient(circle at 30% 28%, #fff0cd, #d8a95a);
+      box-shadow: 0 8px 18px rgba(0,0,0,.3);
+      cursor: grab;
+    }
+    .chip.alt {
+      background: radial-gradient(circle at 30% 28%, #ffe2e2, #d05a5a);
+      color: #fff;
+    }
+    .pad {
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 18px;
+      padding: 12px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 10px;
+      background: rgba(255,255,255,.02);
+    }
+    .log {
+      overflow: auto;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      padding: 8px;
+      font-size: 13px;
+      color: #d5d9cb;
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    }
+    .log div { padding: 3px 0; }
+    @media (max-width: 1080px) {
+      .stage { grid-template-columns: 1fr; }
+      .rail { min-height: auto; }
+      .flow { grid-template-columns: 1fr; }
+      .bottom { grid-template-columns: 1fr; }
+      .sliders { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="ticker">
+    <div class="ticker__inner" id="ticker"></div>
+  </header>
+
+  <main>
+    <section>
+      <div class="stage">
+        <div class="arena" id="arena">
+          <div class="ring"></div>
+          <button class="node n1 active" data-game="Roulette"><strong>轮盘</strong><span>R-02</span></button>
+          <button class="node n2" data-game="Baccarat"><strong>百家乐</strong><span>B-01</span></button>
+          <button class="node n3" data-game="Blackjack"><strong>21点</strong><span>J-04</span></button>
+          <button class="node n4" data-game="Dice"><strong>骰子</strong><span>D-07</span></button>
+          <div class="pulse">
+            <div style="text-align:center">
+              <div class="pulse__k">Hot Table</div>
+              <div class="pulse__val" id="hotTable">轮盘</div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="rail">
+          <div class="strip">
+            <div class="k">Balance</div>
+            <div class="v" id="balance">1,358,600</div>
+          </div>
+          <div class="strip">
+            <div class="k">Streak</div>
+            <div class="v" id="streak">6</div>
+          </div>
+          <div class="cmds">
+            <button class="btn primary" id="quickStart">立即开局</button>
+            <button class="btn" id="resumeBtn">继续上局</button>
+            <button class="btn" id="taskBtn">刷新任务</button>
+            <button class="btn" id="goRoulette">进轮盘页</button>
+          </div>
+          <div class="feed" id="feed"></div>
+        </aside>
+      </div>
+    </section>
+
+    <section>
+      <div class="flow">
+        <div class="lane" id="lane">
+          <h2 class="section-title">Route Nodes</h2>
+          <button class="dot active" data-node="登录">登录</button>
+          <button class="dot" data-node="热桌">热桌</button>
+          <button class="dot" data-node="补给">补给</button>
+          <button class="dot" data-node="切桌">切桌</button>
+          <button class="dot" data-node="结算">结算</button>
+        </div>
+        <div class="board">
+          <h2 class="section-title">Interactive Grid</h2>
+          <div class="nums" id="nums"></div>
+          <div class="sliders">
+            <div class="ctl">
+              <label><span>Risk</span><strong id="riskV">38</strong></label>
+              <input type="range" id="risk" min="0" max="100" value="38" />
+            </div>
+            <div class="ctl">
+              <label><span>Speed</span><strong id="speedV">62</strong></label>
+              <input type="range" id="speed" min="0" max="100" value="62" />
+            </div>
+            <div class="ctl">
+              <label><span>Heat</span><strong id="heatV">44</strong></label>
+              <input type="range" id="heat" min="0" max="100" value="44" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="bottom">
+        <div class="orbit" id="orbit"></div>
+        <div class="pad">
+          <h2 class="section-title">Live Actions</h2>
+          <div class="log" id="liveLog"></div>
+          <div class="actions" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;">
+            <button class="btn" id="spawnChip">加筹码</button>
+            <button class="btn" id="clearChip">清空筹码</button>
+            <button class="btn" id="shuffleGrid">随机命中</button>
+            <button class="btn" id="toTop">回到顶部</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const ticker = document.getElementById("ticker");
+      const tickerItems = [
+        "ROULETTE HOT +12%",
+        "BACCARAT FLOW STABLE",
+        "VIP ENTRY ONLINE",
+        "BLACKJACK TABLE OPEN",
+        "DICE SPEED MODE",
+        "SHOP RESTOCK READY"
+      ];
+      ticker.innerHTML = [...tickerItems, ...tickerItems].map((t) => `<span>${t}</span>`).join("");
+
+      const nodes = [...document.querySelectorAll(".node")];
+      const hotTable = document.getElementById("hotTable");
+      nodes.forEach((n) => {
+        n.addEventListener("click", () => {
+          nodes.forEach((m) => m.classList.remove("active"));
+          n.classList.add("active");
+          hotTable.textContent = n.dataset.game;
+          pushFeed(`TABLE -> ${n.dataset.game}`);
+        });
+      });
+
+      const feed = document.getElementById("feed");
+      function pushFeed(text) {
+        const now = new Date();
+        const stamp = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+        const row = document.createElement("div");
+        row.textContent = `[${stamp}] ${text}`;
+        feed.prepend(row);
+        while (feed.childElementCount > 20) feed.removeChild(feed.lastChild);
+      }
+
+      const balanceEl = document.getElementById("balance");
+      const streakEl = document.getElementById("streak");
+      let balance = 1358600;
+      let streak = 6;
+      setInterval(() => {
+        const delta = Math.floor((Math.random() - 0.44) * 2200);
+        balance = Math.max(0, balance + delta);
+        if (Math.random() > 0.72) streak += Math.random() > 0.38 ? 1 : -1;
+        streak = Math.max(0, streak);
+        balanceEl.textContent = balance.toLocaleString("en-US");
+        streakEl.textContent = String(streak);
+      }, 1200);
+
+      const nums = document.getElementById("nums");
+      for (let i = 1; i <= 36; i += 1) {
+        const cell = document.createElement("button");
+        cell.className = "cell";
+        cell.textContent = String(i);
+        cell.addEventListener("click", () => {
+          cell.classList.toggle("hit");
+          pushLive(`GRID ${i} ${cell.classList.contains("hit") ? "ON" : "OFF"}`);
+        });
+        nums.appendChild(cell);
+      }
+
+      function randomHit() {
+        [...nums.children].forEach((c) => c.classList.remove("hit"));
+        const picks = new Set();
+        while (picks.size < 7) picks.add(Math.floor(Math.random() * 36));
+        [...picks].forEach((i) => nums.children[i].classList.add("hit"));
+      }
+
+      const lane = [...document.querySelectorAll(".dot")];
+      lane.forEach((d) => {
+        d.addEventListener("click", () => {
+          lane.forEach((x) => x.classList.remove("active"));
+          d.classList.add("active");
+          pushLive(`ROUTE -> ${d.dataset.node}`);
+        });
+      });
+
+      const sliders = ["risk", "speed", "heat"];
+      sliders.forEach((id) => {
+        const input = document.getElementById(id);
+        const output = document.getElementById(`${id}V`);
+        input.addEventListener("input", () => {
+          output.textContent = input.value;
+          pushLive(`${id.toUpperCase()} ${input.value}`);
+        });
+      });
+
+      const orbit = document.getElementById("orbit");
+      const liveLog = document.getElementById("liveLog");
+      function pushLive(text) {
+        const row = document.createElement("div");
+        row.textContent = text;
+        liveLog.prepend(row);
+        while (liveLog.childElementCount > 25) liveLog.removeChild(liveLog.lastChild);
+      }
+
+      function spawnChip() {
+        const chip = document.createElement("div");
+        chip.className = `chip ${Math.random() > 0.5 ? "alt" : ""}`;
+        chip.textContent = `${[10, 20, 50, 100, 250][Math.floor(Math.random() * 5)]}`;
+        chip.style.left = `${Math.random() * 78 + 8}%`;
+        chip.style.top = `${Math.random() * 72 + 8}%`;
+        orbit.appendChild(chip);
+        dragChip(chip);
+        pushLive("CHIP +1");
+      }
+
+      function dragChip(el) {
+        let dragging = false;
+        let dx = 0;
+        let dy = 0;
+        el.addEventListener("pointerdown", (e) => {
+          dragging = true;
+          dx = e.clientX - el.offsetLeft;
+          dy = e.clientY - el.offsetTop;
+          el.setPointerCapture(e.pointerId);
+        });
+        el.addEventListener("pointermove", (e) => {
+          if (!dragging) return;
+          const rect = orbit.getBoundingClientRect();
+          const x = Math.min(rect.width - el.offsetWidth, Math.max(0, e.clientX - rect.left - dx));
+          const y = Math.min(rect.height - el.offsetHeight, Math.max(0, e.clientY - rect.top - dy));
+          el.style.left = `${x}px`;
+          el.style.top = `${y}px`;
+        });
+        el.addEventListener("pointerup", () => { dragging = false; });
+      }
+
+      document.getElementById("spawnChip").addEventListener("click", spawnChip);
+      document.getElementById("clearChip").addEventListener("click", () => {
+        orbit.innerHTML = "";
+        pushLive("CHIP CLEAR");
+      });
+      document.getElementById("shuffleGrid").addEventListener("click", () => {
+        randomHit();
+        pushLive("GRID RANDOM");
+      });
+      document.getElementById("toTop").addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+
+      document.getElementById("quickStart").addEventListener("click", () => pushFeed("MATCH START"));
+      document.getElementById("resumeBtn").addEventListener("click", () => pushFeed("SESSION RESUME"));
+      document.getElementById("taskBtn").addEventListener("click", () => pushFeed("TASK REFRESH"));
+      document.getElementById("goRoulette").addEventListener("click", () => { window.location.href = "./pages/roulette_openui.html"; });
+
+      randomHit();
+      for (let i = 0; i < 6; i += 1) spawnChip();
+      ["BOOT OK", "LIVE FEED READY", "ROUTE ONLINE"].forEach(pushLive);
+      ["大厅已连接", "热桌推荐: 轮盘", "可直接开局"].forEach(pushFeed);
+    })();
+  </script>
+</body>
+</html>

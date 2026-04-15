@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TaihuCasino Vercel Static</title>
+  <meta
+    name="description"
+    content="TaihuCasino Vercel 风格方案的纯 HTML、CSS、JavaScript 静态实现。"
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <div class="container site-header__inner">
+        <a class="brand" href="#top" aria-label="TaihuCasino 首页">
+          <span class="brand__mark">FC</span>
+          <span class="brand__text">Fortune<span>Club</span></span>
+        </a>
+
+        <button
+          class="menu-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="mobile-nav"
+          aria-label="切换导航菜单"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
+        <nav class="site-nav" aria-label="主导航">
+          <a class="site-nav__link is-active" href="#games">Games</a>
+          <a class="site-nav__link" href="#leaderboard">Leaderboard</a>
+          <a class="site-nav__link" href="#tournaments">Tournaments</a>
+          <a class="site-nav__link" href="#history">History</a>
+        </nav>
+
+        <div class="site-actions">
+          <button class="icon-button" type="button" aria-label="搜索">SR</button>
+          <button class="icon-button icon-button--notice" type="button" aria-label="通知">
+            NT
+            <span class="badge-dot">3</span>
+          </button>
+          <button class="icon-button" type="button" aria-label="设置">ST</button>
+
+          <div class="profile-chip">
+            <div class="profile-chip__meta">
+              <strong>Alex Chen</strong>
+              <span>VIP Member</span>
+            </div>
+            <div class="avatar" aria-hidden="true">AC</div>
+          </div>
+        </div>
+      </div>
+
+      <nav class="mobile-nav container" id="mobile-nav" aria-label="移动端导航">
+        <a class="mobile-nav__link is-active" href="#games">Games</a>
+        <a class="mobile-nav__link" href="#leaderboard">Leaderboard</a>
+        <a class="mobile-nav__link" href="#tournaments">Tournaments</a>
+        <a class="mobile-nav__link" href="#history">History</a>
+      </nav>
+    </header>
+
+    <main class="container main-content" id="top">
+      <section class="hero">
+        <div class="hero__copy">
+          <p class="eyebrow">Vercel Inspired Dashboard</p>
+          <h1>欢迎回来，<span>Alex</span></h1>
+          <p class="hero__text">
+            保留原始 Vercel 风格方案的深色仪表盘气质，用纯静态前端重建首页结构与交互，
+            适合直接托管为独立页面原型。
+          </p>
+          <div class="hero__actions">
+            <a class="button button--primary" href="#games">进入游戏大厅</a>
+            <a class="button button--ghost" href="#history">查看最近战绩</a>
+          </div>
+        </div>
+
+        <div class="hero__panel">
+          <div class="hero__panel-grid">
+            <article class="mini-kpi">
+              <span>今日净赢</span>
+              <strong>+$1,250</strong>
+              <em>较昨天 +18%</em>
+            </article>
+            <article class="mini-kpi">
+              <span>活跃桌台</span>
+              <strong>24</strong>
+              <em>当前在线火热</em>
+            </article>
+            <article class="mini-kpi">
+              <span>会员等级</span>
+              <strong>Diamond</strong>
+              <em>距离下一档还差 850 积分</em>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="stats-grid" aria-label="玩家统计">
+        <article class="stat-card">
+          <div class="stat-card__icon">BAL</div>
+          <div>
+            <p>Balance</p>
+            <strong>$24,850</strong>
+            <span class="trend trend--up">+$1,250 today</span>
+          </div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-card__icon">WIN</div>
+          <div>
+            <p>Win Rate</p>
+            <strong>67%</strong>
+            <span class="trend trend--up">Top 15%</span>
+          </div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-card__icon">ALL</div>
+          <div>
+            <p>Total Games</p>
+            <strong>342</strong>
+            <span class="trend trend--flat">This week: 48</span>
+          </div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-card__icon">STR</div>
+          <div>
+            <p>Win Streak</p>
+            <strong>7 games</strong>
+            <span class="trend trend--up">Personal best: 12</span>
+          </div>
+        </article>
+      </section>
+
+      <div class="dashboard-grid">
+        <section class="games-section" id="games">
+          <div class="section-heading">
+            <div>
+              <p class="section-heading__eyebrow">Game Lobby</p>
+              <h2>热门游戏</h2>
+            </div>
+            <a href="#leaderboard">View all</a>
+          </div>
+
+          <div class="games-grid" id="games-grid"></div>
+        </section>
+
+        <aside class="sidebar">
+          <section class="panel">
+            <div class="section-heading section-heading--compact">
+              <h3>Quick Actions</h3>
+            </div>
+            <div class="quick-actions" id="quick-actions"></div>
+          </section>
+
+          <section class="panel" id="leaderboard">
+            <div class="section-heading section-heading--compact">
+              <h3>Live Wins</h3>
+              <span class="live-badge">Live</span>
+            </div>
+            <div class="live-list" id="live-list"></div>
+          </section>
+        </aside>
+      </div>
+
+      <section class="history-section" id="history">
+        <div class="section-heading">
+          <div>
+            <p class="section-heading__eyebrow">Recent Activity</p>
+            <h2>最近战绩</h2>
+          </div>
+          <a href="#top">Back to top</a>
+        </div>
+        <div class="history-grid" id="history-grid"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer" id="tournaments">
+      <div class="container site-footer__inner">
+        <p>Fortune Club · For entertainment prototype use only.</p>
+        <div class="site-footer__links">
+          <a href="#top">Terms</a>
+          <a href="#top">Privacy</a>
+          <a href="#top">Support</a>
+          <a href="#top">Responsible Gaming</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script src="./script.js"></script>
+</body>
+</html>

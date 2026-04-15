@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TaihuCasino Material Figma v3</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css" />
+  <style>
+    :root {
+      --tc-bg: #f4f7fb;
+      --tc-accent: #0f766e;
+      --tc-accent-2: #f59e0b;
+    }
+    body {
+      background: radial-gradient(900px 500px at 100% 0%, #d9ecff 0%, transparent 60%), var(--tc-bg);
+    }
+    .tc-shell {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 18px 14px 28px;
+    }
+    .tc-hero {
+      border: 0;
+      border-radius: 18px;
+      background: linear-gradient(130deg, #0f766e 0%, #155e75 52%, #1d4ed8 100%);
+      color: #fff;
+      box-shadow: 0 18px 40px rgba(8, 47, 73, 0.28);
+    }
+    .tc-pill {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      background: rgba(255,255,255,.18);
+    }
+    .tc-navbtn { min-width: 160px; justify-content: center; }
+    .tc-game {
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      border-radius: 16px;
+      border: 1px solid #dce4f0;
+      background: #fff;
+      padding: 14px;
+      transition: .15s ease;
+      height: 100%;
+    }
+    .tc-game:hover {
+      transform: translateY(-2px);
+      border-color: #b5c7de;
+      box-shadow: 0 10px 24px rgba(20, 52, 85, .12);
+    }
+    .tc-game .id {
+      color: #64748b;
+      font-size: 12px;
+      letter-spacing: .07em;
+      font-weight: 700;
+    }
+    .tc-game h3 {
+      margin: 8px 0 6px;
+      font-size: 22px;
+      color: #0f172a;
+    }
+    .tc-game p { margin: 0; color: #475569; }
+    .tc-stat {
+      border-radius: 14px;
+      background: #fff;
+      border: 1px solid #dce4f0;
+      padding: 12px;
+      height: 100%;
+    }
+    .tc-stat .k { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: #64748b; }
+    .tc-stat .v { font-size: 28px; font-weight: 800; margin-top: 4px; color: #0f172a; }
+  </style>
+</head>
+<body>
+  <div class="tc-shell">
+    <section class="card tc-hero p-4 p-md-5 mb-3">
+      <span class="tc-pill">Figma Direction · v3</span>
+      <h1 class="display-5 fw-bold mt-2 mb-2">这版是完全不同的亮色大厅</h1>
+      <p class="mb-3 text-white text-opacity-75">不再是暗色卡片方案，改为开源组件化亮色仪表盘风格，层级和观感会非常不一样。</p>
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-light tc-navbtn" href="./pages/roulette_openui.html">进入轮盘</a>
+        <a class="btn btn-warning tc-navbtn" href="./home_Material_openui.html">对比旧 OpenUI</a>
+        <a class="btn btn-outline-light tc-navbtn" href="./home_Material.html">对比原文件</a>
+      </div>
+    </section>
+
+    <section class="row g-3 mb-3">
+      <div class="col-6 col-lg-3"><div class="tc-stat"><div class="k">Tonight Active</div><div class="v">1,284</div></div></div>
+      <div class="col-6 col-lg-3"><div class="tc-stat"><div class="k">VIP Players</div><div class="v">310</div></div></div>
+      <div class="col-6 col-lg-3"><div class="tc-stat"><div class="k">Avg Session</div><div class="v">43m</div></div></div>
+      <div class="col-6 col-lg-3"><div class="tc-stat"><div class="k">Service Queue</div><div class="v">08</div></div></div>
+    </section>
+
+    <section class="row g-3">
+      <div class="col-12 col-md-6 col-xl-3">
+        <a class="tc-game" href="./pages/baccarat.html"><div class="id">TABLE 01</div><h3>Baccarat</h3><p>主线桌，继续上次进度。</p></a>
+      </div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <a class="tc-game" href="./pages/roulette_openui.html"><div class="id">TABLE 02</div><h3>Roulette</h3><p>最快开局，默认推荐。</p></a>
+      </div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <a class="tc-game" href="./pages/blackjack.html"><div class="id">TABLE 03</div><h3>Blackjack</h3><p>策略玩法，偏长局。</p></a>
+      </div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <a class="tc-game" href="./pages/dice.html"><div class="id">TABLE 04</div><h3>Dice</h3><p>轻量短局，快速切换。</p></a>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

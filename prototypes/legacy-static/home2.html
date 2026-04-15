@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TaihuCasino Home 2</title>
+  <link rel="stylesheet" href="./assets/css/home2.css" />
+</head>
+<body>
+  <div class="home-shell">
+    <header class="masthead">
+      <nav class="topbar" aria-label="大厅导航">
+        <a class="brand" href="./home2.html">
+          <img src="./assets/images/taihu-casino-logo-v3.svg" alt="TaihuCasino" class="brand__mark" />
+          <span class="brand__text">
+            <strong>TaihuCasino</strong>
+            <span>太湖夜场</span>
+          </span>
+        </a>
+        <div class="topbar__actions">
+          <a class="chip" href="./pages/member-counter.html">会员中心</a>
+          <a class="chip" href="./pages/cocktail-bar.html">酒柜商店</a>
+          <a class="chip chip--ghost" href="./index.html">旧入口</a>
+        </div>
+      </nav>
+
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero__main">
+          <p class="eyebrow">Lobby</p>
+          <h1 id="hero-title">晚上好，欢迎回到太湖边。</h1>
+          <p class="hero__lede">你的席位、筹码和四张主桌都已经备好。今晚可以直接继续上一局，也可以换一张桌子坐下。</p>
+
+          <div class="wallet-strip" aria-label="玩家摘要">
+            <article class="wallet-tile wallet-tile--strong">
+              <span>当前筹码</span>
+              <strong>128,400</strong>
+            </article>
+            <article class="wallet-tile">
+              <span>会员等级</span>
+              <strong>夜游客 III</strong>
+            </article>
+            <article class="wallet-tile">
+              <span>连续到访</span>
+              <strong>5 晚</strong>
+            </article>
+            <article class="wallet-tile">
+              <span>最近桌面</span>
+              <strong>百家乐</strong>
+            </article>
+          </div>
+
+          <div class="hero__actions">
+            <a class="button button--primary" href="./pages/baccarat.html">继续上一局</a>
+            <a class="button" href="#tables">换一张桌</a>
+          </div>
+        </div>
+
+        <aside class="hero__side" aria-label="当前夜场信息">
+          <section class="side-card side-card--spotlight">
+            <span class="side-card__label">今夜推荐</span>
+            <strong>先在轮盘暖场，再回 21 点拉长停留。</strong>
+            <p>当前推荐动线偏轻量，适合重新找回手感。</p>
+          </section>
+
+          <section class="side-card">
+            <div class="mini-row">
+              <span>大厅状态</span>
+              <strong>开放中</strong>
+            </div>
+            <div class="mini-row">
+              <span>可领取补给</span>
+              <strong>1 份</strong>
+            </div>
+            <div class="mini-row">
+              <span>待领取奖励</span>
+              <strong>2 项</strong>
+            </div>
+          </section>
+        </aside>
+      </section>
+    </header>
+
+    <main class="content">
+      <section class="quick-grid" aria-label="快捷信息">
+        <article class="panel panel--return">
+          <p class="eyebrow">Quick Return</p>
+          <h2>从你离开的地方继续。</h2>
+          <div class="return-card">
+            <div>
+              <strong>百家乐 · 南岸桌</strong>
+              <p>上次离席时余额 126,900，已完成 8 局。</p>
+            </div>
+            <a class="button button--soft" href="./pages/baccarat.html">回到桌面</a>
+          </div>
+        </article>
+
+        <article class="panel">
+          <p class="eyebrow">Tonight Tasks</p>
+          <h2>今夜事务</h2>
+          <ul class="task-list">
+            <li><span>完成任意 3 局</span><strong>+ 120 补给券</strong></li>
+            <li><span>查看一次商店补给</span><strong>解锁夜饮折扣</strong></li>
+            <li><span>开启一场 21 点</span><strong>记录策略手札</strong></li>
+          </ul>
+        </article>
+      </section>
+
+      <section class="tables" id="tables" aria-labelledby="tables-title">
+        <div class="section-heading">
+          <p class="eyebrow">Main Tables</p>
+          <h2 id="tables-title">四张主桌</h2>
+        </div>
+
+        <div class="table-grid">
+          <a class="table-card table-card--featured" href="./pages/baccarat.html">
+            <span class="table-card__index">01</span>
+            <h3>百家乐</h3>
+            <p>今晚你的默认席位，适合长坐与稳定推进。</p>
+            <div class="table-card__footer">
+              <span>当前热度</span>
+              <strong>回访最多</strong>
+            </div>
+          </a>
+
+          <a class="table-card" href="./pages/roulette.html">
+            <span class="table-card__index">02</span>
+            <h3>轮盘</h3>
+            <p>开局最快，适合作为今晚第一张热身桌。</p>
+            <div class="table-card__footer">
+              <span>平均时长</span>
+              <strong>短局</strong>
+            </div>
+          </a>
+
+          <a class="table-card" href="./pages/dice.html">
+            <span class="table-card__index">03</span>
+            <h3>骰子</h3>
+            <p>节奏直接，适合做快速测试和补一局手感。</p>
+            <div class="table-card__footer">
+              <span>当前状态</span>
+              <strong>可直接入座</strong>
+            </div>
+          </a>
+
+          <a class="table-card" href="./pages/blackjack.html">
+            <span class="table-card__index">04</span>
+            <h3>21 点</h3>
+            <p>更讲究判断与停牌节奏，适合慢慢玩。</p>
+            <div class="table-card__footer">
+              <span>今晚建议</span>
+              <strong>第二站</strong>
+            </div>
+          </a>
+        </div>
+      </section>
+
+      <section class="lower-grid">
+        <article class="panel panel--shop">
+          <div class="section-heading">
+            <p class="eyebrow">Supply</p>
+            <h2>酒柜商店</h2>
+          </div>
+          <div class="shop-list">
+            <div class="shop-item">
+              <div>
+                <strong>湖雾苏打</strong>
+                <p>恢复轻量补给，适合开局前带上一杯。</p>
+              </div>
+              <span>180</span>
+            </div>
+            <div class="shop-item">
+              <div>
+                <strong>夜航通票</strong>
+                <p>更顺手地往返大厅与桌面。</p>
+              </div>
+              <span>420</span>
+            </div>
+            <div class="shop-item">
+              <div>
+                <strong>铜金筹码盒</strong>
+                <p>稳定补充基础筹码，不做强刺激兜售。</p>
+              </div>
+              <span>680</span>
+            </div>
+          </div>
+          <a class="button button--soft" href="./pages/cocktail-bar.html">进入商店</a>
+        </article>
+
+        <article class="panel panel--record">
+          <div class="section-heading">
+            <p class="eyebrow">Recent Record</p>
+            <h2>最近记录</h2>
+          </div>
+          <ul class="record-list">
+            <li>
+              <span>百家乐 · 22:14</span>
+              <strong>+2,400</strong>
+            </li>
+            <li>
+              <span>轮盘 · 21:58</span>
+              <strong>-800</strong>
+            </li>
+            <li>
+              <span>骰子 · 21:31</span>
+              <strong>+1,200</strong>
+            </li>
+          </ul>
+        </article>
+
+        <article class="panel panel--service">
+          <div class="section-heading">
+            <p class="eyebrow">Service Desk</p>
+            <h2>席位服务</h2>
+          </div>
+          <div class="service-links">
+            <a href="./pages/member-counter.html">查看会员信息</a>
+            <a href="./pages/casino-cocktail-service.html">呼叫巡回服务</a>
+            <a href="./pages/member-counter.html">领取今日补给</a>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

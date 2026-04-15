@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>赌场巡回鸡尾酒吧</title>
+  <title>赌台饮品服务台</title>
   <style>
     :root{
       --bg:#07130f;
@@ -49,6 +49,9 @@
     .heroRow{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
     .heroCopy h1{margin:0;font-size:34px;line-height:1.04;color:var(--gold-2)}
     .heroCopy p{margin:10px 0 0;max-width:70ch;color:var(--muted);line-height:1.65;font-size:14px}
+    .quickNav{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .navBtn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 14px;border-radius:999px;border:1px solid rgba(223,190,121,.3);background:rgba(255,255,255,.04);color:var(--text);text-decoration:none;font-weight:700}
+    .navBtn:hover{background:rgba(255,255,255,.08)}
     .heroActions{display:grid;gap:10px;justify-items:end}
     .clock{min-width:250px;text-align:right;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px;background:rgba(0,0,0,.18)}
     .clock .big{font-size:30px;font-weight:900;color:var(--gold-2);line-height:1}
@@ -141,13 +144,19 @@
     <section class="panel">
       <div class="heroRow">
         <div class="heroCopy">
-          <h1>赌场巡回鸡尾酒吧</h1>
-          <p>这是另一个更贴近“数字赌场场内服务”的酒吧版本。客人在不同赌桌和休息区点单，订单先进入吧台配制，再由巡回服务员沿着场内路线送达。重点不再是调酒参数本身，而是桌边点单、派单节奏、巡回路线和高价值客区服务效率。</p>
+          <h1>赌台饮品服务台</h1>
+          <p>这是赌场游戏里的配套酒吧页，不是独立酒吧产品。玩家在轮盘、百家乐、骰子、21 点等赌台页面玩游戏时，可以切到这里点饮料；吧台接单后会安排巡回服务员把饮品送回对应赌台边的玩家。</p>
+          <div class="quickNav">
+            <a class="navBtn" href="./roulette.html">轮盘桌</a>
+            <a class="navBtn" href="./baccarat.html">百家乐</a>
+            <a class="navBtn" href="./dice.html">骰子</a>
+            <a class="navBtn" href="./blackjack.html">21 点</a>
+          </div>
         </div>
         <div class="heroActions">
           <div class="clock">
             <div class="big" id="clockText">--:--</div>
-            <div class="small" id="clockSub">巡回服务网络待命中</div>
+            <div class="small" id="clockSub">赌台饮品服务待命中</div>
           </div>
           <div class="btnRow">
             <button class="secondary" id="surgeBtn">生成客流波次</button>
@@ -159,21 +168,21 @@
 
     <section class="top">
       <div class="panel">
-        <div class="title">场内客区</div>
+        <div class="title">在桌玩家</div>
         <div class="floorGrid" id="guestGrid"></div>
       </div>
 
       <div class="panel">
-        <div class="title">运营总览</div>
+        <div class="title">服务总览</div>
         <div class="stats">
-          <div class="stat"><div class="k">今日订单</div><div class="v" id="statOrders">0</div><div class="sub">已创建的桌边点单总数。</div></div>
-          <div class="stat"><div class="k">已送达</div><div class="v" id="statDelivered">0</div><div class="sub">巡回服务员成功派送的酒水数量。</div></div>
+          <div class="stat"><div class="k">今日订单</div><div class="v" id="statOrders">0</div><div class="sub">从赌台页面发起的饮品点单总数。</div></div>
+          <div class="stat"><div class="k">已送达</div><div class="v" id="statDelivered">0</div><div class="sub">成功送回赌台边的饮品数量。</div></div>
           <div class="stat"><div class="k">酒水收入</div><div class="v" id="statRevenue">¥0</div><div class="sub">按当前虚拟酒单累计营收。</div></div>
-          <div class="stat"><div class="k">满意度</div><div class="v" id="statSatisfaction">0%</div><div class="sub">看等待时长、客区等级和酒水匹配度。</div></div>
+          <div class="stat"><div class="k">满意度</div><div class="v" id="statSatisfaction">0%</div><div class="sub">看等待时长、赌台等级和酒水匹配度。</div></div>
           <div class="signature">
-            <div class="k">当前重点客区</div>
+            <div class="k">当前重点赌台</div>
             <div class="name" id="focusZone">等待首单</div>
-            <div class="desc" id="focusDesc">系统会根据订单量与客区等级，自动判断当前应该优先照顾哪个区域。</div>
+            <div class="desc" id="focusDesc">系统会根据在桌订单量和赌台优先级，自动判断当前应该优先回送哪张桌。</div>
           </div>
         </div>
       </div>
@@ -182,19 +191,19 @@
     <section class="main">
       <div class="stack">
         <section class="panel">
-          <div class="title">酒单</div>
+          <div class="title">桌边饮品单</div>
           <div class="menuGrid" id="menuGrid"></div>
         </section>
 
         <section class="panel">
-          <div class="title">下单与派送逻辑</div>
+          <div class="title">点单与回送逻辑</div>
           <div class="split">
             <div class="controlBox">
               <h3>当前点单目标</h3>
-              <p>先从场内客区选中一位客人，再从酒单中为 TA 创建一单。这个版本强调赌场场内服务，不强调手动配方调制。</p>
+              <p>先选中正在某张赌台玩的玩家，再从饮品单里为 TA 下单。这个页面负责接单和回送，不负责单杯调酒参数玩法。</p>
               <div class="selection">
                 <div class="selectionCell">
-                  <div class="k">客人</div>
+                  <div class="k">玩家</div>
                   <div class="v" id="selectedGuestText">未选择</div>
                 </div>
                 <div class="selectionCell">
@@ -207,14 +216,14 @@
                 <span id="autoDispatchText">空闲巡回员会自动接单</span>
               </div>
               <div class="btnRow" style="justify-content:flex-start;">
-                <button id="placeOrderBtn">为当前客人下单</button>
-                <button class="ghost" id="manualDispatchBtn">手动派送最早待送单</button>
+                <button id="placeOrderBtn">为当前玩家下单</button>
+                <button class="ghost" id="manualDispatchBtn">手动回送最早待送单</button>
               </div>
             </div>
 
             <div class="controlBox">
               <h3>吧台工作流</h3>
-              <p>订单会先进入待配制队列。吧台最多同时制作 2 杯，制作完成后进入待送达队列，由巡回服务员按照“吧台 → 客区”的路线推进。</p>
+              <p>订单会先进入待配制队列。吧台最多同时制作 2 杯，制作完成后进入待送达队列，由巡回服务员按照“吧台 → 赌台”的路线推进。</p>
               <div class="dispatchBox" id="mixBoard"></div>
             </div>
           </div>
@@ -223,7 +232,7 @@
 
       <div class="stack">
         <section class="panel">
-          <div class="title">巡回派送</div>
+          <div class="title">巡回回送</div>
           <div class="runnerList" id="runnerList"></div>
         </section>
 
@@ -239,7 +248,7 @@
 
         <section class="panel">
           <div class="title">说明</div>
-          <div class="footer">这个版本把“鸡尾酒吧”改造成赌场内服务系统：订单来自赌桌和 VIP 区，吧台负责出杯，巡回员负责派送。适合你后面继续扩成“桌边加购”“VIP 连单”“夜场活动联动”的产品线。</div>
+          <div class="footer">这个版本把酒吧收敛成赌场游戏的配套服务台：订单来自各个赌台页，吧台负责出杯，巡回员负责把饮品送回对应赌台。后面很适合继续扩成“桌边加购”“连赢续杯”“VIP 专属酒单”这类功能。</div>
         </section>
       </div>
     </section>
@@ -252,13 +261,19 @@
       { id:'runner-1', name:'Luna', style:'快线巡回员' },
       { id:'runner-2', name:'Miro', style:'VIP 专线巡回员' }
     ];
+    const SOURCE_TO_GUEST = {
+      roulette:'g1',
+      baccarat:'g2',
+      dice:'g3',
+      blackjack:'g5'
+    };
     const GUESTS = [
-      { id:'g1', name:'顾客 A17', zone:'轮盘区', zoneType:'高流量桌区', mood:'手气正热', thirst:78, spend:2, favorite:['sparkHighball','casinoSpritz'] },
-      { id:'g2', name:'顾客 B03', zone:'百家乐区', zoneType:'高价值桌区', mood:'连开三靴', thirst:64, spend:3, favorite:['oldFashioned','smokedManhattan'] },
-      { id:'g3', name:'顾客 C11', zone:'老虎机廊', zoneType:'长时停留区', mood:'准备续玩', thirst:53, spend:1, favorite:['paloma','casinoSpritz'] },
-      { id:'g4', name:'顾客 D09', zone:'VIP 包厢', zoneType:'高优先级包厢', mood:'等人开桌', thirst:81, spend:4, favorite:['smokedManhattan','nightNegroni'] },
-      { id:'g5', name:'顾客 E22', zone:'德州吧台', zoneType:'社交互动区', mood:'正在聊天', thirst:59, spend:2, favorite:['casinoSpritz','sparkHighball'] },
-      { id:'g6', name:'顾客 F08', zone:'高额投注厅', zoneType:'高优先级桌区', mood:'希望被照顾', thirst:71, spend:4, favorite:['nightNegroni','oldFashioned'] }
+      { id:'g1', name:'玩家 A17', zone:'轮盘桌 R-02', zoneType:'来自轮盘页', mood:'连押红黑', thirst:78, spend:2, favorite:['sparkHighball','casinoSpritz'] },
+      { id:'g2', name:'玩家 B03', zone:'百家乐桌 B-01', zoneType:'来自百家乐页', mood:'连开三靴', thirst:64, spend:3, favorite:['oldFashioned','smokedManhattan'] },
+      { id:'g3', name:'玩家 C11', zone:'骰子桌 D-04', zoneType:'来自骰子页', mood:'准备续玩', thirst:53, spend:1, favorite:['paloma','casinoSpritz'] },
+      { id:'g4', name:'玩家 D09', zone:'VIP 桌 V-01', zoneType:'来自 VIP 赌台', mood:'等下一手', thirst:81, spend:4, favorite:['smokedManhattan','nightNegroni'] },
+      { id:'g5', name:'玩家 E22', zone:'21 点桌 J-03', zoneType:'来自 21 点页', mood:'正在补牌', thirst:59, spend:2, favorite:['casinoSpritz','sparkHighball'] },
+      { id:'g6', name:'玩家 F08', zone:'百家乐桌 B-05', zoneType:'来自高额桌页', mood:'希望被照顾', thirst:71, spend:4, favorite:['nightNegroni','oldFashioned'] }
     ];
     const MENU = [
       { id:'casinoSpritz', name:'Casino Spritz', cn:'赌场气泡', price:88, prepMs:3600, deliverMs:3600, strength:'轻盈', tags:['高流转','气泡','适合桌边'], desc:'适合轮盘和社交桌区，清爽、好入口，适合边玩边喝。' },
@@ -314,8 +329,8 @@
         feed:[{
           id:'feed-init',
           time:Date.now(),
-          title:'吧台已开场',
-          body:'等待首批桌边点单。你可以先选中客区，再从酒单派一单试试。'
+          title:'饮品服务台已开启',
+          body:'等待赌台玩家前来下单。你可以先选中一位在桌玩家，再从饮品单派一单试试。'
         }],
         stats:{ orders:0, delivered:0, revenue:0, satisfactionTotal:0 }
       };
@@ -340,6 +355,14 @@
       } catch {
         return defaultState();
       }
+    }
+
+    function applySourceSelection() {
+      const params = new URLSearchParams(window.location.search);
+      const source = params.get('source');
+      const guestId = SOURCE_TO_GUEST[source];
+      if (!guestId) return;
+      state.selectedGuestId = guestId;
     }
 
     function saveState() {
@@ -394,7 +417,7 @@
 
     function getFocusZone() {
       if (!state.orders.length) {
-        return { name:'等待首单', desc:'当前还没有场内点单，客区关注点尚未形成。' };
+        return { name:'等待首单', desc:'当前还没有赌台点单，服务焦点还没有形成。' };
       }
       const zoneMap = new Map();
       state.orders.filter(order => order.status !== 'delivered').forEach(order => {
@@ -402,7 +425,7 @@
         zoneMap.set(order.zone, current + order.priority);
       });
       if (!zoneMap.size) {
-        return { name:'服务压力已释放', desc:'暂时没有未送达订单，场内客区都处于较平稳状态。' };
+        return { name:'服务压力已释放', desc:'暂时没有未送达订单，各个赌台都处于较平稳状态。' };
       }
       const [zone, score] = [...zoneMap.entries()].sort((a, b) => b[1] - a[1])[0];
       return {
@@ -559,7 +582,7 @@
 
     function renderClock() {
       el.clockText.textContent = clockText();
-      el.clockSub.textContent = `${dateKey()} 场内巡回服务运行中`;
+      el.clockSub.textContent = `${dateKey()} 赌台饮品服务运行中`;
     }
 
     function renderGuests() {
@@ -587,7 +610,7 @@
             </div>
           </div>
           <div class="guestActions">
-            <button class="secondary" data-guest-select="${guest.id}">选中客人</button>
+            <button class="secondary" data-guest-select="${guest.id}">选中玩家</button>
             <button class="ghost" data-guest-order="${guest.id}">按偏好下一单</button>
           </div>
         `;
@@ -691,7 +714,7 @@
             </div>
             <div class="status ${runner.stage === 'idle' ? '' : 'good'}">${runner.stage === 'idle' ? '空闲' : '派送中'}</div>
           </div>
-          <div class="route">${order ? `路线：吧台 → ${order.zone} · 当前订单 ${order.drinkName}` : '当前没有正在执行的派送路线。'}</div>
+          <div class="route">${order ? `路线：吧台 → ${order.zone} · 当前订单 ${order.drinkName}` : '当前没有正在执行的回送路线。'}</div>
           <div class="progress"><div style="width:${progress}%;"></div></div>
         `;
         el.runnerList.appendChild(card);
@@ -701,7 +724,7 @@
     function renderQueue() {
       const view = state.orders.slice(0, 8);
       if (!view.length) {
-        el.queueList.innerHTML = '<div class="empty">订单看板为空。先从场内客区为客人点一单。</div>';
+        el.queueList.innerHTML = '<div class="empty">订单看板为空。先为一位在桌玩家点一单饮品。</div>';
         return;
       }
       el.queueList.innerHTML = view.map(order => {
@@ -757,6 +780,7 @@
     }
 
     let state = loadState();
+    applySourceSelection();
 
     el.guestGrid.addEventListener('click', event => {
       const selectId = event.target.getAttribute('data-guest-select');

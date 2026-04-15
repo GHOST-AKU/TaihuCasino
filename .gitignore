@@ -1,0 +1,20 @@
+.obsidian/
+gcm-diagnose.log
+
+# Next.js / Node
+node_modules/
+.next/
+out/
+dist/
+.vercel/
+
+# Local env
+.env*.local
+
+# v0 / local sandbox artifacts
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+.snowflake/
+.v0-trash/
+next.user-config.*
