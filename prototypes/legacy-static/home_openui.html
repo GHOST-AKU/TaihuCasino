@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TaihuCasino Hall OpenUI v2</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css" />
+  <style>
+    :root {
+      --bg: #070d11;
+      --ink: #fdf5e6;
+      --muted: #c3b59a;
+      --gold: #e2bb70;
+      --teal: #1ea7a0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      min-height: 100vh;
+      background:
+        radial-gradient(900px 500px at 10% 0%, #11443f 0%, transparent 58%),
+        radial-gradient(1000px 520px at 90% 0%, #553119 0%, transparent 60%),
+        linear-gradient(180deg, var(--bg), #040709 70%);
+    }
+    .shell { max-width: 1260px; margin: 0 auto; padding: 20px 14px 30px; }
+    .hero {
+      border: 1px solid rgba(226, 187, 112, .38);
+      border-radius: 22px;
+      background: linear-gradient(145deg, rgba(255,255,255,.08), rgba(255,255,255,.01));
+      box-shadow: 0 22px 50px rgba(0,0,0,.45);
+      padding: 26px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -80px -80px auto;
+      width: 250px;
+      height: 250px;
+      border-radius: 50%;
+      background: radial-gradient(circle at center, rgba(30,167,160,.45), rgba(30,167,160,0));
+      pointer-events: none;
+    }
+    .badge-openui {
+      display: inline-block;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-size: 11px;
+      color: #1b1508;
+      background: linear-gradient(180deg, #f4d493, #d7a858);
+      border-radius: 999px;
+      padding: 6px 11px;
+      margin-bottom: 10px;
+    }
+    .hero h1 { margin: 0 0 10px; font-size: clamp(28px, 4vw, 50px); line-height: 1.05; }
+    .hero p { color: var(--muted); font-size: 16px; max-width: 740px; margin-bottom: 18px; }
+    .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .game-grid { margin-top: 16px; }
+    .game-card {
+      display: block;
+      text-decoration: none;
+      border: 1px solid rgba(226, 187, 112, .3);
+      border-radius: 16px;
+      color: var(--ink);
+      padding: 16px;
+      min-height: 130px;
+      background: linear-gradient(160deg, rgba(255,255,255,.05), rgba(255,255,255,.01));
+      transition: transform .18s ease, border-color .18s ease, background .18s ease;
+    }
+    .game-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(226, 187, 112, .8);
+      background: linear-gradient(160deg, rgba(226,187,112,.17), rgba(30,167,160,.10));
+      color: #fff;
+    }
+    .game-card .id { color: var(--gold); font-size: 12px; font-weight: 700; letter-spacing: .08em; margin-bottom: 6px; }
+    .game-card h3 { margin: 0 0 6px; font-size: 22px; }
+    .game-card p { margin: 0; color: var(--muted); font-size: 14px; }
+    .route {
+      margin-top: 16px;
+      border: 1px solid rgba(226, 187, 112, .24);
+      border-radius: 16px;
+      padding: 16px;
+      background: rgba(0,0,0,.22);
+    }
+    .route h2 { margin: 0 0 10px; font-size: 20px; }
+    .route ul { margin: 0; padding-left: 18px; color: var(--muted); }
+    .route li { margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <span class="badge-openui">Open UI v2</span>
+      <h1>TaihuCasino 新大厅视觉样式</h1>
+      <p>这一版是明显差异化风格：更强视觉层级、更亮按钮、更清楚的桌台入口。原文件完全未改动，全部在新文件里完成。</p>
+      <div class="hero-actions">
+        <a class="btn btn-amber btn-lg" href="./pages/roulette_openui.html">进入新轮盘页</a>
+        <a class="btn btn-outline-light btn-lg" href="./pages/roulette.html">对比原轮盘</a>
+        <a class="btn btn-outline-warning btn-lg" href="./home.html">对比原 Home</a>
+      </div>
+    </section>
+
+    <section class="row g-3 game-grid">
+      <div class="col-12 col-md-6 col-xl-3">
+        <a class="game-card" href="./pages/roulette_openui.html">
+          <div class="id">TABLE 02</div><h3>轮盘</h3><p>新版入口，视觉外观已重做。</p>
+        </a>
+      </div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <a class="game-card" href="./pages/baccarat.html">
+          <div class="id">TABLE 01</div><h3>百家乐</h3><p>保留原玩法页，后续可同样改造。</p>
+        </a>
+      </div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <a class="game-card" href="./pages/blackjack.html">
+          <div class="id">TABLE 04</div><h3>21 点</h3><p>策略玩法入口。</p>
+        </a>
+      </div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <a class="game-card" href="./pages/cocktail-bar.html">
+          <div class="id">SERVICE</div><h3>补给吧台</h3><p>服务模块入口。</p>
+        </a>
+      </div>
+    </section>
+
+    <section class="route">
+      <h2>建议动线</h2>
+      <ul>
+        <li>先在新首页确认入口布局，再进入新轮盘观察按钮和面板风格变化。</li>
+        <li>点击“对比原轮盘”可直接看到前后差异。</li>
+        <li>如果这版方向 OK，我再把百家乐也做成同风格新文件。</li>
+      </ul>
+    </section>
+  </div>
+</body>
+</html>

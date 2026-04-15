@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TaihuCasino Home3 Figma v3</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css" />
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --line: #d9e2ef;
+      --ink: #0f172a;
+      --muted: #64748b;
+    }
+    body { background: var(--bg); }
+    .layout {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 14px;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 14px;
+    }
+    .side {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 18px;
+      padding: 14px;
+      min-height: calc(100vh - 28px);
+      position: sticky;
+      top: 14px;
+    }
+    .side h2 { margin: 2px 0 14px; font-size: 22px; }
+    .side a {
+      display: block;
+      padding: 10px 12px;
+      border-radius: 10px;
+      color: #cbd5e1;
+      text-decoration: none;
+      margin-bottom: 8px;
+      background: rgba(255,255,255,.03);
+    }
+    .side a:hover { background: rgba(255,255,255,.10); color: #fff; }
+    .main .hero {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 20px;
+      background: linear-gradient(130deg, #ffffff 0%, #eef6ff 100%);
+    }
+    .hero h1 { margin: 0 0 8px; color: var(--ink); font-size: clamp(30px, 4vw, 52px); }
+    .hero p { margin: 0 0 12px; color: var(--muted); }
+    .cards {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .cardx {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      padding: 14px;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      transition: .15s ease;
+      min-height: 160px;
+    }
+    .cardx:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(15, 23, 42, .10); }
+    .cardx .k { font-size: 12px; color: var(--muted); letter-spacing: .07em; text-transform: uppercase; font-weight: 700; }
+    .cardx h3 { margin: 8px 0 6px; font-size: 24px; color: var(--ink); }
+    .cardx p { margin: 0; color: var(--muted); }
+    .b1 { border-left: 6px solid #0ea5a4; }
+    .b2 { border-left: 6px solid #f59e0b; }
+    .b3 { border-left: 6px solid #6366f1; }
+    .b4 { border-left: 6px solid #ec4899; }
+    @media (max-width: 960px) {
+      .layout { grid-template-columns: 1fr; }
+      .side { min-height: auto; position: static; }
+      .cards { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="side">
+      <h2>TaihuCasino</h2>
+      <a href="./home3_figma.html">Figma v3 当前页</a>
+      <a href="./home3_openui.html">对比 OpenUI 版</a>
+      <a href="./home3.html">对比原 home3</a>
+      <a href="./pages/member-counter.html">会员中心</a>
+      <a href="./pages/cocktail-bar.html">服务商店</a>
+    </aside>
+
+    <main class="main">
+      <section class="hero">
+        <h1>Home3 完全重排版</h1>
+        <p>这版不是在原视觉上微调，而是改成侧边导航 + 亮色业务卡片的组件化布局，和你之前看到的页面会明显不一样。</p>
+        <div class="d-flex gap-2 flex-wrap">
+          <a class="btn btn-primary" href="./pages/roulette_openui.html">进入轮盘</a>
+          <a class="btn btn-outline-secondary" href="./home_Material_figma.html">看 Material Figma 版</a>
+        </div>
+      </section>
+
+      <section class="cards">
+        <a class="cardx b1" href="./pages/roulette_openui.html"><div class="k">Fast Entry</div><h3>Roulette</h3><p>推荐第一局入口。</p></a>
+        <a class="cardx b2" href="./pages/baccarat.html"><div class="k">Main Table</div><h3>Baccarat</h3><p>继续主线节奏。</p></a>
+        <a class="cardx b3" href="./pages/blackjack.html"><div class="k">Strategy</div><h3>Blackjack</h3><p>更偏思考型玩法。</p></a>
+        <a class="cardx b4" href="./pages/dice.html"><div class="k">Short Round</div><h3>Dice</h3><p>短局快速体验。</p></a>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

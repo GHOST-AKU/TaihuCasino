@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TaihuCasino Material OpenUI</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css" />
+  <style>
+    :root {
+      --bg: #0b1015;
+      --ink: #fef4df;
+      --muted: #c3b79e;
+      --gold: #e7be76;
+      --teal: #18a39a;
+    }
+    body {
+      margin: 0;
+      color: var(--ink);
+      min-height: 100vh;
+      background:
+        radial-gradient(1200px 700px at 10% 0%, #18463d 0%, transparent 58%),
+        radial-gradient(900px 600px at 100% 0%, #5a341c 0%, transparent 55%),
+        linear-gradient(180deg, var(--bg), #05080c 70%);
+    }
+    .shell { max-width: 1280px; margin: 0 auto; padding: 18px 14px 28px; }
+    .head {
+      border-radius: 20px;
+      border: 1px solid rgba(231,190,118,.4);
+      background: linear-gradient(155deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+      box-shadow: 0 20px 44px rgba(0,0,0,.42);
+      padding: 22px;
+    }
+    .eyebrow {
+      margin: 0;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    h1 {
+      margin: 8px 0 10px;
+      font-size: clamp(32px, 4.8vw, 56px);
+      line-height: 1.05;
+    }
+    .sub { color: var(--muted); max-width: 700px; }
+    .grid { margin-top: 14px; }
+    .tile {
+      display: block;
+      text-decoration: none;
+      color: var(--ink);
+      border-radius: 16px;
+      border: 1px solid rgba(231,190,118,.32);
+      background: linear-gradient(160deg, rgba(255,255,255,.06), rgba(255,255,255,.01));
+      padding: 16px;
+      min-height: 156px;
+      transition: .2s ease;
+    }
+    .tile:hover {
+      transform: translateY(-3px);
+      border-color: rgba(231,190,118,.82);
+      background: linear-gradient(160deg, rgba(231,190,118,.18), rgba(24,163,154,.12));
+      color: #fff;
+    }
+    .tile .id {
+      color: var(--gold);
+      font-size: 12px;
+      letter-spacing: .08em;
+      font-weight: 700;
+    }
+    .tile-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .tile h3 { margin: 6px 0 7px; font-size: 22px; }
+    .tile p { margin: 0; color: var(--muted); font-size: 14px; }
+    .strip {
+      margin-top: 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(231,190,118,.26);
+      background: rgba(0,0,0,.24);
+      padding: 14px 16px;
+      color: var(--muted);
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .icon {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex: 0 0 auto;
+    }
+    .icon-tile {
+      width: 24px;
+      height: 24px;
+      color: var(--gold);
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="head">
+      <p class="eyebrow">Material Base · OpenUI</p>
+      <h1>Home_Material 升级版</h1>
+      <p class="sub">按钮和图案已替换为开源 Tabler Icons 的 SVG，不再用手画样式凑图标。</p>
+      <div class="d-flex gap-2 flex-wrap mt-2">
+        <a class="btn btn-amber" href="./pages/roulette_openui.html">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M6 6l12 12"></path><path d="M18 6l-12 12"></path><circle cx="12" cy="12" r="9"></circle></svg>
+          新轮盘页
+        </a>
+        <a class="btn btn-outline-light" href="./home_Material.html">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="M5 12l4 4"></path><path d="M5 12l4 -4"></path></svg>
+          对比原 Material
+        </a>
+        <a class="btn btn-outline-warning" href="./home3_openui.html">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+          看 Home3 改造版
+        </a>
+      </div>
+    </section>
+
+    <section class="row g-3 grid">
+      <div class="col-12 col-md-6 col-xl-3">
+        <a class="tile" href="./pages/baccarat.html">
+          <div class="tile-head">
+            <div class="id">TABLE 01</div>
+            <svg class="icon icon-tile" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M8 9h.01"></path><path d="M12 9h.01"></path><path d="M16 9h.01"></path><path d="M8 13h.01"></path><path d="M12 13h.01"></path><path d="M16 13h.01"></path></svg>
+          </div>
+          <h3>Baccarat</h3>
+          <p>继续默认主线桌。</p>
+        </a>
+      </div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <a class="tile" href="./pages/roulette_openui.html">
+          <div class="tile-head">
+            <div class="id">TABLE 02</div>
+            <svg class="icon icon-tile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 3v18"></path><path d="M3 12h18"></path><path d="M7 7l10 10"></path><path d="M17 7l-10 10"></path></svg>
+          </div>
+          <h3>Roulette</h3>
+          <p>新版视觉入口。</p>
+        </a>
+      </div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <a class="tile" href="./pages/blackjack.html">
+          <div class="tile-head">
+            <div class="id">TABLE 03</div>
+            <svg class="icon icon-tile" viewBox="0 0 24 24"><rect x="5" y="4" width="10" height="14" rx="2"></rect><path d="M9 8l2 2l2 -2"></path><path d="M14 9h5"></path><path d="M14 13h5"></path></svg>
+          </div>
+          <h3>Blackjack</h3>
+          <p>策略长局玩法。</p>
+        </a>
+      </div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <a class="tile" href="./pages/dice.html">
+          <div class="tile-head">
+            <div class="id">TABLE 04</div>
+            <svg class="icon icon-tile" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M9 9h.01"></path><path d="M15 9h.01"></path><path d="M9 15h.01"></path><path d="M15 15h.01"></path></svg>
+          </div>
+          <h3>Dice</h3>
+          <p>短局快速节奏。</p>
+        </a>
+      </div>
+    </section>
+
+    <section class="strip">
+      图标来源：Tabler Icons（开源免费，MIT）。下一步我可以把同一套图标规范继续铺到轮盘页和其他页面。
+    </section>
+  </div>
+</body>
+</html>

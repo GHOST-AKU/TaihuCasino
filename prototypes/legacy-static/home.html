@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>TaihuCasino Hall v2</title>
+  <link rel="stylesheet" href="./assets/css/home.css" />
+</head>
+<body class="home-page">
+  <main class="hall-stage">
+    <header class="hall-ribbon">
+      <a class="hall-ribbon__brand" href="./home.html" aria-label="TaihuCasino Hall">
+        <img src="./assets/images/taihu-casino-logo-v3.svg" alt="TaihuCasino logo" />
+        <div>
+          <p class="kicker">TaihuCasino</p>
+          <strong>夜场总览</strong>
+        </div>
+      </a>
+
+      <div class="hall-ribbon__status" aria-label="大厅状态">
+        <div>
+          <span>席位</span>
+          <strong>访客</strong>
+        </div>
+        <div>
+          <span>钱包</span>
+          <strong>¥ 0</strong>
+        </div>
+        <div>
+          <span>最近桌面</span>
+          <strong>Roulette</strong>
+        </div>
+      </div>
+
+      <nav class="hall-ribbon__nav" aria-label="服务入口">
+        <a href="./pages/member-counter.html">会员柜台</a>
+        <a href="./pages/cocktail-bar.html">补给商店</a>
+        <a href="./index.html">旧入口</a>
+      </nav>
+    </header>
+
+    <section class="floor" aria-labelledby="floor-title">
+      <div class="floor__center">
+        <p class="kicker">Main Floor</p>
+        <h1 id="floor-title">今晚想坐哪一桌？</h1>
+        <p>
+          主页不再像宣传页，也不做常规卡片看板。它更像一张可进入的夜场平面图:
+          中间是大厅气氛，四周是桌区，边缘是会员与补给服务台。
+        </p>
+        <div class="floor__actions">
+          <a class="pill pill--primary" href="./pages/roulette.html">直接开局</a>
+          <a class="pill" href="./pages/member-counter.html">登录会员</a>
+        </div>
+      </div>
+
+      <a class="table-node table-node--baccarat" href="./pages/baccarat.html">
+        <span class="table-node__id">01</span>
+        <strong>百家乐</strong>
+        <em>主桌</em>
+      </a>
+
+      <a class="table-node table-node--roulette" href="./pages/roulette.html">
+        <span class="table-node__id">02</span>
+        <strong>轮盘</strong>
+        <em>最快入场</em>
+      </a>
+
+      <a class="table-node table-node--dice" href="./pages/dice.html">
+        <span class="table-node__id">03</span>
+        <strong>骰子</strong>
+        <em>短局</em>
+      </a>
+
+      <a class="table-node table-node--blackjack" href="./pages/blackjack.html">
+        <span class="table-node__id">04</span>
+        <strong>21 点</strong>
+        <em>策略桌</em>
+      </a>
+
+      <div class="service-node service-node--member">
+        <p class="kicker">Service Desk</p>
+        <strong>会员柜台</strong>
+        <p>登录、登出、回调、会话恢复统一从这里进入。</p>
+        <a href="./pages/member-counter.html">前往柜台</a>
+      </div>
+
+      <div class="service-node service-node--shop">
+        <p class="kicker">Supply Bar</p>
+        <strong>补给商店</strong>
+        <p>鸡尾酒页后续改造成恢复、便利、陪伴型商店。</p>
+        <a href="./pages/cocktail-bar.html">进入商店</a>
+      </div>
+    </section>
+
+    <section class="lower-deck">
+      <section class="strip strip--route" aria-labelledby="route-title">
+        <div class="strip__head">
+          <p class="kicker">Route</p>
+          <h2 id="route-title">建议动线</h2>
+        </div>
+        <div class="route-line">
+          <article>
+            <span>01</span>
+            <strong>先登录</strong>
+            <p>如果要钱包、进度、最近游玩，就先经过会员柜台。</p>
+          </article>
+          <article>
+            <span>02</span>
+            <strong>从轮盘起步</strong>
+            <p>最快进入一局，也最适合做大厅默认继续入口。</p>
+          </article>
+          <article>
+            <span>03</span>
+            <strong>再去主桌或商店</strong>
+            <p>百家乐承接主桌气质，商店承接局间补给与缓冲。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="strip strip--notes" aria-labelledby="notes-title">
+        <div class="strip__head">
+          <p class="kicker">Design Gate</p>
+          <h2 id="notes-title">这版故意避开的东西</h2>
+        </div>
+        <ul class="notes-list">
+          <li>不做官网式 hero 叙事</li>
+          <li>不做 SaaS 式四宫格看板</li>
+          <li>不把所有系统入口做成同权重卡片</li>
+          <li>让主页先像场所，再像页面</li>
+        </ul>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

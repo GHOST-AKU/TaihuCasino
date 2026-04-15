@@ -127,11 +127,21 @@
     elements.profileAvatar.textContent = "";
 
     if (user && user.picture) {
-      const avatar = document.createElement("img");
-      avatar.setAttribute("src", String(user.picture));
-      avatar.setAttribute("alt", `${String(user.name || "member")} avatar`);
-      elements.profileAvatar.appendChild(avatar);
-      return;
+      let parsedUrl = null;
+      try {
+        parsedUrl = new URL(user.picture, window.location.origin);
+      } catch (error) {
+        parsedUrl = null;
+      }
+
+      const isSafeProtocol = parsedUrl && (parsedUrl.protocol === "https:" || parsedUrl.protocol === "http:");
+      if (isSafeProtocol) {
+        const avatarImage = document.createElement("img");
+        avatarImage.setAttribute("src", parsedUrl.href);
+        avatarImage.setAttribute("alt", `${String(user.name || "member")} avatar`);
+        elements.profileAvatar.appendChild(avatarImage);
+        return;
+      }
     }
 
     const seed = user && (user.name || user.nickname || user.email) ? (user.name || user.nickname || user.email) : "Guest";
