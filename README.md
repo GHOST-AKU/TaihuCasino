@@ -1,89 +1,101 @@
 # TaihuCasino
 
-TaihuCasino 已整理为一个以 `React + Next.js` 为正式主线、同时保留现有静态游戏页过渡层的前端项目。
+## Overview / 项目概览
 
-这次结构收敛做了两件核心事情：
+TaihuCasino is now organized as a formal `React + Next.js` product line while still keeping a legacy static runtime layer during migration.
 
-- 把原 `vercel ver/` 中的 Next.js 应用内容吸收到了仓库正式根结构
-- 把旧的静态 `home*` 与 `index` 统一归档到 `prototypes/`
-- 保留根目录 `pages/` 与 `assets/`，因为当前游戏内容仍依赖它们运行
+TaihuCasino 目前已经整理为以 `React + Next.js` 为正式主线、同时保留遗留静态运行层用于迁移过渡的前端项目。
 
-## 当前技术栈
+This restructure did two main things:
+
+这次整理主要完成了两件事：
+
+- absorbed the former Next.js app into the repository root as the formal product structure  
+  将原有的 Next.js 应用吸收到仓库根目录，作为正式产品结构
+- archived former static homepage explorations under `prototypes/`  
+  将历史静态首页探索稿归档到 `prototypes/`
+- kept the existing legacy runtime in `pages/` and `assets/` so current game content can continue to run during migration  
+  保留 `pages/` 与 `assets/` 中的遗留运行层，以便现有游戏内容在迁移过程中继续可用
+
+## Tech Stack / 技术栈
 
 - `React 19`
 - `Next.js 16`
 - `TypeScript`
 - `Tailwind CSS 4`
 
-## 当前正式目录
+## Main Directories / 主要目录
 
 ```text
 .
-|-- app/                  # Next.js App Router 页面
-|-- components/           # React 组件
-|-- hooks/                # 自定义 hooks
-|-- lib/                  # 工具函数
-|-- pages/                # 现有静态游戏页（过渡保留）
-|-- assets/               # 现有静态游戏资源（过渡保留）
-|-- public/               # 正式静态资源
-|-- styles/               # 正式样式资源
-|-- prototypes/           # 历史静态原型与导出版
-|-- docs/                 # 项目文档
+|-- app/                  # Formal Next.js App Router pages / 正式 Next.js App Router 页面
+|-- components/           # Shared React components / 共享 React 组件
+|-- hooks/                # Shared hooks / 共享 hooks
+|-- lib/                  # Shared utilities and helpers / 共享工具函数与辅助逻辑
+|-- pages/                # Legacy static runtime pages / 遗留静态运行页面
+|-- assets/               # Assets for legacy runtime / 遗留运行层资源
+|-- public/               # Static assets for formal app / 正式应用静态资源
+|-- styles/               # Formal style resources / 正式样式资源
+|-- prototypes/           # Archived prototype references / 已归档原型参考
+|-- docs/                 # Project documentation / 项目文档
 |-- package.json
 `-- README.md
 ```
 
-## prototypes 说明
+## Prototypes / 原型目录说明
 
-旧静态原型没有被删除，而是被归档到：
+Archived prototype files are kept under:
+
+已归档的原型文件保留在：
 
 - `prototypes/legacy-static/`
 - `prototypes/vercel-ver-static/`
 
-其中 `prototypes/legacy-static/` 里保留了原来的：
+These directories are for reference only. They should not become the main line for new product work.
 
-- `home*.html`
-- `index.html`
+这些目录仅用于参考，不应再作为新产品开发的主线。
 
-这样可以继续作为设计参考、内容迁移素材或对照版本，但它们不再是正式开发主线。
-当前真正承载已有游戏内容的 `pages/` 和 `assets/` 仍保留在根目录，作为迁移过渡层继续存在。
+## Development / 开发方式
 
-## 开发方式
-
-1. 安装依赖
+1. Install dependencies / 安装依赖
 
 ```bash
 pnpm install
 ```
 
-2. 启动开发环境
+2. Start development server / 启动开发环境
 
 ```bash
 pnpm dev
 ```
 
-3. 生产构建
+3. Production build / 生产构建
 
 ```bash
 pnpm build
 pnpm start
 ```
 
-## 开发约定
+## Development Rules / 开发约定
 
-- 新页面默认放在 `app/`
-- 可复用 UI 与模块默认沉淀到 `components/`
-- 新的首页与新模块不再继续堆到根目录静态 HTML 文件
-- 现有游戏页仍可在 `pages/` 中维护，但目标是逐步迁移到 Next.js
-- 旧静态方案如需保留，优先迁移到 React 组件，而不是继续复制 HTML
+- New product pages should go to `app/`.  
+  新的产品页面应放在 `app/`。
+- Shared UI and route shells should go to `components/`.  
+  共享 UI 与路由骨架应放在 `components/`。
+- New production work should not continue to accumulate in legacy static HTML files.  
+  新的正式产品工作不应继续堆积在遗留静态 HTML 文件中。
+- Legacy pages in `pages/` may still be maintained temporarily, but the long-term direction is migration into Next.js.  
+  `pages/` 中的遗留页面可以临时维护，但长期方向仍是迁移进 Next.js。
 
-## 相关文档
+## Related Documents / 相关文档
 
 - `docs/PROJECT_STRUCTURE.md`
+- `docs/PROJECT_STRUCTURE_CLEAN.md`
 - `docs/TECH_STACK_DECISION.md`
 - `docs/THEME_SYSTEM.md`
+- `docs/CODEBASE_BOUNDARY_PLAN.md`
 
-## License
+## License / 许可证
 
 - `LICENSE`
 - `Surreal Chaos License v0.1.md`

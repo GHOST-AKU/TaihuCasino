@@ -1,69 +1,127 @@
-﻿# Subagent 互审意见
+# Subagent Peer Review / Subagent 互审意见
 
-日期：2026-04-05
-范围：`pages/dice.html`、`pages/cocktail-bar.html`、`pages/blackjack.html`
+## Date / 日期
 
-## A 审 B：`cocktail-bar.html`
-审阅者：Hume
+- `2026-04-05`
 
-### 主要问题
-- 高：库存数量输入在 `input` 事件中触发整页重渲染，容易导致输入失焦、连续输入困难（移动端和桌面端都明显）。
-- 中：“清空当前选择”行为实际是回到第一款酒谱，语义与按钮文案不一致。
-- 中：缺料失败仍计算并展示评分，可能出现“缺料但高分”的业务矛盾。
-- 中：成功但低分触发失败 `shake` 动效，状态表达冲突。
-- 中：跨天只在加载时检查，不会在页面常驻跨零点时自动切日。
-- 低：状态更新调用链分散（`renderAll`/`saveState` 等多点触发），后续维护有副作用风险。
-- 低：库存 `max=99` 仅在 UI 层限制，逻辑层未硬限制上限。
+## Scope / 范围
 
-### 建议
-1. 库存输入改为局部更新，或在 `change/blur` 再全量渲染。
-2. 明确“清空当前选择”的真实行为（真清空或改文案为“恢复默认酒谱”）。
-3. 缺料失败场景评分显示为 `--` 或“未出杯”。
-4. 动效与业务状态解耦：成功统一正反馈、失败再 `shake`。
-5. 增加日期轮询（如每分钟）自动切日重置逻辑。
+- `pages/dice.html`
+- `pages/cocktail-bar.html`
+- `pages/blackjack.html`
 
-## B 审 A：`dice.html`
-审阅者：Nietzsche
+## Review A On B: `cocktail-bar.html` / A 审 B：`cocktail-bar.html`
 
-### 主要问题
-- 高：掷骰过程中注单未锁定，`setBetAmount` 可在结算前改注，最终结算读的是变更后的 `state.bets`，存在完整性风险。
-- 中：初始资金 HTML `min=100` 与 JS 校验不一致（JS 仅限制 `>0`）。
-- 中：历史仅展示最近 20 条，但数组不裁剪，长时运行会增长。
-- 中：EV（本手）与 ROI（累计）口径不同，面板可解释性不足。
-- 低：筹码和下注卡片用 `div` 点击交互，可访问性较弱。
-- 低：移动端注单输入固定宽度在极窄屏可能拥挤。
-- 低：无本地持久化，刷新即丢失余额与历史。
+Reviewer / 审阅者：Hume
 
-### 建议
-1. 开始掷骰后冻结本轮下注快照，禁用改单/清单，结算只读快照。
-2. 统一输入约束（JS 与 HTML `min` 一致）。
-3. 给历史数组设置容量上限并裁剪。
-4. 面板增加“本手EV/累计ROI”口径说明。
-5. `div` 交互改 `button` 或补齐键盘/焦点支持。
+### Main Findings / 主要问题
 
-## 双审：`blackjack.html`
-审阅者：Hume + Nietzsche
+- High: inventory quantity updates trigger full-page rerenders during input, which can cause focus loss and poor typing experience.  
+  高：库存数量输入过程中触发整页重渲染，容易导致失焦和连续输入困难。
+- Medium: the “clear current selection” action actually resets to the first cocktail instead of truly clearing state.  
+  中：“清空当前选择” 实际行为更像恢复到第一款酒，而不是真正清空。
+- Medium: failed mixes still calculate and display scores, which may create contradictory business feedback.  
+  中：缺料失败时仍然计算并显示评分，容易出现业务语义矛盾。
+- Medium: some successful but low-score results still trigger failure-style shake animation.  
+  中：部分成功但低分的结果仍触发失败式 shake 动画。
+- Medium: date rollover is only checked on load, not while the page stays open across midnight.  
+  中：跨天逻辑只在加载时检查，页面常驻跨零点时不会自动切日。
+- Low: render and save calls are scattered, which increases maintenance risk.  
+  低：渲染与保存调用链过于分散，后续维护副作用风险较高。
+- Low: the `max=99` inventory limit exists in UI only, but not in the logic layer.  
+  低：库存 `max=99` 只在 UI 层限制，逻辑层未同步约束。
 
-### 共识高优先级
-- 回合中可改注：玩家阶段下注按钮、注单输入、清空/重置等未被状态机严格锁定，存在“看牌后改注”问题。
-- 结算未使用冻结快照：发牌后和玩家操作阶段仍可能改动 `bets`，`settle()` 读取当前注单，导致公平性与数据可信度问题。
+### Recommendations / 建议
 
-### 其他问题
-- 中：规则口径需明确（S17/H17、玩家爆牌后是否继续补庄家牌）。
-- 中：`blackjack` 注项结算规则与文案说明不够清晰（例如双方自然 21 的处理）。
-- 中：统计口径解释不足（当前注单额与累计 ROI 容易被误读）。
-- 低：移动端下注区域三列在窄屏偏拥挤。
-- 低：历史显示 `BJ` 覆盖胜负信息，表达精度可提升。
+1. Make inventory input update locally or defer full rerender until `change` / `blur`.  
+   将库存输入改为局部更新，或延迟到 `change` / `blur` 再整页渲染。
+2. Align button text with real behavior, or implement real clearing logic.  
+   让按钮文案和真实行为一致，或改成真正的清空逻辑。
+3. Show `--` or “not served” when the drink cannot be made.  
+   当无法出杯时，将评分显示为 `--` 或 “未出杯”。
+4. Decouple business outcome from animation feedback.  
+   让业务结果与动效反馈解耦。
+5. Add a timer-based day rollover check.  
+   增加基于定时检查的跨天切日逻辑。
 
-### 建议
-1. 引入严格回合状态机（`idle/dealing/player/dealer/done`）并统一下注门禁。
-2. 在 `deal()` 开始即冻结注单快照，结算仅基于快照。
-3. 将 S17/H17、Blackjack 平局处理写入规则文案并与代码对齐。
-4. 区分“当前注单额”和“累计下注额”，完善 ROI 解释。
-5. 增加移动端断点，优化下注区布局与点击命中率。
+## Review B On A: `dice.html` / B 审 A：`dice.html`
 
-## 汇总优先级（建议先做）
-1. 三页统一修复“回合进行中仍可改注/改单”的锁注问题。
-2. 三页统一补“输入约束一致性”（HTML 与 JS 校验一致）。
-3. 面板口径统一（本手 vs 累计）并补简短说明文案。
-4. 移动端与可访问性增强（按钮语义化、焦点态、窄屏布局）。
+Reviewer / 审阅者：Nietzsche
+
+### Main Findings / 主要问题
+
+- High: bets are not frozen during the rolling process, so values can still change before settlement.  
+  高：掷骰过程中下注未冻结，结算前仍可能被修改。
+- Medium: the initial fund minimum in HTML and JS validation are inconsistent.  
+  中：HTML 与 JS 对初始资金的最小值约束不一致。
+- Medium: history display is capped visually, but the underlying array is not trimmed.  
+  中：历史仅限制显示数量，但底层数组没有裁剪。
+- Medium: the panel mixes per-round EV and cumulative ROI, which hurts interpretability.  
+  中：面板混用了单局 EV 和累计 ROI，解释性不足。
+- Low: chip and bet interactions use `div` semantics, which hurts accessibility.  
+  低：筹码和下注交互使用 `div`，可访问性较弱。
+- Low: mobile input widths may become cramped on narrower devices.  
+  低：窄屏设备上下注输入区可能拥挤。
+- Low: no local persistence, so refresh resets funds and history.  
+  低：缺少本地持久化，刷新即丢失资金和历史。
+
+### Recommendations / 建议
+
+1. Freeze a snapshot of bets once rolling starts and settle only from the snapshot.  
+   一旦开始掷骰，立即冻结下注快照，并仅基于快照结算。
+2. Unify validation rules between HTML and JS.  
+   统一 HTML 和 JS 的输入校验规则。
+3. Add a capacity limit for stored history.  
+   为历史记录增加容量上限。
+4. Clarify metric definitions in the panel.  
+   在面板上明确各统计指标的口径。
+5. Replace interactive `div`s with `button`s or add equivalent keyboard support.  
+   将可交互 `div` 改为 `button`，或补齐等效键盘支持。
+
+## Joint Review: `blackjack.html` / 双审：`blackjack.html`
+
+Reviewers / 审阅者：Hume + Nietzsche
+
+### Shared High-Priority Issues / 共识高优先级问题
+
+- Bets can still change while a round is in progress.  
+  高优先级：回合进行中仍可修改下注。
+- Settlement does not rely on a frozen betting snapshot.  
+  高优先级：结算没有基于冻结下注快照。
+
+### Other Findings / 其他问题
+
+- Medium: core rules such as S17/H17 and dealer draw behavior need clearer documentation.  
+  中：S17/H17、庄家补牌等规则说明需要更清晰。
+- Medium: some blackjack settlement cases are not documented clearly enough.  
+  中：部分 blackjack 结算规则说明不够清楚。
+- Medium: metric wording in the panel is easy to misread.  
+  中：面板中的统计口径容易引起误解。
+- Low: the betting area becomes cramped on mobile.  
+  低：移动端下注区偏拥挤。
+- Low: the history label `BJ` can obscure win/loss clarity.  
+  低：历史中的 `BJ` 标记会覆盖一部分输赢表达。
+
+### Recommendations / 建议
+
+1. Introduce a strict round state machine and unified bet locking.  
+   引入严格的回合状态机，并统一锁定下注。
+2. Freeze bets at the beginning of `deal()` and settle only against that snapshot.  
+   在 `deal()` 开始时冻结下注，并仅基于快照结算。
+3. Document rules clearly and ensure code behavior matches them.  
+   明确规则说明，并确保代码行为与文档一致。
+4. Distinguish current bet amount from cumulative betting metrics.  
+   区分当前下注额与累计下注指标。
+5. Improve mobile layout and interaction semantics.  
+   优化移动端布局与交互语义。
+
+## Overall Priority / 汇总优先级
+
+1. Fix the “bets can still change during the round” issue across all reviewed pages.  
+   优先修复所有相关页面的“回合中仍可改注”问题。
+2. Unify input validation between HTML constraints and JS logic.  
+   统一 HTML 与 JS 的输入约束。
+3. Standardize metric wording and panel interpretation.  
+   统一统计口径与面板解释。
+4. Improve accessibility and mobile interaction quality.  
+   改善可访问性与移动端交互质量。
