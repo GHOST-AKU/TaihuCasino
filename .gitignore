@@ -1,5 +1,8 @@
 .obsidian/
 gcm-diagnose.log
+tsconfig.tsbuildinfo
+.preview-next*.log
+.preview-next*.err.log
 
 # Next.js / Node
 node_modules/

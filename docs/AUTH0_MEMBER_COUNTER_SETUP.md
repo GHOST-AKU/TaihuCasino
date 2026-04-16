@@ -1,8 +1,14 @@
-# TaihuCasino 会员注册柜台 Auth0 接入说明
+# Auth0 Member Counter Setup / Auth0 会员柜台接入说明
 
-本页对应 `pages/member-counter.html`，认证方式为 Auth0 SPA SDK。
+## Scope / 适用范围
 
-## 需要填写的文件
+This document applies to `pages/member-counter.html`, which uses the Auth0 SPA SDK.
+
+本文档对应 `pages/member-counter.html`，认证方式为 Auth0 SPA SDK。
+
+## File To Configure / 需要配置的文件
+
+Edit `assets/js/member-auth-config.js`:
 
 编辑 `assets/js/member-auth-config.js`：
 
@@ -31,16 +37,24 @@ window.TAIHU_AUTH_CONFIG = {
 };
 ```
 
-## 首轮推荐顺序
+## Recommended First Setup Order / 首轮推荐接入顺序
 
-1. 在 Auth0 创建 Single Page Application。
-2. 把 `pages/member-counter.html` 加到 Allowed Callback URLs。
-3. 把同一个地址加到 Allowed Logout URLs。
-4. 先启用 Google 和 Microsoft 连接，确认真实登录与回调可用。
-5. 正式域名准备好后，再分别开启 Apple、Amazon 与其他小众 provider。
+1. Create a Single Page Application in Auth0.  
+   在 Auth0 中创建 Single Page Application。
+2. Add `pages/member-counter.html` to Allowed Callback URLs.  
+   把 `pages/member-counter.html` 加入 Allowed Callback URLs。
+3. Add the same URL to Allowed Logout URLs.  
+   把同一地址加入 Allowed Logout URLs。
+4. Enable Google and Microsoft first, and confirm that real login and callback flows work.  
+   优先启用 Google 和 Microsoft，确认真实登录与回调流程可用。
+5. After the formal domain is ready, enable Apple, Amazon, and other smaller providers one by one.  
+   等正式域名准备好后，再逐个启用 Apple、Amazon 和其他小型 provider。
 
-## 说明
+## Notes / 说明
 
-- 本页使用 `cacheLocation: "localstorage"`，方便静态站刷新后恢复会话。
-- `window.login(provider)` 与 `window.logout()` 已由页面脚本暴露。
-- Apple、Amazon、WeChat 等是否能立刻上线，不取决于页面代码，而取决于提供商后台、域名和平台审核是否完成。
+- This page uses `cacheLocation: "localstorage"` so sessions can survive refreshes on a static site.  
+  本页使用 `cacheLocation: "localstorage"`，方便静态站刷新后恢复会话。
+- `window.login(provider)` and `window.logout()` are exposed by the page script.  
+  `window.login(provider)` 与 `window.logout()` 已由页面脚本暴露。
+- Whether Apple, Amazon, WeChat, and similar providers can go live immediately depends on provider backend setup, domain readiness, and platform review, not only on page code.  
+  Apple、Amazon、WeChat 等 provider 能否立刻上线，不只取决于页面代码，还取决于提供商后台、域名和平台审核状态。

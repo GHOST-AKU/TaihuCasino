@@ -2,18 +2,23 @@
 
 ## Language Rule / 语言规则
 
-All pull requests for this repository should be written in both English and Chinese.
+All formal repository documents should be written in both English and Chinese.
 
-本仓库中的所有 Pull Request 都应使用英文和中文双语撰写。
+仓库中的正式文档应统一使用英文和中文双语撰写。
 
 This applies to:
 
 适用于以下内容：
 
-- PR title / PR 标题
-- PR description / PR 描述
-- Change summary / 变更摘要
-- Testing notes / 测试说明
+- README files / README 文档
+- architecture and planning docs / 架构与规划文档
+- specifications and design docs / 规格与设计文档
+- setup guides / 搭建与使用说明
+- pull requests / Pull Request
+
+If a document starts as a draft in one language, it should be converted to bilingual form before it is treated as a formal project document.
+
+如果文档最初只用一种语言起草，那么在成为正式项目文档之前，应补全为双语版本。
 
 ## Pull Request Format / Pull Request 格式
 

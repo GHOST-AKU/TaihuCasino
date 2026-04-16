@@ -1,10 +1,18 @@
-# TaihuCasino 首页方案评审报告 v1
+# TaihuCasino Home Page Proposal Review Report v1 / TaihuCasino 首页方案评审报告 v1
 
-## 目的与范围
+## Purpose And Scope / 目的与范围
 
-这份文档用于对本轮 TaihuCasino 首页与大厅相关页面进行正式评审，结论面向自己与后续协作者，不作为对外展示材料。
+This report reviews the home and lobby page proposals from the previous exploration round.
 
-本次评审对象包括以下失败稿：
+本报告用于评审上一轮首页与大厅页面探索方案。
+
+The purpose is not to argue whether parallel exploration was reasonable. Parallel exploration was part of the task. The real question is whether the produced pages reached a quality level worth continuing.
+
+本文不讨论“是否应该平行探索”。平行探索本身是任务条件。真正要判断的是：在既定探索条件下，这批页面是否达到了值得继续推进的质量标准。
+
+Reviewed samples:
+
+评审样本：
 
 - `home_live.html`
 - `home_onepage.html`
@@ -12,134 +20,196 @@
 - `home_Material_openui.html`
 - `home3_vercel.html`
 
-对比对象为：
+Reference comparison:
 
-- `vercel ver/`
+对照样本：
 
-这份报告不讨论“是否应该平行出稿”。平行探索是明确任务条件。这里要判断的是，在既定探索条件下，这批页面是否达到了可以继续推进的质量标准。
+- former `vercel ver/` version
 
-## 核心结论
+## Core Conclusion / 核心结论
+
+The conclusion is clear: the current home page proposals do not meet the required quality bar.
 
 结论很明确：当前首页方案整体不达标。
 
-这轮多稿探索没有带来质量改善。页面数量增加了，但页面质量没有形成明显提升。这些稿件不能作为正式视觉方向继续推进，也不应被描述为“候选成品”。
+The exploration produced more pages, but not better quality. These drafts should not be treated as formal visual directions or candidate finished outputs.
 
-它们最多只保留了少量与当前仓库更贴近的路由和入口组织价值，但在页面审美、现代感、版式控制、文案质量、技术表达方式上，整体处于失败状态。
+这一轮探索增加了页面数量，但没有带来质量提升。这些稿件不应被视为正式视觉方向，也不应被称为候选成品。
 
-## 主要问题
+The only reusable value is limited to route organization, entry flow thinking, and a small amount of task context. The visual language, layout control, copy quality, and technical expression should not be carried forward as-is.
 
-### 1. 视觉问题：土、旧、缺乏现代设计意识
+可以保留的价值主要限于路由组织、入口流程思路和少量任务背景信息。现有视觉语言、版式控制、文案质量和技术表达方式不应原样继承。
 
-这批页面的共同问题不是“风格偏赌场”，而是视觉判断本身落后。整体画面大量依赖暗底、金色描边、半透明面板、装饰性气氛词汇和概念化标题，结果并没有形成高级感，只形成了廉价、陈旧、用力过猛的观感。
+## Main Issues / 主要问题
 
-页面没有建立真正的视觉秩序，也没有形成可信的品牌表达。它们更像带有自我陶醉倾向的概念草图，而不是一组可交付的现代界面。
+### 1. Visual Quality / 视觉质量
 
-### 2. 形式问题：过度依赖细线条、圆角矩形、卡片套卡片
+The pages rely heavily on dark backgrounds, gold strokes, translucent panels, decorative mood words, and concept-heavy headings.
 
-本轮最典型的形式错误，是反复使用细边框、圆角矩形、半透明卡片和一层套一层的矩形容器。这类手法没有带来现代性，反而暴露出页面缺少真正的结构能力、比例能力和节奏能力。
+这些页面大量依赖暗底、金色描边、半透明面板、装饰性氛围词和概念化标题。
 
-这种做法在多个页面里形成了重复性很高的“伪产品感”：
+Instead of creating a premium feeling, the result feels cheap, outdated, and overworked.
 
-- 画面看起来像在模仿现代产品
-- 实际上只有外壳，没有结构
-- 所有模块都像同一批低强度容器，主次关系被削平
+这些手法没有形成高级感，反而显得廉价、陈旧、用力过猛。
 
-结果是页面既不锋利，也不克制，更不新。
+The pages lack true visual order and credible brand expression. They feel more like self-indulgent concept boards than deliverable modern interfaces.
 
-### 3. 版式问题：主次失衡、张力不足、空间关系差
+页面没有建立真正的视觉秩序，也没有形成可信的品牌表达。它们更像自我陶醉的概念板，而不是可交付的现代界面。
 
-这些页面普遍存在版式失衡问题：
+### 2. Form And Structure / 形式与结构
 
-- 中心区域空喊口号，缺少真正有力的主视觉组织
-- 周边模块零散摆放，看起来像临时拼接
-- 信息块之间缺少明确的强弱、疏密、节奏变化
-- 大块留白没有形成高级呼吸感，只形成空
-- 小卡片堆叠没有形成系统性，只形成碎
+The most repeated formal mistake is overusing thin borders, rounded rectangles, translucent cards, and nested card containers.
 
-换句话说，不是模块不够多，而是这些模块没有被组织成一个可信的界面整体。
+最典型的形式错误，是反复使用细边框、圆角矩形、半透明卡片和一层套一层的卡片容器。
 
-### 4. 文案问题：说明性文字臃肿，缺少真实界面语言
+These patterns did not create modernity. They exposed a lack of structure, proportion, and rhythm.
 
-这一轮的文案是明显失败的。
+这些手法没有带来现代感，反而暴露出结构、比例和节奏能力不足。
 
-页面里出现了大量“解释我在设计什么”的文字，而不是“用户此刻需要看到什么”的文字。很多大段说明并不服务使用，而是在替页面辩解，或试图告诉读者它想表达什么。
+As a result, hierarchy is flattened and modules feel like low-intensity containers rather than intentional product surfaces.
 
-这种文案有几个直接后果：
+结果是页面主次被削平，模块更像一批低强度容器，而不是有意图的产品表面。
 
-- 页面显得啰嗦
-- 页面显得不自信
-- 页面显得像展示板，不像产品界面
-- 原本就不强的版式，被大段文字进一步拖垮
+### 3. Layout / 版式
 
-如果一个首页必须靠大量说明性文案才能成立，通常意味着页面本身并没有成立。
+The pages show repeated layout problems:
 
-### 5. 技术问题：单文件原型式实现，缺少体系支撑
+这些页面普遍存在以下版式问题：
 
-这批稿子大多采用原生 `HTML/CSS/JS` 的单文件原型式实现，局部虽然有助于快速试错，但整体技术表达过于简陋，无法支撑高质量、稳定一致的设计演进。
+- weak primary visual organization  
+  缺少真正有力的主视觉组织
+- scattered peripheral modules  
+  周边模块零散摆放
+- unclear density and rhythm  
+  信息块之间缺少明确的疏密与节奏
+- whitespace that feels empty rather than premium  
+  留白没有形成高级呼吸感，只显得空
+- repeated small cards without system logic  
+  小卡片堆叠没有形成系统
 
-主要问题包括：
+The issue is not that there are too few modules. The issue is that the modules are not organized into a credible whole.
 
-- 内联样式和页面耦合过重
-- 缺少组件系统
-- 缺少统一样式约束
-- 缺少可复用的设计 token
-- 多个页面各写一套，无法形成一致性
+问题不是模块不够多，而是这些模块没有被组织成一个可信的界面整体。
 
-这不是说原生技术栈一定低级，而是当前这批稿件的写法并没有把简单技术栈用出高质量，反而放大了随意性和低完成度。
+### 4. Copywriting / 文案
 
-## 与 `vercel ver` 的对比结论
+The copy is too explanatory and self-justifying.
 
-`vercel ver/` 也不是完美方案。它存在明显模板感，数据是假的，产品真实度不高，很多内容属于 v0 风格的展示性拼装。
+文案过于说明性，也过于自我辩解。
+
+Many paragraphs explain what the design is trying to express instead of telling users what they need at that moment.
+
+很多文字是在解释“设计想表达什么”，而不是告诉用户“此刻需要知道什么”。
+
+This makes the pages noisy, uncertain, and more like presentation boards than product interfaces.
+
+这让页面显得嘈杂、不自信，更像展示板，而不像产品界面。
+
+If a home page requires long explanation to make sense, the page itself is usually not working.
+
+如果一个首页必须依赖大量说明性文案才成立，通常意味着页面本身没有成立。
+
+### 5. Technical Expression / 技术表达
+
+Most drafts are implemented as single-file native HTML/CSS/JS prototypes.
+
+大多数稿件采用原生 HTML/CSS/JS 单文件原型方式实现。
+
+That can be useful for quick exploration, but the current implementation lacks a component system, shared style constraints, reusable tokens, and consistent architecture.
+
+这种方式有助于快速试错，但当前实现缺少组件系统、统一样式约束、可复用 token 和一致架构。
+
+This does not mean native technology is inherently low-quality. It means this specific round did not use the simple stack with enough discipline.
+
+这并不是说原生技术栈一定低级，而是这一轮没有用足够纪律把简单技术栈做出质量。
+
+## Comparison With Former Vercel Version / 与旧 Vercel 版本对比
+
+The former `vercel ver/` version was not perfect. It also had template-like qualities, fake data, and demo-like assembly.
+
+旧 `vercel ver/` 版本并不完美，也存在模板感、假数据和展示性拼装。
+
+Even so, it was stronger than this round of home page drafts in several ways:
 
 但即便如此，它在以下方面仍明显强于本轮首页稿：
 
-- 组件化更清晰
-- 视觉表达更统一
-- 版式秩序更稳定
-- 现代产品感更强
-- 技术体系更完整
-- 完成度更高
+- clearer componentization  
+  组件化更清晰
+- more unified visual expression  
+  视觉表达更统一
+- more stable layout order  
+  版式秩序更稳定
+- stronger modern product feel  
+  现代产品感更强
+- more complete technical system  
+  技术体系更完整
+- higher completion level  
+  完成度更高
 
-我方稿件即使更贴当前仓库页面入口，也不足以抵消页面质量本身的失败。换句话说，“更贴项目”不能拿来为“页面难看、陈旧、啰嗦、缺乏现代设计意识”开脱。
+Being closer to the current repository structure does not compensate for weak page quality.
 
-这轮产出不是“方向更好，只是还没做完”，而是质量本身就明显落后于对比样本。
+更贴近当前仓库结构，并不能抵消页面质量本身的失败。
 
-## 页面样本判断
+## Sample-Level Notes / 页面样本判断
 
 ### `home_live.html`
 
-问题最集中，形式欲望最强，但实际控制力最弱。节点、环形区域、控制台和大量氛围化结构并没有形成真正的沉浸式界面，反而让页面显得像概念演示板。
+The page has the strongest formal ambition but the weakest control. Its nodes, rings, console areas, and atmospheric structures make it look like a concept board rather than an immersive product interface.
+
+形式欲望最强，但控制力最弱。节点、环形区、控制台和氛围结构没有形成沉浸式产品界面，反而像概念演示板。
 
 ### `home_onepage.html`
 
-试图做单页大厅整合，但版式层级和模块关系没有成立。看起来像大型单页草图，而不是经过判断的产品首页。
+It tries to create a single-page integrated lobby, but the layout hierarchy and module relationships do not hold together.
+
+它试图做单页大厅整合，但版式层级和模块关系没有成立。
 
 ### `home_Material.html`
 
-相较其他稿件更接近真实首页骨架，但在视觉判断上仍然陈旧，卡片结构泛滥，说明页面依然依赖模板化容器表达，而不是靠真实的版式质量成立。
+It is closer to a real homepage skeleton than other drafts, but the visual judgment is still outdated and card-heavy.
+
+它相对更接近真实首页骨架，但视觉判断仍然陈旧，卡片结构过多。
 
 ### `home_Material_openui.html`
 
-属于表面替换多、内在提升少的典型。图标和局部风格替换没有解决页面整体的审美和层级问题。
+This is mostly a surface-level replacement. Icon and local style changes did not solve the deeper hierarchy and aesthetic problems.
+
+它主要是表层替换。图标和局部风格调整没有解决整体审美和层级问题。
 
 ### `home3_vercel.html`
 
-这是对 Vercel 风格的低强度翻译，不是高质量吸收。借了外观，却没有吸收组件化、秩序感和完成度，因此既不像真正的 Vercel 风格，也不像站得住的 TaihuCasino 页面。
+This is a low-strength translation of a Vercel-like style, not a high-quality absorption of that system.
 
-## 最终判断
+它是对 Vercel 风格的低强度翻译，而不是高质量吸收。
 
-这一轮页面应被视为失败样本，而不是候选成果。
+## Final Judgment / 最终判断
 
-应该保留的只有：
+This round should be treated as failed evidence, not as candidate output.
 
-- 路由与真实入口组织思路
-- 与现有页面的连接关系
-- 少量可复用的任务背景信息
+这一轮页面应被视为失败证据，而不是候选成果。
 
-不应保留的包括：
+Keep:
 
-- 现有首页视觉语言
-- 当前这批页面的主要形式套路
-- 对这些稿件“稍微再改改就能成立”的期待
+应保留：
 
-后续如果继续推进首页方向，应默认从新基线重建，而不是继续在这批失败稿上修饰。
+- route and entry organization ideas  
+  路由与入口组织思路
+- connections to existing pages  
+  与现有页面的连接关系
+- a small amount of task context  
+  少量任务背景信息
+
+Do not keep:
+
+不应保留：
+
+- the current visual language  
+  当前视觉语言
+- the main formal patterns of these drafts  
+  当前这批稿件的主要形式套路
+- the expectation that these drafts can become acceptable with minor polish  
+  “稍微再改改就能成立”的期待
+
+Future home page work should restart from a new quality baseline instead of decorating these failed drafts.
+
+后续首页方向应从新的质量基线重新开始，而不是继续在这批失败稿上修饰。
