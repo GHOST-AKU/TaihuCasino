@@ -23,7 +23,7 @@ import {
   getRecentActivities,
   getStats,
 } from "@/lib/home-content"
-import { clearMemberSession, readMemberSession } from "@/lib/member-session"
+import { createClient } from "@/lib/supabase/client"
 
 const gameIcons = {
   baccarat: <Diamond className="h-7 w-7" />,
@@ -41,7 +41,6 @@ export default function PlayerHomePage() {
     const params = new URLSearchParams(window.location.search)
     const queryLanguage = params.get("lang")
     const savedLanguage = window.localStorage.getItem(LANGUAGE_STORAGE_KEY)
-    const session = readMemberSession()
 
     const nextLanguage =
       queryLanguage === "zh" || queryLanguage === "en"
@@ -52,8 +51,21 @@ export default function PlayerHomePage() {
 
     setLanguage(nextLanguage)
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage)
-    setIsAuthenticated(Boolean(session))
-    setMemberName(session?.displayName ?? "")
+
+    // Check Supabase auth state
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setIsAuthenticated(Boolean(user))
+      setMemberName(user?.email?.split("@")[0] ?? user?.user_metadata?.name ?? "")
+    })
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(Boolean(session?.user))
+      setMemberName(session?.user?.email?.split("@")[0] ?? session?.user?.user_metadata?.name ?? "")
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   function handleLanguageChange(nextLanguage: Language) {
@@ -64,8 +76,9 @@ export default function PlayerHomePage() {
     window.history.replaceState({}, "", url)
   }
 
-  function handleLogout() {
-    clearMemberSession()
+  async function handleLogout() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
     setIsAuthenticated(false)
     setMemberName("")
   }

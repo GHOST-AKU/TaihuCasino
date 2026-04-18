@@ -7,7 +7,7 @@ import { ArrowRight, Eye, EyeOff, Lock, Mail, Spade } from "lucide-react"
 
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
-import { createMemberSession, persistMemberSession, readMemberSession } from "@/lib/member-session"
+import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 
 const providerButtons = [
@@ -157,41 +157,78 @@ export function LoginForm({ next }: { next?: string }) {
   const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
-    const session = readMemberSession()
-    if (!session) {
-      return
-    }
-
-    router.replace(resolveRedirectTarget(next ?? null))
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        router.replace(resolveRedirectTarget(next ?? null))
+      }
+    })
   }, [next, router])
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     const trimmedEmail = email.trim()
     if (!trimmedEmail) {
-      setErrorMessage("Please enter your email or member ID.")
+      setErrorMessage("Please enter your email address.")
       return
     }
 
-    if (password.trim().length < 4) {
-      setErrorMessage("Password must be at least 4 characters for demo sign in.")
+    if (password.trim().length < 6) {
+      setErrorMessage("Password must be at least 6 characters.")
       return
     }
 
     setErrorMessage("")
 
-    startTransition(() => {
-      const session = createMemberSession(trimmedEmail)
-      persistMemberSession(session, true)
+    startTransition(async () => {
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithPassword({
+        email: trimmedEmail,
+        password: password,
+      })
+
+      if (error) {
+        setErrorMessage(error.message)
+        return
+      }
+
       router.push(resolveRedirectTarget(next ?? null))
       router.refresh()
     })
   }
 
-  function handleProviderClick(provider: string) {
+  async function handleProviderClick(provider: string) {
     setLoadingProvider(provider)
-    window.setTimeout(() => setLoadingProvider(null), 850)
+    
+    const supabase = createClient()
+    const providerMap: Record<string, 'google' | 'apple' | 'azure' | 'facebook' | 'twitter'> = {
+      google: 'google',
+      apple: 'apple',
+      microsoft: 'azure',
+      facebook: 'facebook',
+      x: 'twitter',
+    }
+
+    const supabaseProvider = providerMap[provider]
+    if (!supabaseProvider) {
+      setErrorMessage(`${provider} login is not yet available.`)
+      setLoadingProvider(null)
+      return
+    }
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: supabaseProvider,
+      options: {
+        redirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
+          `${window.location.origin}/auth/callback?next=${encodeURIComponent(resolveRedirectTarget(next ?? null))}`,
+      },
+    })
+
+    if (error) {
+      setErrorMessage(error.message)
+      setLoadingProvider(null)
+    }
   }
 
   return (
