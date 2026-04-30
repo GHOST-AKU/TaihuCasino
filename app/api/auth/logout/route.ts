@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 
+import { MEMBER_STATE_COOKIE } from "@/lib/member-data"
 import { createSupabaseAuthClient, isSupabaseAuthConfigured, MEMBER_SESSION_COOKIE } from "@/lib/server-auth"
 
 export async function POST() {
@@ -20,6 +21,13 @@ export async function POST() {
   }
 
   response.cookies.set(MEMBER_SESSION_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0,
+  })
+  response.cookies.set(MEMBER_STATE_COOKIE, "", {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

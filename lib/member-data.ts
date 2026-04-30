@@ -99,8 +99,11 @@ interface LocalMemberState {
   recentEvents?: MemberEvent[]
 }
 
-const MEMBER_STATE_COOKIE = "taihu-member-state"
+export const MEMBER_STATE_COOKIE = "taihu-member-state"
 const MEMBER_STATE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
+const LOCAL_STATE_PROGRESS_LIMIT = 4
+const LOCAL_STATE_EVENT_LIMIT = 3
+const LOCAL_STATE_SUMMARY_LIMIT = 120
 
 function nowIso() {
   return new Date().toISOString()
@@ -161,6 +164,21 @@ function writeLocalState(response: NextResponse, state: LocalMemberState) {
     path: "/",
     maxAge: MEMBER_STATE_MAX_AGE_SECONDS,
   })
+}
+
+function compactLocalProgress(progress: MemberGameProgress[]) {
+  return progress.slice(0, LOCAL_STATE_PROGRESS_LIMIT).map((item) => ({
+    ...item,
+    lastSummary: item.lastSummary.slice(0, LOCAL_STATE_SUMMARY_LIMIT),
+  }))
+}
+
+function compactLocalEvents(events: MemberEvent[]) {
+  return events.slice(0, LOCAL_STATE_EVENT_LIMIT).map((event) => ({
+    ...event,
+    title: event.title.slice(0, 80),
+    detail: event.detail.slice(0, LOCAL_STATE_SUMMARY_LIMIT),
+  }))
 }
 
 function defaultSettings(): MemberSettings {
@@ -610,7 +628,7 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
       throw new Error(error.message)
     }
 
-    await Promise.all([
+    const [walletResult, eventResult] = await Promise.all([
       auth.supabase.from("member_wallets").upsert({
         user_id: userId,
         currency: "USD",
@@ -623,6 +641,14 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
         detail: event.detail,
       }),
     ])
+
+    if (walletResult.error) {
+      throw new Error(walletResult.error.message)
+    }
+
+    if (eventResult.error) {
+      throw new Error(eventResult.error.message)
+    }
 
     return toProgress(data)
   }
@@ -660,8 +686,8 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
       balance: bankroll,
       updatedAt: playedAt,
     },
-    progress: progress.slice(0, 12),
-    recentEvents: [event, ...(state.recentEvents ?? [])].slice(0, 10),
+    progress: compactLocalProgress(progress),
+    recentEvents: compactLocalEvents([event, ...(state.recentEvents ?? [])]),
   })
 
   return nextProgress
@@ -674,7 +700,14 @@ export function isSameOriginMutation(request: Request) {
     return true
   }
 
-  const originUrl = new URL(origin)
+  let originUrl: URL
+
+  try {
+    originUrl = new URL(origin)
+  } catch {
+    return false
+  }
+
   const requestUrl = new URL(request.url)
 
   if (originUrl.origin === requestUrl.origin) {
