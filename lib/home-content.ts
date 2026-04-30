@@ -133,13 +133,11 @@ export function getNavItems(language: Language) {
   return language === "zh"
     ? [
         { label: "游戏大厅", href: "#games", active: true },
-        { label: "推荐动作", href: "#quick-actions" },
         { label: "实时动态", href: "#leaderboard" },
         { label: "最近记录", href: "#history" },
       ]
     : [
         { label: "Lobby", href: "#games", active: true },
-        { label: "Actions", href: "#quick-actions" },
         { label: "Live", href: "#leaderboard" },
         { label: "History", href: "#history" },
       ]
@@ -275,7 +273,7 @@ export function getHomeCopy(language: Language, viewerMode: ViewerMode) {
       liveBadge: language === "zh" ? "实时" : "Live",
       history: language === "zh" ? "最近记录" : "Recent Activity",
       historyViewAll: language === "zh" ? "返回顶部" : "Back to top",
-      footerTagline: language === "zh" ? "TaihuCasino · 玩家游玩主页面原型" : "TaihuCasino · Player home prototype",
+      footerTagline: language === "zh" ? "TaihuCasino · 会员游戏大厅" : "TaihuCasino · Member game lobby",
       terms: language === "zh" ? "条款" : "Terms",
       privacy: language === "zh" ? "隐私" : "Privacy",
       support: language === "zh" ? "支持" : "Support",

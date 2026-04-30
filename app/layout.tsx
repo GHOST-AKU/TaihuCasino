@@ -16,7 +16,7 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   title: 'TaihuCasino',
-  description: 'TaihuCasino React + Next.js application shell and product prototype.',
+  description: 'TaihuCasino member lobby and casino table experience.',
   generator: 'TaihuCasino',
   icons: {
     icon: [

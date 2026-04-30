@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
 
+import { getLocalDemoCredentials } from "@/lib/server-auth"
+
 import { LoginForm } from "./login-form"
 
 export const metadata: Metadata = {
@@ -13,6 +15,7 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string }>
 }) {
   const params = await searchParams
+  const testAccount = getLocalDemoCredentials()
 
-  return <LoginForm next={params.next} />
+  return <LoginForm next={params.next} testAccount={testAccount} />
 }

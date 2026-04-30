@@ -1,5 +1,3 @@
-"use client"
-
 import Link from "next/link"
 import { Crown, Gift, History, Plus } from "lucide-react"
 
@@ -17,18 +15,18 @@ function QuickAction({
     <Link
       href={item.href}
       className={cn(
-        "group flex items-center gap-4 rounded-xl border p-4 text-left transition-all duration-300",
+        "group flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors",
         item.variant === "primary"
-          ? "border-primary/30 bg-primary/10 hover:border-primary/50 hover:bg-primary/20"
-          : "border-border/50 bg-card hover:border-primary/20 hover:bg-card/80",
+          ? "border-primary/35 bg-primary/10 hover:border-primary/55 hover:bg-primary/15"
+          : "border-border/60 bg-secondary/35 hover:border-primary/25 hover:bg-secondary/55",
       )}
     >
       <div
         className={cn(
-          "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors",
+          "flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors",
           item.variant === "primary"
             ? "bg-primary text-primary-foreground"
-            : "bg-secondary text-primary group-hover:bg-primary/20",
+            : "bg-background text-primary group-hover:bg-primary/15",
         )}
       >
         {icon}
@@ -55,9 +53,9 @@ export function QuickActions({
   className?: string
 }) {
   return (
-    <div className={cn("rounded-2xl border border-border/50 bg-card/50 p-5", className)}>
-      <h3 className="mb-4 text-sm font-medium text-foreground">{title}</h3>
-      <div className="grid gap-3">
+    <div className={cn("lobby-panel-surface rounded-2xl border border-border/50 p-4", className)}>
+      <h3 className="mb-3 text-sm font-semibold text-foreground">{title}</h3>
+      <div className="grid gap-2.5">
         {items.map((item, index) => {
           const Icon = actionIcons[index % actionIcons.length]
 

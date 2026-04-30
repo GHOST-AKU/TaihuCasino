@@ -99,3 +99,37 @@ pnpm start
 
 - `LICENSE`
 - `Surreal Chaos License v0.1.md`
+
+## Authentication Environment
+
+The formal Next.js product line uses Supabase Auth for member identity and SSR cookie sessions. Configure local and production environments with:
+
+- `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL.
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: Supabase publishable key. `NEXT_PUBLIC_SUPABASE_ANON_KEY` is accepted as a compatibility fallback.
+
+The app keeps a legacy local fallback for development when Supabase variables are absent:
+
+- `TAIHU_SESSION_SECRET`: a long random secret used to sign fallback session cookies.
+- `TAIHU_AUTH_ACCOUNT` and `TAIHU_AUTH_PASSWORD`: single-account fallback credentials, or
+- `TAIHU_AUTH_USERS`: JSON array of fallback user records, for example `[{"account":"member@example.com","password":"change-me","displayName":"Member"}]`.
+
+Local development falls back to `demo@taihu.casino` / `taihu-demo-2026` when neither Supabase nor fallback auth env vars are set. Production deployments should configure Supabase Auth and should not rely on the fallback account.
+
+Supabase profile schema and RLS notes live in `docs/SUPABASE_AUTH_SCHEMA.md`. The initial SQL migration is `supabase/migrations/20260418_init_auth_profiles.sql`.
+
+## Temporary Test Branch Scope
+
+This branch keeps legacy static files as read-only fallback material while moving the playable experience into the App Router.
+
+- Migrated React routes: `/games/baccarat`, `/games/baccarat-vip`, `/games/blackjack`, `/games/roulette`, `/games/roulette-studio`, `/games/dice`, `/games/cocktail-bar`, `/games/cocktail-service`.
+- Legacy fallback routes: `/legacy/[slug]`, backed by the unified table catalog in `lib/game-catalog.ts`.
+- Member routes: `/member`, `/member/settings`, and `/settings` as a redirect.
+- Member APIs: `/api/member/me`, `/api/member/profile`, `/api/member/settings`, `/api/member/progress`.
+- Supabase migrations: `20260418_init_auth_profiles.sql` plus `20260418_member_data.sql` for settings, wallet, progress, and events.
+
+Run the test gate before opening a PR:
+
+```bash
+pnpm typecheck
+pnpm build
+```

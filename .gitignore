@@ -3,6 +3,7 @@ gcm-diagnose.log
 tsconfig.tsbuildinfo
 .preview-next*.log
 .preview-next*.err.log
+.playwright-cli/
 
 # Next.js / Node
 node_modules/

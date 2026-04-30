@@ -1,74 +1,85 @@
-export const MEMBER_SESSION_STORAGE_KEY = "taihu-member-session"
-export const MEMBER_SESSION_COOKIE = "taihu-member-session"
-
 export interface MemberSession {
+  userId?: string
   account: string
   displayName: string
   loginAt: string
+  provider?: "supabase" | "local"
 }
 
-export function createMemberSession(account: string): MemberSession {
-  const displayName = account.includes("@")
-    ? account.split("@")[0]
-    : account.length > 10
-      ? `${account.slice(0, 3)} ${account.slice(-4)}`
-      : account
+export type OAuthProviderKey = "google" | "apple" | "microsoft" | "facebook" | "x"
 
-  return {
-    account,
-    displayName,
-    loginAt: new Date().toISOString(),
+export async function loginMember(account: string, password: string): Promise<MemberSession> {
+  const response = await fetch("/api/auth/login", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ account, password }),
+  })
+
+  const payload = (await response.json().catch(() => null)) as {
+    session?: MemberSession
+    error?: string
+  } | null
+
+  if (!response.ok || !payload?.session) {
+    throw new Error(payload?.error ?? "Unable to sign in.")
   }
+
+  return payload.session
 }
 
-export function persistMemberSession(session: MemberSession, rememberDevice: boolean) {
+export async function startOAuthSignIn(provider: OAuthProviderKey, next?: string) {
   if (typeof window === "undefined") {
     return
   }
 
-  window.localStorage.setItem(MEMBER_SESSION_STORAGE_KEY, JSON.stringify(session))
+  const response = await fetch("/api/auth/oauth", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ provider, next }),
+  })
 
-  const expires = rememberDevice
-    ? `; max-age=${60 * 60 * 24 * 7}`
-    : ""
+  const payload = (await response.json().catch(() => null)) as {
+    redirectTo?: string
+    error?: string
+  } | null
 
-  document.cookie = `${MEMBER_SESSION_COOKIE}=${encodeURIComponent(JSON.stringify(session))}; path=/${expires}; samesite=lax`
+  if (!response.ok || !payload?.redirectTo) {
+    throw new Error(payload?.error ?? "Unable to start sign in.")
+  }
+
+  window.location.assign(payload.redirectTo)
 }
 
-export function readMemberSession(): MemberSession | null {
+export async function readMemberSession(): Promise<MemberSession | null> {
   if (typeof window === "undefined") {
     return null
   }
 
-  const fromStorage = window.localStorage.getItem(MEMBER_SESSION_STORAGE_KEY)
-  if (fromStorage) {
-    try {
-      return JSON.parse(fromStorage) as MemberSession
-    } catch {
-      window.localStorage.removeItem(MEMBER_SESSION_STORAGE_KEY)
-    }
-  }
+  const response = await fetch("/api/auth/session", {
+    cache: "no-store",
+  }).catch(() => null)
 
-  const cookieMatch = document.cookie.match(
-    new RegExp(`(?:^|; )${MEMBER_SESSION_COOKIE.replace(/[-[\]/{}()*+?.\\^$|]/g, "\\$&")}=([^;]*)`),
-  )
-
-  if (!cookieMatch) {
+  if (!response?.ok) {
     return null
   }
 
-  try {
-    return JSON.parse(decodeURIComponent(cookieMatch[1])) as MemberSession
-  } catch {
-    return null
-  }
+  const payload = (await response.json().catch(() => null)) as {
+    session?: MemberSession | null
+  } | null
+
+  return payload?.session ?? null
 }
 
-export function clearMemberSession() {
+export async function clearMemberSession() {
   if (typeof window === "undefined") {
     return
   }
 
-  window.localStorage.removeItem(MEMBER_SESSION_STORAGE_KEY)
-  document.cookie = `${MEMBER_SESSION_COOKIE}=; path=/; max-age=0; samesite=lax`
+  await fetch("/api/auth/logout", {
+    method: "POST",
+  }).catch(() => null)
 }

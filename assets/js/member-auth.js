@@ -31,19 +31,19 @@
   };
 
   const providerMeta = {
-    google: { displayName: "Google", badge: "即刻可接通" },
-    apple: { displayName: "Apple", badge: "需正式域名" },
-    microsoft: { displayName: "Microsoft", badge: "企业与个人账号" },
-    amazon: { displayName: "Amazon", badge: "待补生产配置" },
-    github: { displayName: "GitHub", badge: "开发者常用" },
-    facebook: { displayName: "Facebook", badge: "国际社交入口" },
-    x: { displayName: "X", badge: "待接通 X / Twitter" },
-    line: { displayName: "LINE", badge: "亚洲社交入口" },
-    discord: { displayName: "Discord", badge: "社区账号入口" },
-    linkedin: { displayName: "LinkedIn", badge: "职业身份入口" },
-    twitch: { displayName: "Twitch", badge: "直播社区入口" },
-    yahoo: { displayName: "Yahoo", badge: "经典邮箱入口" },
-    wechat: { displayName: "WeChat", badge: "待补中国区方案" }
+    google: { displayName: "Google", badge: "可用" },
+    apple: { displayName: "Apple", badge: "即将开放" },
+    microsoft: { displayName: "Microsoft", badge: "可用" },
+    amazon: { displayName: "Amazon", badge: "即将开放" },
+    github: { displayName: "GitHub", badge: "即将开放" },
+    facebook: { displayName: "Facebook", badge: "即将开放" },
+    x: { displayName: "X", badge: "即将开放" },
+    line: { displayName: "LINE", badge: "即将开放" },
+    discord: { displayName: "Discord", badge: "即将开放" },
+    linkedin: { displayName: "LinkedIn", badge: "即将开放" },
+    twitch: { displayName: "Twitch", badge: "即将开放" },
+    yahoo: { displayName: "Yahoo", badge: "即将开放" },
+    wechat: { displayName: "WeChat", badge: "即将开放" }
   };
 
   function normalizeConfig() {
@@ -84,11 +84,11 @@
 
   function getProviderMessage(providerId) {
     const provider = getProvider(providerId);
-    if (!state.isConfigured) return "尚未填写 Auth0 domain 与 clientId，当前只展示真实接入结构。";
-    if (!provider) return "该登录方式尚未配置。";
+    if (!state.isConfigured) return "登录服务暂未开放。";
+    if (!provider) return "该登录方式暂未开放。";
     if (provider.enabled === false) return provider.pendingMessage || "待开通";
-    if (!provider.connection) return "缺少 Auth0 connection 名称。";
-    return provider.hint || "可跳转到 Auth0 Universal Login。";
+    if (!provider.connection) return "该登录方式暂未开放。";
+    return provider.hint || "可以使用该账号登录。";
   }
 
   function updateProviderCards() {
@@ -117,7 +117,7 @@
         button.textContent = "待开通";
       } else {
         button.disabled = true;
-        button.textContent = "待配置";
+        button.textContent = "暂未开放";
       }
     });
   }
@@ -150,7 +150,7 @@
 
   function getProviderLabelFromUser(user) {
     const subtype = user && user.sub ? user.sub.split("|")[0] : "";
-    if (!subtype) return state.isConfigured ? "等待登录" : "等待配置";
+    if (!subtype) return state.isConfigured ? "等待登录" : "暂未开放";
 
     const matchedKey = Object.keys(providerConfig).find((key) => {
       const provider = providerConfig[key];
@@ -175,30 +175,30 @@
       elements.profileName.textContent = user.name || user.nickname || "Taihu Member";
       elements.profileEmail.textContent = user.email || "该账号暂未返回邮箱";
       elements.profileProvider.textContent = getProviderLabelFromUser(user);
-      elements.profileConnection.textContent = user.sub || "未返回 sub";
+      elements.profileConnection.textContent = "已登录";
       setAvatar(user);
-      setSessionNotice("会员席位已激活", "当前会话来自 Auth0 SPA SDK，本地刷新后会继续尝试恢复登录态。");
+      setSessionNotice("会员席位已激活", "当前浏览器已登录，可以继续进入大厅。");
       return;
     }
 
     elements.profileName.textContent = "未登录访客";
     elements.profileEmail.textContent = "完成快捷登录后，这里会显示会员邮箱与席位信息。";
-    elements.profileProvider.textContent = state.isConfigured ? "等待登录" : "等待配置";
-    elements.profileConnection.textContent = state.isConfigured ? "Universal Login 尚未启动" : "请先填写 assets/js/member-auth-config.js";
+    elements.profileProvider.textContent = state.isConfigured ? "等待登录" : "暂未开放";
+    elements.profileConnection.textContent = state.isConfigured ? "等待登录" : "登录服务暂未开放";
     setAvatar(null);
 
     if (state.authError) {
-      setSessionNotice("登录流程需要关注", state.authError);
+      setSessionNotice("登录暂时不可用", state.authError);
     } else if (!state.isConfigured) {
-      setSessionNotice("Auth0 尚未配置", "请填写 domain、clientId，以及需要启用的 provider connection 名称。");
+      setSessionNotice("登录服务暂未开放", "请稍后再试，或先返回大厅继续浏览。");
     } else {
-      setSessionNotice("柜台待接待", "点击任一可用入口即可跳转到 Auth0 Universal Login。");
+      setSessionNotice("等待会员登录", "点击任一可用入口即可继续。");
     }
   }
 
   async function createClient() {
     if (!window.auth0 || typeof window.auth0.createAuth0Client !== "function") {
-      throw new Error(`Auth0 SPA SDK 未加载，请确认 https://cdn.auth0.com/js/auth0-spa-js/${sdkVersion}/auth0-spa-js.production.js 可访问。`);
+      throw new Error("登录服务加载失败，请稍后再试。");
     }
 
     const resolved = normalizeConfig();
@@ -253,7 +253,7 @@
     }
 
     if (!auth0Client) {
-      setBanner("danger", "Auth0 客户端尚未就绪", "请先填写配置并刷新页面，再重试快捷登录。");
+      setBanner("danger", "登录服务尚未就绪", "请稍后刷新页面再试。");
       return;
     }
 
@@ -304,14 +304,14 @@
   }
 
   async function init() {
-    if (elements.configField) elements.configField.textContent = "assets/js/member-auth-config.js";
+    if (elements.configField) elements.configField.textContent = "登录服务";
 
     updateProviderCards();
     bindEvents();
     updateSession(null);
 
     if (!state.isConfigured) {
-      setBanner("warn", "柜台已搭建，Auth0 仍待配置", "页面已接入真实 Auth0 SPA 结构。填写 domain、clientId 与 provider connection 后，已启用方式会转为真实跳转。");
+      setBanner("warn", "登录服务暂未开放", "你仍然可以返回大厅浏览游戏。");
       return;
     }
 
@@ -320,18 +320,18 @@
       const user = await restoreSession();
 
       if (user) {
-        setBanner("success", "会员身份已恢复", "本页已通过 Auth0 SPA SDK 恢复会话，你可以继续进入大厅或切换账号。");
+        setBanner("success", "会员身份已恢复", "你可以继续进入大厅或切换账号。");
         updateSession(user);
       } else if (state.authError) {
-        setBanner("danger", "Auth0 已连接，但回调需要处理", state.authError);
+        setBanner("danger", "登录回调处理失败", state.authError);
         updateSession(null);
       } else {
-        setBanner("success", "柜台已连接 Auth0", "已启用并配置 connection 的 provider 现在可以发起真实登录跳转，未开通方式会保持待接入状态。");
+        setBanner("success", "登录服务已连接", "选择可用的登录方式继续。");
         updateSession(null);
       }
     } catch (error) {
-      state.authError = error && error.message ? error.message : "Auth0 初始化失败。";
-      setBanner("danger", "Auth0 初始化失败", state.authError);
+      state.authError = error && error.message ? error.message : "登录服务初始化失败。";
+      setBanner("danger", "登录服务初始化失败", state.authError);
       updateSession(null);
       updateProviderCards();
     }
