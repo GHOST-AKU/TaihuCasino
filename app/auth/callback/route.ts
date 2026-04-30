@@ -4,7 +4,11 @@ import { NextResponse } from "next/server"
 import { createSupabaseAuthClient, isSupabaseAuthConfigured } from "@/lib/server-auth"
 
 function resolveRedirectTarget(nextTarget: string | null) {
-  return nextTarget?.startsWith("/") ? nextTarget : "/"
+  if (!nextTarget?.startsWith("/")) {
+    return "/"
+  }
+
+  return nextTarget.startsWith("//") ? "/" : nextTarget
 }
 
 export async function GET(request: Request) {
