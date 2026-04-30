@@ -208,6 +208,24 @@
   }
 }
 
+@keyframes dice-tumble {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+
+  35% {
+    transform: translateY(-10px) rotate(8deg) scale(1.04);
+  }
+
+  70% {
+    transform: translateY(4px) rotate(-7deg) scale(0.98);
+  }
+
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+}
+
 @layer utilities {
   .fortune-login-grid {
     background-color: #04070b;
@@ -326,5 +344,132 @@
     background: var(--lobby-panel-bg);
     box-shadow: var(--lobby-panel-shadow);
     backdrop-filter: blur(16px);
+  }
+
+  .game-table-shell {
+    color: var(--foreground);
+    background-color: var(--background);
+  }
+
+  .game-table-shell :where(
+    [class~="bg-white/[0.035]"],
+    [class~="bg-black/20"],
+    [class~="bg-black/25"]
+  ) {
+    background: var(--lobby-panel-bg) !important;
+  }
+
+  .game-table-shell :where(
+    [class~="shadow-[0_18px_50px_rgba(0,0,0,0.34)]"]
+  ) {
+    box-shadow: var(--lobby-panel-shadow) !important;
+  }
+
+  .game-table-shell :where(
+    [class~="bg-white/5"],
+    [class~="bg-white/10"],
+    [class~="bg-[#07150f]"],
+    [class~="bg-[#173727]"],
+    [class~="bg-[#234b33]"]
+  ) {
+    color: var(--secondary-foreground) !important;
+    background: var(--secondary) !important;
+  }
+
+  .game-table-shell :where(
+    [class~="bg-[#0b1c15]"]
+  ) {
+    color: var(--popover-foreground) !important;
+    background: var(--popover) !important;
+  }
+
+  .game-table-shell :where(
+    [class~="bg-[#d0b06e]/30"],
+    [class~="bg-[#d0b06e]/35"]
+  ) {
+    color: var(--accent-foreground) !important;
+    background: var(--accent) !important;
+  }
+
+  .game-table-shell :where(
+    [class~="hover:bg-[#214a35]"]:hover,
+    [class~="hover:bg-[#2d5b40]"]:hover,
+    [class~="hover:bg-[#d0b06e]/15"]:hover,
+    [class~="hover:bg-white/10"]:hover
+  ) {
+    color: var(--accent-foreground) !important;
+    background: var(--accent) !important;
+  }
+
+  .game-table-shell :where(
+    [class~="from-[#f0cf83]"][class~="to-[#c69d55]"]
+  ) {
+    color: var(--primary-foreground) !important;
+    background: var(--primary) !important;
+  }
+
+  .game-table-shell :where(
+    [class~="border-[#d0b06e]/25"],
+    [class~="border-[#d0b06e]/30"],
+    [class~="border-[#d0b06e]/35"],
+    [class~="border-[#d0b06e]/40"],
+    [class~="border-[#d0b06e]/45"],
+    [class~="border-[#d0b06e]/50"],
+    [class~="border-white/10"],
+    [class~="border-white/15"],
+    [class~="border-white/20"],
+    [class~="border-white/25"]
+  ) {
+    border-color: var(--border) !important;
+  }
+
+  .game-table-shell :where(
+    [class~="hover:border-[#f0cf83]"]:hover,
+    [class~="hover:border-[#f0cf83]/75"]:hover
+  ) {
+    border-color: var(--ring) !important;
+  }
+
+  .game-table-shell :where(input, select) {
+    color: var(--foreground) !important;
+    background: var(--card) !important;
+    border-color: var(--input) !important;
+  }
+
+  .game-table-shell :where(input, select):focus {
+    border-color: var(--ring) !important;
+  }
+
+  .game-table-shell :where(
+    [class~="text-[#f8ecd2]"],
+    [class~="text-[#fff4d8]"],
+    [class~="text-[#f4e7ca]"],
+    [class~="text-[#fff5dd]"],
+    [class~="text-[#ffeec7]"]
+  ) {
+    color: var(--foreground) !important;
+  }
+
+  .game-table-shell :where(
+    [class~="text-[#cbbd91]"],
+    [class~="text-[#d8c895]"],
+    [class~="text-[#d8d8d8]"],
+    [class~="text-[#d9ceb0]"]
+  ) {
+    color: var(--muted-foreground) !important;
+  }
+
+  .game-table-shell :where(
+    [class~="text-[#d0b06e]"],
+    [class~="text-[#f4d18a]"],
+    [class~="text-[#efcf8c]"]
+  ) {
+    color: var(--primary) !important;
+  }
+
+  .game-table-shell :where(
+    [class~="text-[#34240a]"]
+  ) {
+    color: var(--primary-foreground) !important;
   }
 }

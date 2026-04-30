@@ -13,8 +13,8 @@
         <img src="../assets/images/taihu-casino-logo-v3.svg" alt="TaihuCasino logo" />
         <div>
           <p class="member-eyebrow">TaihuCasino</p>
-          <h1>会员注册柜台</h1>
-          <p>Membership Desk / 真实 Auth0 社交登录接待台</p>
+          <h1>会员中心</h1>
+          <p>Membership Desk / 安全快捷登录</p>
         </div>
       </div>
       <nav class="member-topbar__actions" aria-label="快捷导航">
@@ -25,52 +25,52 @@
 
     <main class="member-kiosk">
       <section class="member-panel member-panel--hero" aria-labelledby="member-counter-title">
-        <p class="member-eyebrow">VIP Counter</p>
-        <h2 id="member-counter-title">把快捷登录做成赌场世界里的正式接待柜台</h2>
+        <p class="member-eyebrow">VIP Access</p>
+        <h2 id="member-counter-title">登录会员账户，继续你的 TaihuCasino 体验</h2>
         <p class="member-hero-copy">
-          这是 TaihuCasino 的会员入口页。首轮采用 Auth0 SPA 方案承接真实社交登录，优先打通 Google、Microsoft 等开箱更顺滑的入口，同时保留 Apple、Amazon 与更多小众渠道的生产级占位，方便后续在正式域名上继续扩容。
+          使用已启用的社交账号进入会员中心。登录后可返回大厅，并在后续版本中同步会员资料、席位状态与专属权益。
         </p>
 
         <div class="member-status-banner" data-auth-banner data-tone="warn" role="status" aria-live="polite">
           <div>
-            <strong data-auth-banner-title>柜台正在读取认证配置</strong>
-            <p data-auth-banner-message>页面加载后会检查 Auth0 SPA SDK、前端配置和当前登录态。</p>
+            <strong data-auth-banner-title>正在检查登录状态</strong>
+            <p data-auth-banner-message>页面加载后会同步当前会员会话。</p>
           </div>
           <span class="member-status-banner__dot" aria-hidden="true"></span>
         </div>
 
-        <div class="member-highlights" aria-label="会员亮点">
+        <div class="member-highlights" aria-label="会员服务亮点">
           <article class="member-highlight">
-            <strong>PKCE</strong>
-            <span>使用 Auth0 SPA SDK 的授权码 + PKCE 流程，适合静态多页站点的真实登录接入。</span>
+            <strong>安全登录</strong>
+            <span>通过受信任的第三方登录服务完成身份验证，减少密码管理负担。</span>
           </article>
           <article class="member-highlight">
-            <strong>Universal Login</strong>
-            <span>按钮按 provider 精确发起跳转，回调仍回到本柜台页，便于演示与后续接大厅。</span>
+            <strong>快速返回</strong>
+            <span>登录完成后保留当前访问节奏，可继续进入大厅或切换账号。</span>
           </article>
           <article class="member-highlight">
-            <strong>Session Ready</strong>
-            <span>登录态由 SDK 管理，刷新后继续尝试恢复，方便继续扩展会员资料与积分系统。</span>
+            <strong>会员权益</strong>
+            <span>为后续会员资料、积分、等级与专属活动预留统一入口。</span>
           </article>
         </div>
 
         <div class="member-benefits">
           <article>
             <p class="member-eyebrow">Member Privileges</p>
-            <h3>柜台承诺</h3>
+            <h3>会员入口</h3>
             <ul>
-              <li>统一会员入口，不再散落在各游戏页中。</li>
-              <li>快捷登录成功后，会员会话可直接带往大厅。</li>
-              <li>首轮保持纯静态站架构，便于继续演化。</li>
+              <li>统一管理登录、登出与当前会员状态。</li>
+              <li>登录成功后可直接返回游戏大厅。</li>
+              <li>未开放的登录方式会保持清晰提示。</li>
             </ul>
           </article>
           <article>
-            <p class="member-eyebrow">Operator Notes</p>
-            <h3>当前接入节奏</h3>
+            <p class="member-eyebrow">Account Care</p>
+            <h3>账户保护</h3>
             <ul>
-              <li>Google 与 Microsoft 默认按“优先打通真实流程”配置。</li>
-              <li>Apple 与 Amazon 在未完成生产校验时明确显示待开通。</li>
-              <li>GitHub、Facebook、X、LINE、Discord、LinkedIn、Twitch、Yahoo、WeChat 也都已预留登录位。</li>
+              <li>只通过官方登录窗口完成授权。</li>
+              <li>退出登录会清理当前浏览器会话。</li>
+              <li>账户资料以登录服务返回的信息为准。</li>
             </ul>
           </article>
         </div>
@@ -78,10 +78,10 @@
 
       <aside class="member-session" aria-labelledby="member-session-title">
         <div class="member-session__card">
-          <p class="member-eyebrow">Live Session</p>
+          <p class="member-eyebrow">Session</p>
           <h2 id="member-session-title">当前会员席位</h2>
           <div class="member-session__pill" data-session-state>认证状态载入中</div>
-          <p class="member-session__helper" data-session-hint>页面会在初始化后同步展示 Auth0 连接状态与当前用户资料。</p>
+          <p class="member-session__helper" data-session-hint>页面会在初始化后同步当前登录状态。</p>
 
           <div class="member-session__profile" data-session-mode data-mode="guest">
             <div class="member-session__avatar" data-profile-avatar>G</div>
@@ -94,11 +94,11 @@
           <div class="member-session__list" aria-label="会话明细">
             <div class="member-session__item">
               <span>登录来源</span>
-              <span data-profile-provider>等待配置</span>
+              <span data-profile-provider>等待登录</span>
             </div>
             <div class="member-session__item">
-              <span>Connection / Sub</span>
-              <span data-profile-connection>请先填写 assets/js/member-auth-config.js</span>
+              <span>席位状态</span>
+              <span data-profile-connection>等待登录</span>
             </div>
           </div>
 
@@ -109,12 +109,10 @@
         </div>
 
         <div class="member-session__card">
-          <p class="member-eyebrow">Config Target</p>
-          <h2>Auth0 前端配置位</h2>
+          <p class="member-eyebrow">Member Route</p>
+          <h2>进入大厅</h2>
           <p class="member-session__helper">
-            将 Auth0 Domain、Client ID、回调地址以及 provider connection 写入
-            <span class="member-inline-code" data-config-field>assets/js/member-auth-config.js</span>
-            即可让已启用入口转为真实可用。
+            完成登录后，会员席位会在本页点亮。你可以继续进入轮盘大厅，或退出后切换其他账号。
           </p>
         </div>
       </aside>
@@ -128,18 +126,18 @@
           <div class="member-provider-card__icon" aria-hidden="true">G</div>
           <div class="member-provider-card__copy">
             <h3>Google</h3>
-            <p>适合先打通真实会员登录跳转与回调，作为首批可用 provider。</p>
-            <span class="member-provider-card__meta" data-provider-meta>等待配置</span>
+            <p>使用 Google 账号快速进入会员中心。</p>
+            <span class="member-provider-card__meta" data-provider-meta>暂未开放</span>
           </div>
-          <button type="button" data-provider-login="google" data-provider-theme="google" disabled>待配置</button>
+          <button type="button" data-provider-login="google" data-provider-theme="google" disabled>暂未开放</button>
         </article>
 
         <article class="member-provider-card" data-provider-card="apple" data-provider-theme="apple" data-status="pending">
           <div class="member-provider-card__icon" aria-hidden="true">A</div>
           <div class="member-provider-card__copy">
             <h3>Apple</h3>
-            <p>保留真实入口位，但在正式域名与 Apple 开发者配置完成前维持待开通状态。</p>
-            <span class="member-provider-card__meta" data-provider-meta>待开通或待域名验证</span>
+            <p>Apple 登录将在账户服务开放后启用。</p>
+            <span class="member-provider-card__meta" data-provider-meta>即将开放</span>
           </div>
           <button type="button" data-provider-login="apple" data-provider-theme="apple" disabled>待开通</button>
         </article>
@@ -148,18 +146,18 @@
           <div class="member-provider-card__icon" aria-hidden="true">M</div>
           <div class="member-provider-card__copy">
             <h3>Microsoft</h3>
-            <p>支持 Microsoft 账户作为会员入口，适合与 Google 一起作为首轮真实接入。</p>
-            <span class="member-provider-card__meta" data-provider-meta>等待配置</span>
+            <p>使用 Microsoft 账号进入会员中心。</p>
+            <span class="member-provider-card__meta" data-provider-meta>暂未开放</span>
           </div>
-          <button type="button" data-provider-login="microsoft" data-provider-theme="microsoft" disabled>待配置</button>
+          <button type="button" data-provider-login="microsoft" data-provider-theme="microsoft" disabled>暂未开放</button>
         </article>
 
         <article class="member-provider-card" data-provider-card="amazon" data-provider-theme="amazon" data-status="pending">
           <div class="member-provider-card__icon" aria-hidden="true">Am</div>
           <div class="member-provider-card__copy">
             <h3>Amazon</h3>
-            <p>为“应有尽有”的会员登录矩阵预留真实入口，当前按待商户审核状态展示。</p>
-            <span class="member-provider-card__meta" data-provider-meta>待开通或待商户审核</span>
+            <p>Amazon 登录将在账户服务开放后启用。</p>
+            <span class="member-provider-card__meta" data-provider-meta>即将开放</span>
           </div>
           <button type="button" data-provider-login="amazon" data-provider-theme="amazon" disabled>待开通</button>
         </article>
@@ -168,7 +166,7 @@
           <div class="member-provider-card__icon" aria-hidden="true">GH</div>
           <div class="member-provider-card__copy">
             <h3>GitHub</h3>
-            <p>适合开发者用户与社区运营场景，已保留真实登录位。</p>
+            <p>GitHub 登录将在账户服务开放后启用。</p>
             <span class="member-provider-card__meta" data-provider-meta>待开通</span>
           </div>
           <button type="button" data-provider-login="github" data-provider-theme="github" disabled>待开通</button>
@@ -178,7 +176,7 @@
           <div class="member-provider-card__icon" aria-hidden="true">f</div>
           <div class="member-provider-card__copy">
             <h3>Facebook</h3>
-            <p>国际社交账号入口，适合与品牌活动页联动。</p>
+            <p>Facebook 登录将在账户服务开放后启用。</p>
             <span class="member-provider-card__meta" data-provider-meta>待开通</span>
           </div>
           <button type="button" data-provider-login="facebook" data-provider-theme="facebook" disabled>待开通</button>
@@ -188,7 +186,7 @@
           <div class="member-provider-card__icon" aria-hidden="true">X</div>
           <div class="member-provider-card__copy">
             <h3>X / Twitter</h3>
-            <p>保留社媒账号快速接入位，待接通对应开发者平台后启用。</p>
+            <p>X 登录将在账户服务开放后启用。</p>
             <span class="member-provider-card__meta" data-provider-meta>待开通</span>
           </div>
           <button type="button" data-provider-login="x" data-provider-theme="x" disabled>待开通</button>
@@ -198,7 +196,7 @@
           <div class="member-provider-card__icon" aria-hidden="true">L</div>
           <div class="member-provider-card__copy">
             <h3>LINE</h3>
-            <p>适合亚洲地区用户体系扩展，当前保留真实接入位。</p>
+            <p>LINE 登录将在账户服务开放后启用。</p>
             <span class="member-provider-card__meta" data-provider-meta>待开通</span>
           </div>
           <button type="button" data-provider-login="line" data-provider-theme="line" disabled>待开通</button>
@@ -208,7 +206,7 @@
           <div class="member-provider-card__icon" aria-hidden="true">D</div>
           <div class="member-provider-card__copy">
             <h3>Discord</h3>
-            <p>适合社区型赌场活动或玩家俱乐部入口。</p>
+            <p>Discord 登录将在账户服务开放后启用。</p>
             <span class="member-provider-card__meta" data-provider-meta>待开通</span>
           </div>
           <button type="button" data-provider-login="discord" data-provider-theme="discord" disabled>待开通</button>
@@ -218,7 +216,7 @@
           <div class="member-provider-card__icon" aria-hidden="true">in</div>
           <div class="member-provider-card__copy">
             <h3>LinkedIn</h3>
-            <p>职业身份入口，适合商务型会员与高净值活动运营。</p>
+            <p>LinkedIn 登录将在账户服务开放后启用。</p>
             <span class="member-provider-card__meta" data-provider-meta>待开通</span>
           </div>
           <button type="button" data-provider-login="linkedin" data-provider-theme="linkedin" disabled>待开通</button>
@@ -228,7 +226,7 @@
           <div class="member-provider-card__icon" aria-hidden="true">Tw</div>
           <div class="member-provider-card__copy">
             <h3>Twitch</h3>
-            <p>适合直播活动或娱乐营销向的会员入口预留。</p>
+            <p>Twitch 登录将在账户服务开放后启用。</p>
             <span class="member-provider-card__meta" data-provider-meta>待开通</span>
           </div>
           <button type="button" data-provider-login="twitch" data-provider-theme="twitch" disabled>待开通</button>
@@ -238,7 +236,7 @@
           <div class="member-provider-card__icon" aria-hidden="true">Y</div>
           <div class="member-provider-card__copy">
             <h3>Yahoo</h3>
-            <p>老牌邮箱账号入口，适合把账号矩阵做全。</p>
+            <p>Yahoo 登录将在账户服务开放后启用。</p>
             <span class="member-provider-card__meta" data-provider-meta>待开通</span>
           </div>
           <button type="button" data-provider-login="yahoo" data-provider-theme="yahoo" disabled>待开通</button>
@@ -248,7 +246,7 @@
           <div class="member-provider-card__icon" aria-hidden="true">微</div>
           <div class="member-provider-card__copy">
             <h3>WeChat</h3>
-            <p>为中文用户体系预留入口，但是否能直接上线取决于后续中国区接入方案。</p>
+            <p>WeChat 登录将在账户服务开放后启用。</p>
             <span class="member-provider-card__meta" data-provider-meta>待开通</span>
           </div>
           <button type="button" data-provider-login="wechat" data-provider-theme="wechat" disabled>待开通</button>
@@ -256,16 +254,16 @@
       </div>
     </section>
 
-    <section class="member-footer-grid" aria-label="接入说明">
+    <section class="member-footer-grid" aria-label="会员说明">
       <article class="member-footer-card">
-        <p class="member-eyebrow">Callback Notes</p>
-        <h2>真实接入要求</h2>
-        <p>本页使用 Auth0 SPA SDK 和 Universal Login。Google、Microsoft 在填入正确的 Auth0 应用与 connection 后可以直接发起真实 OAuth；其他方式则会继续按各自平台的审核、域名和商户条件显示可用状态。</p>
+        <p class="member-eyebrow">Availability</p>
+        <h2>登录服务状态</h2>
+        <p>可用的登录方式会显示为可点击状态；尚未开放的入口会保持灰显，避免误操作。</p>
       </article>
       <article class="member-footer-card">
-        <p class="member-eyebrow">Current Contract</p>
-        <h2>前端接口约定</h2>
-        <p>页面已暴露 <code>window.login(provider)</code>、<code>window.logout()</code> 与 <code>window.TaihuMemberAuth.getUser()</code>，方便后续把会员入口接进大厅页、积分模块或会员资料页。</p>
+        <p class="member-eyebrow">Privacy</p>
+        <h2>资料展示</h2>
+        <p>登录后，本页只展示账户昵称、邮箱与基础会话状态。更多会员资料将在专属资料页中管理。</p>
       </article>
     </section>
   </div>

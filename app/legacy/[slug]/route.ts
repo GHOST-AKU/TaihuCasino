@@ -1,26 +1,40 @@
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 
+import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
-import { coreGames, getCoreGame } from "@/lib/home-content"
+import { allCasinoCatalogEntries, getCasinoCatalogEntry } from "@/lib/game-catalog"
+import { readMemberOverview } from "@/lib/member-data"
 
 export function generateStaticParams() {
-  return coreGames.map((game) => ({ slug: game.slug }))
+  return allCasinoCatalogEntries
+    .filter((entry) => Boolean(entry.legacyFile))
+    .map((entry) => ({ slug: entry.slug }))
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await context.params
-  const game = getCoreGame(slug)
+  const entry = getCasinoCatalogEntry(slug)
 
-  if (!game) {
+  if (!entry?.legacyFile) {
     return new NextResponse("Not Found", { status: 404 })
   }
 
-  const htmlPath = path.join(process.cwd(), "pages", game.legacyFile)
+  const cookieStore = await cookies()
+  const member = await readMemberOverview(cookieStore)
+
+  if (!member) {
+    const requestUrl = new URL(request.url)
+    const next = `${requestUrl.pathname}${requestUrl.search}`
+
+    return NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(next)}`, requestUrl.origin))
+  }
+
+  const htmlPath = path.join(process.cwd(), "pages", entry.legacyFile)
   const html = await readFile(htmlPath, "utf8")
 
   return new NextResponse(html, {

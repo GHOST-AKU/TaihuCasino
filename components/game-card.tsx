@@ -41,9 +41,8 @@ export function GameCard({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        "group relative cursor-pointer overflow-hidden rounded-2xl border border-border/50 bg-card p-6 transition-all duration-500",
+        "group relative flex h-full min-h-[320px] cursor-pointer overflow-hidden rounded-2xl border border-border/50 bg-card p-6 transition-all duration-500",
         "hover:border-primary/30 hover:shadow-[0_0_40px_rgba(0,200,150,0.08)]",
-        featured && "md:col-span-2 md:row-span-2",
         className,
       )}
     >
@@ -58,7 +57,6 @@ export function GameCard({
         <div
           className={cn(
             "mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-secondary/80 text-primary transition-all duration-300",
-            featured && "h-20 w-20 rounded-2xl",
             isHovered && "scale-105 bg-primary/20",
           )}
         >
@@ -68,7 +66,6 @@ export function GameCard({
         <h3
           className={cn(
             "mb-1 text-xl font-semibold text-foreground transition-colors",
-            featured && "text-2xl md:text-3xl",
             isHovered && "text-primary",
           )}
         >

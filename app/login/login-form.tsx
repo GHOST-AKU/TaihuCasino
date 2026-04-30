@@ -1,13 +1,13 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState, useTransition } from "react"
+import Image from "next/image"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowRight, Eye, EyeOff, Lock, Mail, Spade } from "lucide-react"
 
-import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
-import { createMemberSession, persistMemberSession, readMemberSession } from "@/lib/member-session"
+import { loginMember, readMemberSession, startOAuthSignIn, type OAuthProviderKey } from "@/lib/member-session"
 import { cn } from "@/lib/utils"
 
 const providerButtons = [
@@ -17,6 +17,8 @@ const providerButtons = [
     className: "bg-white hover:bg-white/90",
     src: "/brands/google-g-logo.png",
     imgClassName: "h-7 w-7",
+    width: 28,
+    height: 28,
   },
   {
     key: "apple",
@@ -24,6 +26,8 @@ const providerButtons = [
     className: "bg-black hover:bg-[#121212]",
     src: "/brands/apple-logo.svg",
     imgClassName: "h-6 w-6 invert",
+    width: 24,
+    height: 24,
   },
   {
     key: "microsoft",
@@ -31,6 +35,8 @@ const providerButtons = [
     className: "bg-[#2f2f2f] hover:bg-[#393939]",
     src: "/brands/microsoft-logo.svg",
     imgClassName: "h-6 w-6",
+    width: 24,
+    height: 24,
   },
   {
     key: "facebook",
@@ -38,6 +44,8 @@ const providerButtons = [
     className: "bg-[#2f74da] hover:bg-[#2a68c4]",
     src: "/brands/facebook-logo.png",
     imgClassName: "h-6 w-6 brightness-0 invert",
+    width: 24,
+    height: 24,
   },
   {
     key: "amazon",
@@ -45,6 +53,8 @@ const providerButtons = [
     className: "bg-[#f8a51c] hover:bg-[#eb9b18]",
     src: "/brands/amazon-logo.png",
     imgClassName: "h-5 w-auto max-w-[5.7rem]",
+    width: 91,
+    height: 20,
   },
   {
     key: "x",
@@ -52,14 +62,30 @@ const providerButtons = [
     className: "bg-black hover:bg-[#121212]",
     src: "/brands/x-logo.svg",
     imgClassName: "h-5 w-5 invert",
+    width: 20,
+    height: 20,
   },
-]
+] satisfies Array<{
+  key: OAuthProviderKey | "amazon"
+  label: string
+  className: string
+  src: string
+  imgClassName: string
+  width: number
+  height: number
+}>
 
 const stats = [
   { value: "50K+", label: "Active Players" },
   { value: "$2M+", label: "Daily Volume" },
   { value: "99.9%", label: "Uptime" },
 ]
+
+interface TestAccountHint {
+  account: string
+  password: string
+  displayName?: string
+}
 
 function resolveRedirectTarget(nextTarget: string | null) {
   if (!nextTarget || !nextTarget.startsWith("/")) {
@@ -74,22 +100,30 @@ function ProviderButton({
   className,
   src,
   imgClassName,
+  width,
+  height,
   loading,
   onClick,
+  disabled,
+  keepImageWidthAuto,
 }: {
   label: string
   className: string
   src: string
   imgClassName: string
+  width: number
+  height: number
   loading: boolean
   onClick: () => void
+  disabled?: boolean
+  keepImageWidthAuto?: boolean
 }) {
   return (
     <button
       type="button"
       aria-label={`Continue with ${label}`}
       onClick={onClick}
-      disabled={loading}
+      disabled={loading || disabled}
       className={cn(
         "flex h-15 items-center justify-center rounded-[1.35rem] shadow-sm transition-all duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60",
         className,
@@ -98,7 +132,14 @@ function ProviderButton({
       {loading ? (
         <span className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
       ) : (
-        <img src={src} alt={label} className={imgClassName} />
+        <Image
+          src={src}
+          alt={label}
+          width={width}
+          height={height}
+          className={imgClassName}
+          style={keepImageWidthAuto ? { width: "auto" } : undefined}
+        />
       )}
     </button>
   )
@@ -147,25 +188,36 @@ function Field({
   )
 }
 
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({
+  next,
+  testAccount,
+}: {
+  next?: string
+  testAccount?: TestAccountHint | null
+}) {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState("")
-  const [isPending, startTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    const session = readMemberSession()
-    if (!session) {
-      return
-    }
+    let cancelled = false
 
-    router.replace(resolveRedirectTarget(next ?? null))
+    readMemberSession().then((session) => {
+      if (!cancelled && session) {
+        router.replace(resolveRedirectTarget(next ?? null))
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
   }, [next, router])
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     const trimmedEmail = email.trim()
@@ -180,18 +232,44 @@ export function LoginForm({ next }: { next?: string }) {
     }
 
     setErrorMessage("")
+    setIsSubmitting(true)
 
-    startTransition(() => {
-      const session = createMemberSession(trimmedEmail)
-      persistMemberSession(session, true)
+    try {
+      await loginMember(trimmedEmail, password)
       router.push(resolveRedirectTarget(next ?? null))
       router.refresh()
-    })
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to sign in.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  function handleProviderClick(provider: string) {
+  function handleUseTestAccount() {
+    if (!testAccount) {
+      return
+    }
+
+    setEmail(testAccount.account)
+    setPassword(testAccount.password)
+    setErrorMessage("")
+  }
+
+  async function handleProviderClick(provider: OAuthProviderKey | "amazon") {
+    if (provider === "amazon") {
+      setErrorMessage("Amazon sign-in is not supported by Supabase Auth yet.")
+      return
+    }
+
     setLoadingProvider(provider)
-    window.setTimeout(() => setLoadingProvider(null), 850)
+    setErrorMessage("")
+
+    try {
+      await startOAuthSignIn(provider, next)
+    } catch (error) {
+      setLoadingProvider(null)
+      setErrorMessage(error instanceof Error ? error.message : "Unable to start sign in.")
+    }
   }
 
   return (
@@ -199,10 +277,6 @@ export function LoginForm({ next }: { next?: string }) {
       <div className="pointer-events-none absolute inset-0">
         <div className="lobby-ambient-orb absolute left-0 top-0 h-80 w-80 rounded-full blur-3xl" />
         <div className="lobby-ambient-orb lobby-ambient-orb-secondary absolute bottom-0 right-0 h-96 w-96 rounded-full blur-3xl" />
-      </div>
-
-      <div className="absolute right-5 top-5 z-20">
-        <ThemeToggle label="Theme" lightLabel="Light" darkLabel="Dark" />
       </div>
 
       <div className="relative z-10 grid min-h-screen lg:grid-cols-[1.04fr_0.96fr]">
@@ -277,6 +351,22 @@ export function LoginForm({ next }: { next?: string }) {
               <p className="mt-2.5 text-base text-[var(--auth-soft-text)]">Sign in to continue your gaming journey</p>
             </div>
 
+            {testAccount ? (
+              <div className="mt-6 rounded-[1.35rem] border border-primary/20 bg-primary/10 p-4 text-left">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Test account</p>
+                    <p className="mt-1 text-xs text-[var(--auth-soft-text)]">
+                      {testAccount.account} / {testAccount.password}
+                    </p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={handleUseTestAccount}>
+                    Fill account
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
             <div className="mt-8 grid grid-cols-3 gap-3">
               {providerButtons.map((provider) => (
                 <ProviderButton
@@ -285,8 +375,12 @@ export function LoginForm({ next }: { next?: string }) {
                   className={provider.className}
                   src={provider.src}
                   imgClassName={provider.imgClassName}
+                  width={provider.width}
+                  height={provider.height}
                   loading={loadingProvider === provider.key}
                   onClick={() => handleProviderClick(provider.key)}
+                  disabled={provider.key === "amazon"}
+                  keepImageWidthAuto={provider.key === "amazon"}
                 />
               ))}
             </div>
@@ -341,19 +435,16 @@ export function LoginForm({ next }: { next?: string }) {
 
               <Button
                 type="submit"
-                disabled={isPending}
+                disabled={isSubmitting}
                 className="mt-2 h-14 w-full rounded-[1.4rem] bg-primary text-lg font-semibold text-primary-foreground shadow-[0_20px_60px_rgba(45,201,142,0.18)] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-primary/90"
               >
-                {isPending ? "Signing In..." : "Sign In"}
+                {isSubmitting ? "Signing In..." : "Sign In"}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </form>
 
             <p className="mt-7 text-center text-base text-[var(--auth-soft-text)]">
-              Don&apos;t have an account?{" "}
-              <Link href="#" className="font-semibold text-primary hover:text-primary/80">
-                Create one
-              </Link>
+              Account required. Registration can be connected to Supabase Auth when production credentials are ready.
             </p>
 
             <p className="mt-5 text-center text-xs leading-6 text-[var(--auth-faint-text)]">

@@ -2,12 +2,10 @@
 
 import Link from "next/link"
 import { useState } from "react"
-import { Bell, Languages, LogOut, Menu, Search, Settings, Sparkles, X } from "lucide-react"
+import { Bell, LogOut, Menu, Search, Settings, Sparkles, X } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "@/components/theme-toggle"
-import type { Language } from "@/lib/home-content"
 import { cn } from "@/lib/utils"
 
 interface NavItem {
@@ -18,49 +16,44 @@ interface NavItem {
 
 interface NavHeaderProps {
   navItems: NavItem[]
-  language: Language
-  onLanguageChange: (language: Language) => void
   playerName: string
-  profileLabel: string
   brand: string
   isAuthenticated: boolean
   authActionLabel: string
   authActionHref: string
+  profileHref?: string
+  settingsHref?: string
   onLogout: () => void
   labels: {
     search: string
     notifications: string
     settings: string
     menu: string
-    language: string
-    theme: string
-    light: string
-    dark: string
   }
 }
 
 export function NavHeader({
   navItems,
-  language,
-  onLanguageChange,
   playerName,
-  profileLabel,
   brand,
   isAuthenticated,
   authActionLabel,
   authActionHref,
+  profileHref = "/member",
+  settingsHref = "/member/settings",
   onLogout,
   labels,
 }: NavHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [notifications] = useState(3)
 
-  const avatarFallback = playerName
-    .split(" ")
-    .map((item) => item[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase()
+  const avatarFallback =
+    playerName
+      .split(" ")
+      .map((item) => item[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "TC"
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
@@ -93,26 +86,6 @@ export function NavHeader({
         </nav>
 
         <div className="flex items-center gap-2">
-          <div className="hidden items-center rounded-full border border-border/50 bg-card/60 p-1 md:flex">
-            <span className="px-2 text-xs text-muted-foreground">
-              <Languages className="mr-1 inline h-3.5 w-3.5" />
-              {labels.language}
-            </span>
-            <Button variant={language === "zh" ? "default" : "ghost"} size="sm" onClick={() => onLanguageChange("zh")}>
-              中文
-            </Button>
-            <Button variant={language === "en" ? "default" : "ghost"} size="sm" onClick={() => onLanguageChange("en")}>
-              EN
-            </Button>
-          </div>
-
-          <ThemeToggle
-            className="hidden lg:inline-flex"
-            label={labels.theme}
-            lightLabel={labels.light}
-            darkLabel={labels.dark}
-          />
-
           <Button variant="ghost" size="icon" className="hidden text-muted-foreground hover:text-foreground sm:flex">
             <Search className="h-5 w-5" />
             <span className="sr-only">{labels.search}</span>
@@ -120,17 +93,19 @@ export function NavHeader({
 
           <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
             <Bell className="h-5 w-5" />
-            {notifications > 0 && (
+            {notifications > 0 ? (
               <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
                 {notifications}
               </span>
-            )}
+            ) : null}
             <span className="sr-only">{labels.notifications}</span>
           </Button>
 
-          <Button variant="ghost" size="icon" className="hidden text-muted-foreground hover:text-foreground sm:flex">
-            <Settings className="h-5 w-5" />
-            <span className="sr-only">{labels.settings}</span>
+          <Button asChild variant="ghost" size="icon" className="hidden text-muted-foreground hover:text-foreground sm:flex">
+            <Link href={settingsHref} aria-label={labels.settings}>
+              <Settings className="h-5 w-5" />
+              <span className="sr-only">{labels.settings}</span>
+            </Link>
           </Button>
 
           <div className="ml-2 flex items-center gap-2 border-l border-border/50 pl-2">
@@ -142,7 +117,7 @@ export function NavHeader({
                 onClick={onLogout}
               >
                 <LogOut className="h-4 w-4" />
-                退出
+                Sign out
               </Button>
             ) : (
               <Button asChild size="sm" className="hidden lg:inline-flex">
@@ -150,17 +125,18 @@ export function NavHeader({
               </Button>
             )}
 
-            <div className="hidden text-right lg:block">
+            <Link href={isAuthenticated ? profileHref : authActionHref} className="hidden text-right lg:block">
               <p className="text-sm font-medium text-foreground">{playerName}</p>
-              <p className="text-xs text-primary">{profileLabel}</p>
-            </div>
-            <Avatar className="h-9 w-9 border-2 border-primary/30">
-              <AvatarImage
-                src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face"
-                alt={playerName}
-              />
-              <AvatarFallback className="bg-primary/20 text-primary">{avatarFallback}</AvatarFallback>
-            </Avatar>
+            </Link>
+            <Link href={isAuthenticated ? profileHref : authActionHref} aria-label={playerName}>
+              <Avatar className="h-9 w-9 border-2 border-primary/30">
+                <AvatarImage
+                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face"
+                  alt={playerName}
+                />
+                <AvatarFallback className="bg-primary/20 text-primary">{avatarFallback}</AvatarFallback>
+              </Avatar>
+            </Link>
           </div>
 
           <Button
@@ -178,29 +154,19 @@ export function NavHeader({
       {mobileMenuOpen ? (
         <div className="border-t border-border/50 bg-background px-4 py-4 md:hidden">
           <div className="mb-4 flex flex-wrap gap-2">
-            <Button variant={language === "zh" ? "default" : "outline"} size="sm" onClick={() => onLanguageChange("zh")}>
-              中文
-            </Button>
-            <Button variant={language === "en" ? "default" : "outline"} size="sm" onClick={() => onLanguageChange("en")}>
-              EN
-            </Button>
             {isAuthenticated ? (
               <Button variant="outline" size="sm" onClick={onLogout}>
-                退出
+                Sign out
               </Button>
             ) : (
               <Button asChild size="sm">
                 <Link href={authActionHref}>{authActionLabel}</Link>
               </Button>
             )}
+            <Button asChild variant="outline" size="sm">
+              <Link href={settingsHref}>{labels.settings}</Link>
+            </Button>
           </div>
-
-          <ThemeToggle
-            className="mb-4 flex w-full justify-between"
-            label={labels.theme}
-            lightLabel={labels.light}
-            darkLabel={labels.dark}
-          />
 
           <nav className="flex flex-col gap-1">
             {navItems.map((item) => (
