@@ -1066,16 +1066,46 @@ export async function cashOutTableSession(
   }
 }
 
-async function applySupabaseTableSessionDelta(auth: AuthenticatedMember, sessionId: string, delta: number) {
+async function settleSupabaseTableSessionRound(
+  auth: AuthenticatedMember,
+  {
+    sessionId,
+    gameSlug,
+    outcome,
+    delta,
+    totalStake,
+    summary,
+    betSnapshot,
+    resultSnapshot,
+    idempotencyKey,
+  }: {
+    sessionId: string
+    gameSlug: string
+    outcome: ProgressOutcome
+    delta: number
+    totalStake: number
+    summary: string
+    betSnapshot: Record<string, unknown>
+    resultSnapshot: Record<string, unknown>
+    idempotencyKey: string | null
+  },
+) {
   if (!auth.session.userId) {
     throw new Error("Supabase member session is missing a user id.")
   }
 
   const serviceSupabase = createSupabaseServiceClient()
-  const { data, error } = await serviceSupabase.rpc("apply_member_table_session_delta", {
+  const { data, error } = await serviceSupabase.rpc("settle_member_table_session_round", {
     p_user_id: auth.session.userId,
     p_session_id: sessionId,
+    p_game_slug: gameSlug,
+    p_outcome: outcome,
     p_delta: delta,
+    p_total_stake: totalStake,
+    p_summary: summary,
+    p_bet_snapshot: betSnapshot,
+    p_result_snapshot: resultSnapshot,
+    p_idempotency_key: idempotencyKey,
   })
 
   if (error) {
@@ -1083,20 +1113,25 @@ async function applySupabaseTableSessionDelta(auth: AuthenticatedMember, session
   }
 
   if (!data || typeof data !== "object" || Array.isArray(data)) {
-    throw new Error("Table session service returned an invalid response.")
+    throw new Error("Table round service returned an invalid response.")
   }
 
   const payload = data as Record<string, unknown>
+  const progressPayload = payload.progress
   const sessionPayload = payload.session
 
+  if (!progressPayload || typeof progressPayload !== "object" || Array.isArray(progressPayload)) {
+    throw new Error("Table round service returned an invalid progress record.")
+  }
+
   if (!sessionPayload || typeof sessionPayload !== "object" || Array.isArray(sessionPayload)) {
-    throw new Error("Table session service returned an invalid session.")
+    throw new Error("Table round service returned an invalid table session.")
   }
 
   return {
+    progress: toProgress(progressPayload as Record<string, unknown>),
     tableSession: toTableSession(sessionPayload as Record<string, unknown>),
-    chipBalanceBefore: normalizeMoney(payload.chip_balance_before),
-    chipBalanceAfter: normalizeMoney(payload.chip_balance_after),
+    idempotent: payload.idempotent === true,
   }
 }
 
@@ -1509,82 +1544,19 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
     }
 
     if (tableSessionId) {
-      const existingRound =
-        idempotencyKey ? await findSupabaseRoundByIdempotencyKey(userId, idempotencyKey) : null
-      const { data: existing, error: existingError } = await auth.supabase
-        .from("member_game_progress")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("game_slug", gameSlug)
-        .maybeSingle()
-
-      if (existingError) {
-        throw new Error(existingError.message)
-      }
-
-      const current = existing ? toProgress(existing) : null
-
-      if (existingRound && current) {
-        return current
-      }
-
-      const tableResult = await applySupabaseTableSessionDelta(auth, tableSessionId, delta)
-      const bankroll = tableResult.chipBalanceAfter
-      const streak = outcome === "win" ? (current?.streak ?? 0) + 1 : outcome === "loss" ? 0 : current?.streak ?? 0
-      const progress = {
-        user_id: userId,
-        game_slug: gameSlug,
-        plays: (current?.plays ?? 0) + 1,
-        wins: (current?.wins ?? 0) + (outcome === "win" ? 1 : 0),
-        losses: (current?.losses ?? 0) + (outcome === "loss" ? 1 : 0),
-        streak,
-        best_streak: Math.max(current?.bestStreak ?? 0, streak),
-        bankroll,
-        last_result: outcome,
-        last_delta: delta,
-        last_summary: summary,
-        last_played_at: playedAt,
-      }
-      const { data, error } = await auth.supabase.from("member_game_progress").upsert(progress).select("*").single()
-
-      if (error) {
-        throw new Error(error.message)
-      }
-
-      await insertSupabaseGameRound({
-        userId,
+      const tableRound = await settleSupabaseTableSessionRound(auth, {
+        sessionId: tableSessionId,
         gameSlug,
-        tableSessionId,
         outcome,
         delta,
         totalStake,
-        chipBalanceBefore: tableResult.chipBalanceBefore,
-        chipBalanceAfter: tableResult.chipBalanceAfter,
         summary,
         betSnapshot,
-        resultSnapshot: {
-          ...resultSnapshot,
-          tableSessionId,
-          chipBalanceBefore: tableResult.chipBalanceBefore,
-          chipBalanceAfter: tableResult.chipBalanceAfter,
-        },
+        resultSnapshot,
         idempotencyKey,
       })
 
-      const { error: eventError } = await auth.supabase
-        .from("member_events")
-        .insert({
-          user_id: userId,
-          kind: event.kind,
-          title: event.title,
-          detail: event.detail,
-        })
-
-      if (eventError) {
-        throw new Error(eventError.message)
-      }
-
-      return toProgress(data)
+      return tableRound.progress
     }
 
     const walletEntry = await applyAuthenticatedWalletEntry(auth, cookieStore, response, {
