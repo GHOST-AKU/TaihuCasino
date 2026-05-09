@@ -3,6 +3,7 @@ import "server-only"
 import { createHmac, timingSafeEqual } from "node:crypto"
 
 import { createServerClient } from "@supabase/ssr"
+import { createClient } from "@supabase/supabase-js"
 import type { cookies } from "next/headers"
 import type { NextResponse } from "next/server"
 import type { User } from "@supabase/supabase-js"
@@ -37,6 +38,10 @@ function getSupabaseUrl() {
 
 function getSupabaseKey() {
   return process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+}
+
+function getSupabaseServiceRoleKey() {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY
 }
 
 function getDisplayName(account: string, displayName?: string) {
@@ -78,7 +83,7 @@ function getAuthUsers() {
 }
 
 export function getLocalDemoCredentials() {
-  if (process.env.NODE_ENV === "production" || isSupabaseAuthConfigured()) {
+  if (process.env.NODE_ENV === "production") {
     return null
   }
 
@@ -161,6 +166,23 @@ export function createSupabaseAuthClient(cookieStore: CookieStore, response?: Ne
           })
         }
       },
+    },
+  })
+}
+
+export function createSupabaseServiceClient() {
+  const supabaseUrl = getSupabaseUrl()
+  const serviceRoleKey = getSupabaseServiceRoleKey()
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for server-side wallet mutations.")
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
     },
   })
 }

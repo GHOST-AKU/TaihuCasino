@@ -80,7 +80,11 @@ export default async function MemberSettingsPage() {
             <Settings className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold text-foreground">{copy.preferences}</h2>
           </div>
-          <MemberSettingsForm initialSettings={member.settings} />
+          <MemberSettingsForm
+            initialSettings={member.settings}
+            initialWalletBalance={member.wallet.balance}
+            enableTestWalletTopUp={process.env.NODE_ENV !== "production" || process.env.TAIHU_ENABLE_TEST_WALLET_TOPUP === "true"}
+          />
         </ThemePanelSurface>
 
         <aside className="space-y-6">

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/hooks/use-language"
 import { type Language } from "@/lib/home-content"
 import { playableTableEntries, type CasinoTableEntry } from "@/lib/game-catalog"
+import { type MemberGameProgress } from "@/lib/member-data"
 import { cn } from "@/lib/utils"
 
 type Outcome = "win" | "loss" | "push"
@@ -157,15 +158,28 @@ function nextStats(current: GameStats, outcome: Outcome): GameStats {
 export function GameTablePage({
   entry,
   defaultLanguage,
+  initialWalletBalance,
+  initialProgress,
 }: {
   entry: CasinoTableEntry
   defaultLanguage: Language
+  initialWalletBalance: number
+  initialProgress: MemberGameProgress | null
 }) {
   const [language] = useLanguage(defaultLanguage)
-  const [bankroll, setBankroll] = useState(25000)
+  const [bankroll, setBankroll] = useState(initialProgress?.bankroll ?? initialWalletBalance)
   const [bet, setBet] = useState(entry.defaultBet)
   const [history, setHistory] = useState<RoundRecord[]>([])
-  const [stats, setStats] = useState<GameStats>(initialStats)
+  const [stats, setStats] = useState<GameStats>(() =>
+    initialProgress
+      ? {
+          plays: initialProgress.plays,
+          wins: initialProgress.wins,
+          losses: initialProgress.losses,
+          streak: initialProgress.streak,
+        }
+      : initialStats,
+  )
   const [statusText, setStatusText] = useState("请选择筹码和下注区域，准备下一手。")
   const [baccaratPick, setBaccaratPick] = useState<BaccaratPick>("banker")
   const [roulettePick, setRoulettePick] = useState<RoulettePick>("red")
@@ -213,7 +227,18 @@ export function GameTablePage({
       }
     }
 
-  }, [entry.slug])
+    const syncedBankroll = initialProgress?.bankroll ?? initialWalletBalance
+    setBankroll(syncedBankroll)
+
+    if (initialProgress) {
+      setStats({
+        plays: initialProgress.plays,
+        wins: initialProgress.wins,
+        losses: initialProgress.losses,
+        streak: initialProgress.streak,
+      })
+    }
+  }, [entry.slug, initialProgress, initialWalletBalance])
 
   function persistLocal(nextBankroll: number, nextHistory: RoundRecord[], nextStatsValue: GameStats) {
     window.localStorage.setItem(
@@ -227,7 +252,7 @@ export function GameTablePage({
   }
 
   async function persistServer(record: RoundRecord) {
-    await fetch("/api/member/progress", {
+    const response = await fetch("/api/member/progress", {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -238,8 +263,25 @@ export function GameTablePage({
         delta: record.delta,
         bankroll: record.bankroll,
         summary: record.detail,
+        idempotencyKey: record.id,
+        totalStake: bet,
+        betSnapshot: {
+          stake: bet,
+          ruleSet: entry.ruleSet,
+        },
+        resultSnapshot: {
+          label: record.label,
+          detail: record.detail,
+        },
       }),
     }).catch(() => null)
+
+    if (!response?.ok) {
+      return null
+    }
+
+    const payload = (await response.json().catch(() => null)) as { progress?: { bankroll?: unknown } } | null
+    return typeof payload?.progress?.bankroll === "number" ? payload.progress.bankroll : null
   }
 
   function commitRecord(record: RoundRecord) {
@@ -252,7 +294,12 @@ export function GameTablePage({
     setStatusText(record.detail)
     persistLocal(record.bankroll, nextHistory, nextStatsValue)
 
-    void persistServer(record)
+    void persistServer(record).then((serverBankroll) => {
+      if (typeof serverBankroll === "number") {
+        setBankroll(serverBankroll)
+        persistLocal(serverBankroll, nextHistory, nextStatsValue)
+      }
+    })
   }
 
   function settleBaccarat() {

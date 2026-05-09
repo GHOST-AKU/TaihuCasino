@@ -4,6 +4,7 @@ tsconfig.tsbuildinfo
 .preview-next*.log
 .preview-next*.err.log
 .playwright-cli/
+supabase/.temp/
 
 # Next.js / Node
 node_modules/
