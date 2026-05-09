@@ -1,0 +1,3 @@
+allowBuilds:
+  sharp: true
+  supabase: true

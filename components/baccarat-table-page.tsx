@@ -14,6 +14,7 @@ import {
 import { useLanguage } from "@/hooks/use-language"
 import { type Language } from "@/lib/home-content"
 import { type CasinoTableEntry } from "@/lib/game-catalog"
+import { type MemberGameProgress, type MemberTableSession } from "@/lib/member-data"
 import { cn } from "@/lib/utils"
 
 type BetKey = "player" | "banker" | "tie" | "playerPair" | "bankerPair"
@@ -42,6 +43,7 @@ interface BaccaratHistory extends BaccaratRound {
   delta: number
   bankroll: number
   totalStake: number
+  bets: BetLedger
   createdAt: string
 }
 
@@ -494,13 +496,14 @@ async function persistServerProgress(
   entry: CasinoTableEntry,
   record: BaccaratHistory,
   language: Language,
+  tableSessionId?: string,
 ) {
   const summary =
     language === "zh"
       ? `${winnerText(record.winner, language)} ${record.playerPoint}:${record.bankerPoint}，本轮 ${formatDelta(record.delta)}`
       : `${winnerText(record.winner, language)} ${record.playerPoint}:${record.bankerPoint}, round ${formatDelta(record.delta)}`
 
-  await fetch("/api/member/progress", {
+  const response = await fetch("/api/member/progress", {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -511,25 +514,59 @@ async function persistServerProgress(
       delta: record.delta,
       bankroll: record.bankroll,
       summary,
+      idempotencyKey: record.id,
+      tableSessionId,
+      totalStake: record.totalStake,
+      betSnapshot: {
+        bets: record.bets,
+        totalStake: record.totalStake,
+      },
+      resultSnapshot: {
+        winner: record.winner,
+        playerPoint: record.playerPoint,
+        bankerPoint: record.bankerPoint,
+        playerCards: record.playerCards,
+        bankerCards: record.bankerCards,
+        playerPair: record.playerPair,
+        bankerPair: record.bankerPair,
+      },
     }),
   }).catch(() => null)
+
+  if (!response?.ok) {
+    return null
+  }
+
+  const payload = (await response.json().catch(() => null)) as { progress?: { bankroll?: unknown } } | null
+  return typeof payload?.progress?.bankroll === "number" ? payload.progress.bankroll : null
 }
 
 export function BaccaratTablePage({
   entry,
   defaultLanguage,
+  initialWalletBalance,
+  initialProgress,
+  initialTableSession,
 }: {
   entry: CasinoTableEntry
   defaultLanguage: Language
+  initialWalletBalance: number
+  initialProgress: MemberGameProgress | null
+  initialTableSession: MemberTableSession | null
 }) {
   const [language] = useLanguage(defaultLanguage)
   const isChinese = language === "zh"
   const isVip = Boolean(entry.variantOf)
-  const initialBankroll = isVip ? 5000 : 1000
+  const initialBankroll = initialTableSession?.chipBalance ?? initialProgress?.bankroll ?? 0
   const defaultChips = isVip ? [100, 250, 500, 1000, 2500] : [10, 25, 50, 100, 250]
   const defaultStake = isVip ? 250 : 25
 
   const [bankroll, setBankroll] = useState(initialBankroll)
+  const [walletBalance, setWalletBalance] = useState(initialWalletBalance)
+  const [tableSession, setTableSession] = useState<MemberTableSession | null>(initialTableSession)
+  const [buyInAmount, setBuyInAmount] = useState(isVip ? 500 : 100)
+  const [isOpeningSession, setIsOpeningSession] = useState(false)
+  const [isCashingOut, setIsCashingOut] = useState(false)
   const [stake, setStake] = useState(defaultStake)
   const [chips, setChips] = useState(defaultChips)
   const [initialBankrollInput, setInitialBankrollInput] = useState(String(initialBankroll))
@@ -538,7 +575,18 @@ export function BaccaratTablePage({
   const [shoe, setShoe] = useState<BaccaratCard[]>(() => freshShoe())
   const [lastRound, setLastRound] = useState<BaccaratRound | null>(null)
   const [history, setHistory] = useState<BaccaratHistory[]>([])
-  const [stats, setStats] = useState<BaccaratStats>(initialStats)
+  const [stats, setStats] = useState<BaccaratStats>(() =>
+    initialProgress
+      ? {
+          rounds: initialProgress.plays,
+          hitRounds: initialProgress.wins,
+          totalStake: 0,
+          totalDelta: initialProgress.lastDelta,
+          lastDelta: initialProgress.lastDelta,
+          ties: initialProgress.lastResult === "push" ? 1 : 0,
+        }
+      : initialStats,
+  )
   const [message, setMessage] = useState(
     isChinese
       ? "选择筹码并点击下注区域，准备下一手。"
@@ -568,6 +616,20 @@ export function BaccaratTablePage({
   const displayWinner = dealing ? undefined : lastRound?.winner
 
   useEffect(() => {
+    if (!initialTableSession) {
+      window.localStorage.removeItem(storageKey)
+      setWalletBalance(initialWalletBalance)
+      setTableSession(null)
+      setBankroll(0)
+      setInitialBankrollInput("0")
+      setBets(cloneEmptyBets())
+      setHistory([])
+      setLastRound(null)
+      setVisibleDeal(null)
+      setDealProgress(0)
+      return
+    }
+
     const saved = window.localStorage.getItem(storageKey)
 
     if (!saved) {
@@ -612,7 +674,24 @@ export function BaccaratTablePage({
     } catch {
       window.localStorage.removeItem(storageKey)
     }
-  }, [storageKey])
+
+    const syncedBankroll = initialTableSession?.chipBalance ?? initialProgress?.bankroll ?? 0
+    setWalletBalance(initialWalletBalance)
+    setTableSession(initialTableSession)
+    setBankroll(syncedBankroll)
+    setInitialBankrollInput(String(syncedBankroll))
+
+    if (initialProgress) {
+      setStats({
+        rounds: initialProgress.plays,
+        hitRounds: initialProgress.wins,
+        totalStake: 0,
+        totalDelta: initialProgress.lastDelta,
+        lastDelta: initialProgress.lastDelta,
+        ties: initialProgress.lastResult === "push" ? 1 : 0,
+      })
+    }
+  }, [storageKey, initialProgress, initialWalletBalance, initialTableSession])
 
   function persistLocal(
     nextBankroll: number,
@@ -692,10 +771,105 @@ export function BaccaratTablePage({
     setMessage(isChinese ? "局面已重置，准备重新开靴。" : "Table reset. Ready for a fresh shoe.")
   }
 
+  async function openSession() {
+    const amount = Math.min(1000000, Math.max(1, roundMoney(Number(buyInAmount))))
+
+    if (amount > walletBalance) {
+      setMessage(isChinese ? "钱包余额不足，无法买入这笔筹码。" : "Wallet balance is not enough for this buy-in.")
+      return
+    }
+
+    setIsOpeningSession(true)
+    setMessage(isChinese ? "正在从钱包买入桌台筹码..." : "Buying chips from your wallet...")
+
+    try {
+      const response = await fetch("/api/member/table-sessions", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          gameSlug: entry.slug,
+          buyInAmount: amount,
+          idempotencyKey: `baccarat-buy-in-${entry.slug}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        }),
+      })
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string
+        tableSession?: MemberTableSession
+        wallet?: { balance?: unknown }
+      } | null
+
+      if (!response.ok || !payload?.tableSession) {
+        throw new Error(payload?.error ?? "Unable to buy in.")
+      }
+
+      setTableSession(payload.tableSession)
+      setBankroll(payload.tableSession.chipBalance)
+      setInitialBankrollInput(String(payload.tableSession.chipBalance))
+      setWalletBalance(typeof payload.wallet?.balance === "number" ? payload.wallet.balance : walletBalance - amount)
+      setBets(cloneEmptyBets())
+      window.localStorage.removeItem(storageKey)
+      setMessage(isChinese ? "买入成功，桌台筹码已准备好。" : "Buy-in complete. Table chips are ready.")
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : isChinese ? "买入失败。" : "Buy-in failed.")
+    } finally {
+      setIsOpeningSession(false)
+    }
+  }
+
+  async function cashOutSession() {
+    if (!tableSession || isCashingOut || dealing) {
+      return
+    }
+
+    setIsCashingOut(true)
+    setMessage(isChinese ? "正在带走筹码并结算回钱包..." : "Cashing out table chips to your wallet...")
+
+    try {
+      const response = await fetch(`/api/member/table-sessions/${tableSession.id}/cash-out`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          idempotencyKey: `baccarat-cash-out-${tableSession.id}-${Date.now()}`,
+        }),
+      })
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string
+        tableSession?: MemberTableSession
+        wallet?: { balance?: unknown }
+      } | null
+
+      if (!response.ok || !payload?.tableSession) {
+        throw new Error(payload?.error ?? "Unable to cash out.")
+      }
+
+      setTableSession(null)
+      setBankroll(0)
+      setInitialBankrollInput("0")
+      setWalletBalance(typeof payload.wallet?.balance === "number" ? payload.wallet.balance : walletBalance + tableSession.chipBalance)
+      setBets(cloneEmptyBets())
+      window.localStorage.removeItem(storageKey)
+      setMessage(isChinese ? "筹码已带走，余额已回到钱包。" : "Chips cashed out. Balance returned to wallet.")
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : isChinese ? "离桌失败。" : "Cash-out failed.")
+    } finally {
+      setIsCashingOut(false)
+    }
+  }
+
   async function settleRound() {
     if (dealing) {
       return
     }
+
+    if (!tableSession) {
+      setMessage(isChinese ? "请先从钱包买入筹码再入桌。" : "Buy in from your wallet before playing this table.")
+      return
+    }
+    const activeTableSession = tableSession
 
     if (preview.totalStake <= 0) {
       setMessage(isChinese ? "请先在下注区放筹码。" : "Place at least one bet first.")
@@ -764,6 +938,7 @@ export function BaccaratTablePage({
       delta,
       bankroll: nextBankroll,
       totalStake: stakeThisRound,
+      bets: betsThisRound,
       createdAt: new Date().toISOString(),
     }
     const nextHistory = [record, ...history].slice(0, 30)
@@ -788,6 +963,7 @@ export function BaccaratTablePage({
     setShoe(nextShoe)
     setLastRound(round)
     setBankroll(nextBankroll)
+    setTableSession({ ...activeTableSession, chipBalance: nextBankroll })
     setHistory(nextHistory)
     setStats(nextStats)
     setBets(cloneEmptyBets())
@@ -800,7 +976,13 @@ export function BaccaratTablePage({
         : `Result: ${winnerText(round.winner, languageThisRound)}, round ${formatDelta(delta)}.`,
     )
     persistLocal(nextBankroll, nextHistory, nextStats, round)
-    void persistServerProgress(entry, record, languageThisRound)
+    void persistServerProgress(entry, record, languageThisRound, activeTableSession.id).then((serverBankroll) => {
+      if (typeof serverBankroll === "number") {
+        setBankroll(serverBankroll)
+        setTableSession((current) => current ? { ...current, chipBalance: serverBankroll } : current)
+        persistLocal(serverBankroll, nextHistory, nextStats, round)
+      }
+    })
   }
 
   return (
@@ -862,6 +1044,76 @@ export function BaccaratTablePage({
           </div>
         </header>
 
+        {!tableSession ? (
+          <section className="rounded-lg border border-[#d0b06e]/35 bg-black/25 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.28)]">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-sm font-black uppercase tracking-[0.16em] text-[#d0b06e]">
+                  {isChinese ? "买入筹码" : "Table buy-in"}
+                </p>
+                <h2 className="mt-2 text-2xl font-black text-[#fff4d8]">
+                  {isChinese ? "先从钱包买入本桌筹码" : "Buy chips before joining this table"}
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#cbbd91]">
+                  {isChinese
+                    ? "钱包余额不会在每手牌里直接变化；本桌下注只使用桌台筹码，离桌时再带走剩余筹码回钱包。"
+                    : "Your wallet does not change on every hand. Bets use table chips, then cash out remaining chips back to your wallet."}
+                </p>
+                <p className="mt-3 text-sm font-black text-[#f4d18a]">
+                  {isChinese ? "钱包余额" : "Wallet"} {formatMoney(walletBalance)}
+                </p>
+              </div>
+
+              <form
+                action="/api/member/table-sessions"
+                method="post"
+                className="flex flex-col gap-3 sm:flex-row sm:items-end"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void openSession()
+                }}
+              >
+                <input type="hidden" name="gameSlug" value={entry.slug} />
+                <div className="space-y-2">
+                  <label htmlFor="baccaratBuyInAmount" className="text-sm font-black text-[#fff4d8]">
+                    {isChinese ? "买入金额" : "Buy-in amount"}
+                  </label>
+                  <input
+                    id="baccaratBuyInAmount"
+                    name="buyInAmount"
+                    type="number"
+                    min={1}
+                    max={1000000}
+                    step={1}
+                    value={buyInAmount}
+                    onChange={(event) => setBuyInAmount(Number(event.target.value))}
+                    className="h-11 w-44 rounded-lg border border-[#d0b06e]/35 bg-black/30 px-3 text-base font-black text-[#fff4d8] outline-none transition focus:border-[#f0cf83]"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  {(isVip ? [500, 1000, 2500] : [100, 250, 500]).map((amount) => (
+                    <button
+                      key={amount}
+                      type="button"
+                      onClick={() => setBuyInAmount(amount)}
+                      className="h-11 rounded-lg border border-[#d0b06e]/30 bg-black/20 px-3 text-sm font-black text-[#fff4d8] transition hover:bg-[#d0b06e]/15"
+                    >
+                      {formatMoney(amount)}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="submit"
+                  disabled={isOpeningSession}
+                  className="h-11 rounded-lg bg-[#f0cf83] px-5 text-sm font-black text-[#1c160c] transition hover:bg-[#ffd98c] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isOpeningSession ? (isChinese ? "买入中..." : "Buying in...") : isChinese ? "买入并入桌" : "Buy in"}
+                </button>
+              </form>
+            </div>
+          </section>
+        ) : null}
+
         <section className="grid gap-3 lg:grid-cols-[1.16fr_0.84fr]">
           <div className="rounded-lg border border-[#d0b06e]/30 bg-white/[0.035] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.34)] backdrop-blur">
             <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
@@ -869,16 +1121,30 @@ export function BaccaratTablePage({
                 <p className="text-sm font-black uppercase tracking-[0.16em] text-[#d0b06e]">
                   {isChinese ? "资金与发牌" : "Bankroll & Deal"}
                 </p>
-                <p className="mt-3 text-sm text-[#cbbd91]">{isChinese ? "余额" : "Balance"}</p>
+                <p className="mt-3 text-sm text-[#cbbd91]">{isChinese ? "桌台筹码" : "Table chips"}</p>
                 <p className="text-5xl font-black leading-none text-[#f4d18a] md:text-6xl">
                   {formatMoney(bankroll)}
                 </p>
+                <p className="mt-2 text-xs font-bold text-[#cbbd91]">
+                  {isChinese ? "钱包" : "Wallet"} {formatMoney(walletBalance)}
+                </p>
               </div>
+
+              {tableSession ? (
+                <button
+                  type="button"
+                  onClick={cashOutSession}
+                  disabled={dealing || isCashingOut}
+                  className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-[#d0b06e]/35 bg-[#173727] px-4 text-sm font-black text-[#fff4d8] transition hover:bg-[#214a35] disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  {isCashingOut ? (isChinese ? "离桌中..." : "Cashing out...") : isChinese ? "带走筹码" : "Cash out"}
+                </button>
+              ) : null}
 
               <button
                 type="button"
                 onClick={settleRound}
-                disabled={dealing}
+                disabled={dealing || !tableSession}
                 className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-[#d0b06e]/50 bg-gradient-to-b from-[#f0cf83] to-[#c69d55] px-5 text-base font-black text-[#34240a] shadow-[0_14px_28px_rgba(0,0,0,0.26)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-55"
               >
                 <Sparkles className="size-5" />

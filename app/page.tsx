@@ -16,6 +16,7 @@ export default async function HomePage() {
     <PlayerHomePage
       initialLanguage={member.settings.language}
       initialMemberName={member.profile.displayName}
+      initialMemberOverview={member}
     />
   )
 }
