@@ -10,6 +10,8 @@ import { RouletteTablePage } from "@/components/roulette-table-page"
 import { getPlayableTable, playableTableEntries } from "@/lib/game-catalog"
 import { readActiveTableSession, readMemberOverview } from "@/lib/member-data"
 
+export const dynamic = "force-dynamic"
+
 export function generateStaticParams() {
   return playableTableEntries.map((game) => ({ slug: game.slug }))
 }

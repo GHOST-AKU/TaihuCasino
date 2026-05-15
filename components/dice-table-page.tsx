@@ -8,6 +8,7 @@ import { useLanguage } from "@/hooks/use-language"
 import { type Language } from "@/lib/home-content"
 import { type CasinoTableEntry } from "@/lib/game-catalog"
 import { type MemberGameProgress, type MemberTableSession } from "@/lib/member-data"
+import { recordClientGameRound } from "@/lib/member-round-client"
 import { cashOutClientTableSession, openClientTableSession } from "@/lib/table-session-client"
 import { cn } from "@/lib/utils"
 
@@ -222,36 +223,25 @@ async function persistDiceProgress(
   bankroll: number,
   tableSessionId?: string,
 ) {
-  const response = await fetch("/api/member/progress", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      gameSlug: entry.slug,
-      outcome: record.delta > 0 ? "win" : record.delta < 0 ? "loss" : "push",
-      delta: record.delta,
-      bankroll,
-      summary: `${record.dice.join("+")}=${record.sum}; ${formatDelta(record.delta)}`,
-      idempotencyKey: record.id,
-      tableSessionId,
+  return recordClientGameRound({
+    gameSlug: entry.slug,
+    outcome: record.delta > 0 ? "win" : record.delta < 0 ? "loss" : "push",
+    delta: record.delta,
+    bankroll,
+    summary: `${record.dice.join("+")}=${record.sum}; ${formatDelta(record.delta)}`,
+    idempotencyKey: record.id,
+    tableSessionId,
+    totalStake: record.totalStake,
+    betSnapshot: {
+      bets: record.bets,
       totalStake: record.totalStake,
-      betSnapshot: {
-        bets: record.bets,
-        totalStake: record.totalStake,
-      },
-      resultSnapshot: {
-        dice: record.dice,
-        sum: record.sum,
-        triple: record.triple,
-      },
-    }),
-  }).catch(() => null)
-
-  if (!response?.ok) {
-    return null
-  }
-
-  const payload = (await response.json().catch(() => null)) as { progress?: { bankroll?: unknown } } | null
-  return typeof payload?.progress?.bankroll === "number" ? payload.progress.bankroll : null
+    },
+    resultSnapshot: {
+      dice: record.dice,
+      sum: record.sum,
+      triple: record.triple,
+    },
+  })
 }
 
 export function DiceTablePage({
@@ -269,6 +259,12 @@ export function DiceTablePage({
 }) {
   const [language] = useLanguage(defaultLanguage)
   const isChinese = language === "zh"
+  const buyInWalletLabel = isChinese ? "主钱包余额" : "Main wallet"
+  const tableChipsLabel = isChinese ? "桌台筹码（随结算变化）" : "Table chips (changes each round)"
+  const mainWalletNote = isChinese ? "主钱包（买入/离桌时变化）" : "Main wallet (buy-in/cash-out only)"
+  const buyInHint = isChinese
+    ? "主钱包只在买入和离桌时变化；每次结算会先计入本桌筹码。"
+    : "Your wallet changes on buy-in and cash-out. Each round settles into table chips first."
   const defaultChips = [10, 25, 50, 100, 250]
   const initialBankroll = initialTableSession?.chipBalance ?? 0
   const [bankroll, setBankroll] = useState(initialBankroll)
@@ -277,6 +273,7 @@ export function DiceTablePage({
   const [buyInAmount, setBuyInAmount] = useState(100)
   const [isOpeningSession, setIsOpeningSession] = useState(false)
   const [isCashingOut, setIsCashingOut] = useState(false)
+  const [isSyncingRound, setIsSyncingRound] = useState(false)
   const [stake, setStake] = useState(50)
   const [chips, setChips] = useState(defaultChips)
   const [initialBankrollInput, setInitialBankrollInput] = useState(String(initialBankroll))
@@ -435,7 +432,7 @@ export function DiceTablePage({
     setSubText(isChinese ? "正在带走筹码并结算回钱包。" : "Cashing out table chips to your wallet.")
 
     try {
-      const result = await cashOutClientTableSession(tableSession.id, "dice-cash-out")
+      const result = await cashOutClientTableSession(tableSession.id, "dice-cash-out", tableSession.chipBalance)
 
       setTableSession(null)
       setBankroll(0)
@@ -454,6 +451,10 @@ export function DiceTablePage({
   }
 
   function addBet(key: DiceBetKey) {
+    if (rolling) {
+      return
+    }
+
     if (!tableSession) {
       setHeadline(isChinese ? "请先买入筹码" : "Buy in first")
       setSubText(isChinese ? "先从钱包买入桌台筹码再入桌。" : "Buy in from your wallet before playing this table.")
@@ -476,10 +477,18 @@ export function DiceTablePage({
   }
 
   function setBetAmount(key: DiceBetKey, amount: number) {
+    if (rolling) {
+      return
+    }
+
     setBets((current) => ({ ...current, [key]: Math.max(0, amount) }))
   }
 
   function clearBets() {
+    if (rolling) {
+      return
+    }
+
     setBets(cloneEmptyDiceBets())
     setHeadline(isChinese ? "已清空下注" : "Bets cleared")
     setSubText(isChinese ? "余额与历史记录保留。" : "Bankroll and history were kept.")
@@ -582,17 +591,26 @@ export function DiceTablePage({
       setBankroll(nextBankroll)
       setTableSession({ ...activeTableSession, chipBalance: nextBankroll })
       setStats(nextStats)
-      setRolling(false)
       setHeadline(result.triple ? (isChinese ? "豹子出现！" : "Triple!") : isChinese ? `和值 ${result.sum}` : `Total ${result.sum}`)
       setSubText(`${result.dice.join(" + ")} = ${result.sum}，${result.detail}。`)
       persistLocal(nextBankroll, nextStats, actualDice, result.sum)
-      void persistDiceProgress(entry, record, nextBankroll, activeTableSession.id).then((serverBankroll) => {
-        if (typeof serverBankroll === "number") {
-          setBankroll(serverBankroll)
-          setTableSession((current) => current ? { ...current, chipBalance: serverBankroll } : current)
-          persistLocal(serverBankroll, nextStats, actualDice, result.sum)
+      setIsSyncingRound(true)
+      void (async () => {
+        try {
+          const serverBankroll = await persistDiceProgress(entry, record, nextBankroll, activeTableSession.id)
+
+          if (typeof serverBankroll === "number") {
+            setBankroll(serverBankroll)
+            setTableSession((current) => current ? { ...current, chipBalance: serverBankroll } : current)
+            persistLocal(serverBankroll, nextStats, actualDice, result.sum)
+          }
+        } catch (error) {
+          console.error("dice round sync failed", error)
+        } finally {
+          setIsSyncingRound(false)
+          setRolling(false)
         }
-      })
+      })()
     }, 1400)
   }
 
@@ -664,12 +682,10 @@ export function DiceTablePage({
                   {isChinese ? "先从钱包买入本桌筹码" : "Buy chips before joining this table"}
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-[#cbbd91]">
-                  {isChinese
-                    ? "骰子下注只使用桌台筹码，离桌时再把剩余筹码带回钱包。"
-                    : "Dice bets use table chips, then remaining chips return to your wallet when you cash out."}
+                  {buyInHint}
                 </p>
                 <p className="mt-3 text-sm font-black text-[#f4d18a]">
-                  {isChinese ? "钱包余额" : "Wallet"} {formatMoney(walletBalance)}
+                  {buyInWalletLabel} {formatMoney(walletBalance)}
                 </p>
               </div>
 
@@ -730,19 +746,19 @@ export function DiceTablePage({
                 <p className="text-sm font-black uppercase tracking-[0.16em] text-[#d0b06e]">
                   {isChinese ? "资金与掷骰" : "Bankroll & Roll"}
                 </p>
-                <p className="mt-3 text-sm text-[#cbbd91]">{isChinese ? "桌台筹码" : "Table chips"}</p>
+                <p className="mt-3 text-sm text-[#cbbd91]">{tableChipsLabel}</p>
                 <p className="text-5xl font-black leading-none text-[#f4d18a] md:text-6xl">
                   {formatMoney(bankroll)}
                 </p>
                 <p className="mt-2 text-xs font-bold text-[#cbbd91]">
-                  {isChinese ? "钱包" : "Wallet"} {formatMoney(walletBalance)}
+                  {mainWalletNote} {formatMoney(walletBalance)}
                 </p>
               </div>
               {tableSession ? (
                 <button
                   type="button"
                   onClick={cashOutSession}
-                  disabled={rolling || isCashingOut}
+                  disabled={rolling || isCashingOut || isSyncingRound}
                   className="inline-flex min-h-12 items-center rounded-lg border border-[#d0b06e]/35 bg-[#173727] px-4 text-sm font-black text-[#fff4d8] transition hover:bg-[#214a35] disabled:cursor-not-allowed disabled:opacity-55"
                 >
                   {isCashingOut ? (isChinese ? "离桌中..." : "Cashing out...") : isChinese ? "带走筹码" : "Cash out"}
@@ -944,13 +960,15 @@ export function DiceTablePage({
                         min={0}
                         step={1}
                         value={bets[bet.key]}
+                        disabled={rolling}
                         onChange={(event) => setBetAmount(bet.key, clampInt(event.target.value, 0))}
-                        className="h-9 w-24 rounded-lg border border-[#d0b06e]/35 bg-black/25 px-3 text-sm font-black text-[#fff4d8]"
+                        className="h-9 w-24 rounded-lg border border-[#d0b06e]/35 bg-black/25 px-3 text-sm font-black text-[#fff4d8] disabled:cursor-not-allowed disabled:opacity-55"
                       />
                       <button
                         type="button"
+                        disabled={rolling}
                         onClick={() => setBetAmount(bet.key, 0)}
-                        className="rounded-lg border border-[#d0b06e]/35 bg-[#173727] px-3 py-2 text-xs font-black text-[#fff4d8]"
+                        className="rounded-lg border border-[#d0b06e]/35 bg-[#173727] px-3 py-2 text-xs font-black text-[#fff4d8] disabled:cursor-not-allowed disabled:opacity-55"
                       >
                         {isChinese ? "清除" : "Clear"}
                       </button>

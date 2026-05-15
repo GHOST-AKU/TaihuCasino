@@ -50,7 +50,11 @@ export async function openClientTableSession(
   return parsed
 }
 
-export async function cashOutClientTableSession(sessionId: string, idempotencyPrefix: string) {
+export async function cashOutClientTableSession(
+  sessionId: string,
+  idempotencyPrefix: string,
+  expectedChipBalance?: number,
+) {
   const response = await fetch(`/api/member/table-sessions/${sessionId}/cash-out`, {
     method: "POST",
     headers: {
@@ -58,6 +62,7 @@ export async function cashOutClientTableSession(sessionId: string, idempotencyPr
     },
     body: JSON.stringify({
       idempotencyKey: `${idempotencyPrefix}-${sessionId}-${Date.now()}`,
+      expectedChipBalance,
     }),
   })
   const payload = (await response.json().catch(() => null)) as TableSessionMutationPayload | null

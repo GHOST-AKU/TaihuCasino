@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useEffect, useState } from "react"
 import { Diamond, Dice1, ShieldCheck, Spade, Target, Trophy } from "lucide-react"
 
 import { GameCard } from "@/components/game-card"
@@ -65,6 +66,8 @@ type RecentActivity = HomeActivityItem & {
   gameSlug?: string
 }
 
+type HomeMemberOverview = PlayerHomePageProps["initialMemberOverview"]
+
 function formatMoney(value: number) {
   return value.toLocaleString("en-US", {
     style: "currency",
@@ -84,18 +87,58 @@ function isToday(value: string) {
   )
 }
 
+function buildTodayNet(member: PlayerHomePageProps["initialMemberOverview"]) {
+  const gamingLedgerSources = new Set(["game_round", "table_buy_in", "table_cash_out"])
+  const todayGamingLedger = member.walletLedger.filter(
+    (entry) => gamingLedgerSources.has(entry.source) && isToday(entry.createdAt),
+  )
+
+  if (todayGamingLedger.length > 0) {
+    return todayGamingLedger.reduce((sum, entry) => sum + entry.amount, 0)
+  }
+
+  return member.gameRounds
+    .filter((round) => isToday(round.createdAt))
+    .reduce((sum, round) => sum + round.delta, 0)
+}
+
 function buildMemberStats(
   language: "zh" | "en",
   member: PlayerHomePageProps["initialMemberOverview"],
 ): HomeStatItem[] {
-  const plays = member.progress.reduce((sum, progress) => sum + progress.plays, 0)
-  const wins = member.progress.reduce((sum, progress) => sum + progress.wins, 0)
-  const currentStreak = Math.max(0, ...member.progress.map((progress) => progress.streak))
-  const bestStreak = Math.max(0, ...member.progress.map((progress) => progress.bestStreak))
+  const sortedRounds = [...member.gameRounds].sort(
+    (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+  )
+  const chronologicalRounds = [...sortedRounds].reverse()
+  const plays = sortedRounds.length || member.progress.reduce((sum, progress) => sum + progress.plays, 0)
+  const wins = sortedRounds.length
+    ? sortedRounds.filter((round) => round.outcome === "win" || round.delta > 0).length
+    : member.progress.reduce((sum, progress) => sum + progress.wins, 0)
+  const currentStreak = sortedRounds.length
+    ? sortedRounds.findIndex((round) => !(round.outcome === "win" || round.delta > 0))
+    : Math.max(0, ...member.progress.map((progress) => progress.streak))
+  let bestStreakFromRounds = 0
+  let runningStreak = 0
+
+  for (const round of chronologicalRounds) {
+    if (round.outcome === "win" || round.delta > 0) {
+      runningStreak += 1
+      bestStreakFromRounds = Math.max(bestStreakFromRounds, runningStreak)
+    } else if (round.outcome === "loss" || round.delta < 0) {
+      runningStreak = 0
+    }
+  }
+
+  const bestStreak = sortedRounds.length
+    ? bestStreakFromRounds
+    : Math.max(0, ...member.progress.map((progress) => progress.bestStreak))
+  const trackedTables = new Set([
+    ...member.progress.map((progress) => "gameSlug" in progress ? String(progress.gameSlug) : ""),
+    ...member.gameRounds.map((round) => round.gameSlug),
+  ].filter(Boolean)).size
   const winRate = plays > 0 ? Math.round((wins / plays) * 100) : 0
-  const todayNet = member.gameRounds
-    .filter((round) => isToday(round.createdAt))
-    .reduce((sum, round) => sum + round.delta, 0)
+  const todayNet = buildTodayNet(member)
+  const normalizedCurrentStreak = currentStreak < 0 ? sortedRounds.length : currentStreak
 
   if (language === "zh") {
     return [
@@ -117,15 +160,15 @@ function buildMemberStats(
         key: "recent",
         label: "最近游玩",
         value: `${plays} 局`,
-        subtext: member.progress.length > 0 ? `${member.progress.length} 个桌台有记录` : "开始第一局后自动更新",
+        subtext: trackedTables > 0 ? `${trackedTables} 个桌台有记录` : "开始第一局后自动更新",
         trend: "neutral",
       },
       {
         key: "streak",
         label: "连胜记录",
-        value: `${currentStreak} 局`,
-        subtext: bestStreak > currentStreak ? `个人最好 ${bestStreak} 局` : "当前为个人最好",
-        trend: currentStreak > 0 ? "up" : "neutral",
+        value: `${normalizedCurrentStreak} 局`,
+        subtext: bestStreak > normalizedCurrentStreak ? `个人最好 ${bestStreak} 局` : "当前为个人最好",
+        trend: normalizedCurrentStreak > 0 ? "up" : "neutral",
       },
     ]
   }
@@ -149,15 +192,15 @@ function buildMemberStats(
       key: "recent",
       label: "Recent Play",
       value: `${plays}`,
-      subtext: member.progress.length > 0 ? `${member.progress.length} tables tracked` : "Updates after your first round",
+      subtext: trackedTables > 0 ? `${trackedTables} tables tracked` : "Updates after your first round",
       trend: "neutral",
     },
     {
       key: "streak",
       label: "Streak",
-      value: `${currentStreak}`,
-      subtext: bestStreak > currentStreak ? `Best streak ${bestStreak}` : "Current personal best",
-      trend: currentStreak > 0 ? "up" : "neutral",
+      value: `${normalizedCurrentStreak}`,
+      subtext: bestStreak > normalizedCurrentStreak ? `Best streak ${bestStreak}` : "Current personal best",
+      trend: normalizedCurrentStreak > 0 ? "up" : "neutral",
     },
   ]
 }
@@ -205,7 +248,7 @@ function titleForGameSlug(slug: string | undefined, language: "zh" | "en") {
     return language === "zh" ? "会员牌局" : "Member Round"
   }
 
-  return game.title
+  return language === "zh" ? game.titleZh : game.title
 }
 
 function resultForLedgerEntry(entry: PlayerHomePageProps["initialMemberOverview"]["walletLedger"][number], language: "zh" | "en") {
@@ -298,8 +341,52 @@ function buildWeeklyProfitBoard(
 
 export function PlayerHomePage({ initialLanguage, initialMemberName, initialMemberOverview }: PlayerHomePageProps) {
   const [language] = useLanguage(initialLanguage)
+  const [memberOverview, setMemberOverview] = useState<HomeMemberOverview>(initialMemberOverview)
   const isAuthenticated = true
   const authHref = "/login"
+
+  useEffect(() => {
+    let active = true
+
+    async function refreshMemberOverview() {
+      const response = await fetch("/api/member/me", {
+        cache: "no-store",
+      }).catch(() => null)
+
+      if (!response?.ok) {
+        return
+      }
+
+      const payload = (await response.json().catch(() => null)) as { member?: HomeMemberOverview } | null
+
+      if (active && payload?.member) {
+        setMemberOverview(payload.member)
+      }
+    }
+
+    void refreshMemberOverview()
+
+    function handlePageShow() {
+      void refreshMemberOverview()
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void refreshMemberOverview()
+      }
+    }
+
+    window.addEventListener("pageshow", handlePageShow)
+    window.addEventListener("focus", handlePageShow)
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
+    return () => {
+      active = false
+      window.removeEventListener("pageshow", handlePageShow)
+      window.removeEventListener("focus", handlePageShow)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [])
 
   async function handleLogout() {
     await clearMemberSession()
@@ -310,10 +397,10 @@ export function PlayerHomePage({ initialLanguage, initialMemberName, initialMemb
   const copy = getHomeCopy(language, viewerMode)
   const navItems = getNavItems(language)
   const games = getGameLinks(language)
-  const stats = buildMemberStats(language, initialMemberOverview)
+  const stats = buildMemberStats(language, memberOverview)
   const quickActions = getQuickActions(language, viewerMode)
-  const weeklyProfitBoard = buildWeeklyProfitBoard(language, initialMemberOverview)
-  const recentActivities = buildRecentActivities(language, initialMemberOverview)
+  const weeklyProfitBoard = buildWeeklyProfitBoard(language, memberOverview)
+  const recentActivities = buildRecentActivities(language, memberOverview)
   const extraTables = playableTableEntries.filter(
     (table) => table.kind === "game" && !games.some((game) => game.slug === table.slug),
   )

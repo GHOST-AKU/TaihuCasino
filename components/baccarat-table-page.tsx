@@ -15,6 +15,8 @@ import { useLanguage } from "@/hooks/use-language"
 import { type Language } from "@/lib/home-content"
 import { type CasinoTableEntry } from "@/lib/game-catalog"
 import { type MemberGameProgress, type MemberTableSession } from "@/lib/member-data"
+import { recordClientGameRound } from "@/lib/member-round-client"
+import { cashOutClientTableSession, openClientTableSession } from "@/lib/table-session-client"
 import { cn } from "@/lib/utils"
 
 type BetKey = "player" | "banker" | "tie" | "playerPair" | "bankerPair"
@@ -503,42 +505,29 @@ async function persistServerProgress(
       ? `${winnerText(record.winner, language)} ${record.playerPoint}:${record.bankerPoint}，本轮 ${formatDelta(record.delta)}`
       : `${winnerText(record.winner, language)} ${record.playerPoint}:${record.bankerPoint}, round ${formatDelta(record.delta)}`
 
-  const response = await fetch("/api/member/progress", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      gameSlug: entry.slug,
-      outcome: outcomeFromDelta(record.delta),
-      delta: record.delta,
-      bankroll: record.bankroll,
-      summary,
-      idempotencyKey: record.id,
-      tableSessionId,
+  return recordClientGameRound({
+    gameSlug: entry.slug,
+    outcome: outcomeFromDelta(record.delta),
+    delta: record.delta,
+    bankroll: record.bankroll,
+    summary,
+    idempotencyKey: record.id,
+    tableSessionId,
+    totalStake: record.totalStake,
+    betSnapshot: {
+      bets: record.bets,
       totalStake: record.totalStake,
-      betSnapshot: {
-        bets: record.bets,
-        totalStake: record.totalStake,
-      },
-      resultSnapshot: {
-        winner: record.winner,
-        playerPoint: record.playerPoint,
-        bankerPoint: record.bankerPoint,
-        playerCards: record.playerCards,
-        bankerCards: record.bankerCards,
-        playerPair: record.playerPair,
-        bankerPair: record.bankerPair,
-      },
-    }),
-  }).catch(() => null)
-
-  if (!response?.ok) {
-    return null
-  }
-
-  const payload = (await response.json().catch(() => null)) as { progress?: { bankroll?: unknown } } | null
-  return typeof payload?.progress?.bankroll === "number" ? payload.progress.bankroll : null
+    },
+    resultSnapshot: {
+      winner: record.winner,
+      playerPoint: record.playerPoint,
+      bankerPoint: record.bankerPoint,
+      playerCards: record.playerCards,
+      bankerCards: record.bankerCards,
+      playerPair: record.playerPair,
+      bankerPair: record.bankerPair,
+    },
+  })
 }
 
 export function BaccaratTablePage({
@@ -556,8 +545,14 @@ export function BaccaratTablePage({
 }) {
   const [language] = useLanguage(defaultLanguage)
   const isChinese = language === "zh"
+  const buyInWalletLabel = isChinese ? "主钱包余额" : "Main wallet"
+  const tableChipsLabel = isChinese ? "桌台筹码（随输赢变化）" : "Table chips (changes each hand)"
+  const mainWalletNote = isChinese ? "主钱包（买入/离桌时变化）" : "Main wallet (buy-in/cash-out only)"
+  const buyInHint = isChinese
+    ? "主钱包只在买入和离桌时变化；每手牌输赢会先结算到本桌筹码。"
+    : "Your wallet changes on buy-in and cash-out. Each hand settles into table chips first."
   const isVip = Boolean(entry.variantOf)
-  const initialBankroll = initialTableSession?.chipBalance ?? initialProgress?.bankroll ?? 0
+  const initialBankroll = initialTableSession?.chipBalance ?? 0
   const defaultChips = isVip ? [100, 250, 500, 1000, 2500] : [10, 25, 50, 100, 250]
   const defaultStake = isVip ? 250 : 25
 
@@ -567,6 +562,7 @@ export function BaccaratTablePage({
   const [buyInAmount, setBuyInAmount] = useState(isVip ? 500 : 100)
   const [isOpeningSession, setIsOpeningSession] = useState(false)
   const [isCashingOut, setIsCashingOut] = useState(false)
+  const [isSyncingRound, setIsSyncingRound] = useState(false)
   const [stake, setStake] = useState(defaultStake)
   const [chips, setChips] = useState(defaultChips)
   const [initialBankrollInput, setInitialBankrollInput] = useState(String(initialBankroll))
@@ -783,31 +779,12 @@ export function BaccaratTablePage({
     setMessage(isChinese ? "正在从钱包买入桌台筹码..." : "Buying chips from your wallet...")
 
     try {
-      const response = await fetch("/api/member/table-sessions", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          gameSlug: entry.slug,
-          buyInAmount: amount,
-          idempotencyKey: `baccarat-buy-in-${entry.slug}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        }),
-      })
-      const payload = (await response.json().catch(() => null)) as {
-        error?: string
-        tableSession?: MemberTableSession
-        wallet?: { balance?: unknown }
-      } | null
+      const result = await openClientTableSession(entry.slug, amount, "baccarat-buy-in")
 
-      if (!response.ok || !payload?.tableSession) {
-        throw new Error(payload?.error ?? "Unable to buy in.")
-      }
-
-      setTableSession(payload.tableSession)
-      setBankroll(payload.tableSession.chipBalance)
-      setInitialBankrollInput(String(payload.tableSession.chipBalance))
-      setWalletBalance(typeof payload.wallet?.balance === "number" ? payload.wallet.balance : walletBalance - amount)
+      setTableSession(result.tableSession)
+      setBankroll(result.tableSession.chipBalance)
+      setInitialBankrollInput(String(result.tableSession.chipBalance))
+      setWalletBalance(result.walletBalance ?? walletBalance - amount)
       setBets(cloneEmptyBets())
       window.localStorage.removeItem(storageKey)
       setMessage(isChinese ? "买入成功，桌台筹码已准备好。" : "Buy-in complete. Table chips are ready.")
@@ -827,29 +804,12 @@ export function BaccaratTablePage({
     setMessage(isChinese ? "正在带走筹码并结算回钱包..." : "Cashing out table chips to your wallet...")
 
     try {
-      const response = await fetch(`/api/member/table-sessions/${tableSession.id}/cash-out`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          idempotencyKey: `baccarat-cash-out-${tableSession.id}-${Date.now()}`,
-        }),
-      })
-      const payload = (await response.json().catch(() => null)) as {
-        error?: string
-        tableSession?: MemberTableSession
-        wallet?: { balance?: unknown }
-      } | null
-
-      if (!response.ok || !payload?.tableSession) {
-        throw new Error(payload?.error ?? "Unable to cash out.")
-      }
+      const result = await cashOutClientTableSession(tableSession.id, "baccarat-cash-out", tableSession.chipBalance)
 
       setTableSession(null)
       setBankroll(0)
       setInitialBankrollInput("0")
-      setWalletBalance(typeof payload.wallet?.balance === "number" ? payload.wallet.balance : walletBalance + tableSession.chipBalance)
+      setWalletBalance(result.walletBalance ?? walletBalance + tableSession.chipBalance)
       setBets(cloneEmptyBets())
       window.localStorage.removeItem(storageKey)
       setMessage(isChinese ? "筹码已带走，余额已回到钱包。" : "Chips cashed out. Balance returned to wallet.")
@@ -969,20 +929,28 @@ export function BaccaratTablePage({
     setBets(cloneEmptyBets())
     setVisibleDeal(null)
     setDealProgress(100)
-    setDealing(false)
     setMessage(
       isChineseThisRound
         ? `结果：${winnerText(round.winner, languageThisRound)}，本轮 ${formatDelta(delta)}。`
         : `Result: ${winnerText(round.winner, languageThisRound)}, round ${formatDelta(delta)}.`,
     )
     persistLocal(nextBankroll, nextHistory, nextStats, round)
-    void persistServerProgress(entry, record, languageThisRound, activeTableSession.id).then((serverBankroll) => {
+    setIsSyncingRound(true)
+
+    try {
+      const serverBankroll = await persistServerProgress(entry, record, languageThisRound, activeTableSession.id)
+
       if (typeof serverBankroll === "number") {
         setBankroll(serverBankroll)
         setTableSession((current) => current ? { ...current, chipBalance: serverBankroll } : current)
         persistLocal(serverBankroll, nextHistory, nextStats, round)
       }
-    })
+    } catch (error) {
+      console.error("baccarat round sync failed", error)
+    } finally {
+      setIsSyncingRound(false)
+      setDealing(false)
+    }
   }
 
   return (
@@ -1055,12 +1023,10 @@ export function BaccaratTablePage({
                   {isChinese ? "先从钱包买入本桌筹码" : "Buy chips before joining this table"}
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-[#cbbd91]">
-                  {isChinese
-                    ? "钱包余额不会在每手牌里直接变化；本桌下注只使用桌台筹码，离桌时再带走剩余筹码回钱包。"
-                    : "Your wallet does not change on every hand. Bets use table chips, then cash out remaining chips back to your wallet."}
+                  {buyInHint}
                 </p>
                 <p className="mt-3 text-sm font-black text-[#f4d18a]">
-                  {isChinese ? "钱包余额" : "Wallet"} {formatMoney(walletBalance)}
+                  {buyInWalletLabel} {formatMoney(walletBalance)}
                 </p>
               </div>
 
@@ -1121,12 +1087,12 @@ export function BaccaratTablePage({
                 <p className="text-sm font-black uppercase tracking-[0.16em] text-[#d0b06e]">
                   {isChinese ? "资金与发牌" : "Bankroll & Deal"}
                 </p>
-                <p className="mt-3 text-sm text-[#cbbd91]">{isChinese ? "桌台筹码" : "Table chips"}</p>
+                <p className="mt-3 text-sm text-[#cbbd91]">{tableChipsLabel}</p>
                 <p className="text-5xl font-black leading-none text-[#f4d18a] md:text-6xl">
                   {formatMoney(bankroll)}
                 </p>
                 <p className="mt-2 text-xs font-bold text-[#cbbd91]">
-                  {isChinese ? "钱包" : "Wallet"} {formatMoney(walletBalance)}
+                  {mainWalletNote} {formatMoney(walletBalance)}
                 </p>
               </div>
 
@@ -1134,7 +1100,7 @@ export function BaccaratTablePage({
                 <button
                   type="button"
                   onClick={cashOutSession}
-                  disabled={dealing || isCashingOut}
+                  disabled={dealing || isCashingOut || isSyncingRound}
                   className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-[#d0b06e]/35 bg-[#173727] px-4 text-sm font-black text-[#fff4d8] transition hover:bg-[#214a35] disabled:cursor-not-allowed disabled:opacity-55"
                 >
                   {isCashingOut ? (isChinese ? "离桌中..." : "Cashing out...") : isChinese ? "带走筹码" : "Cash out"}

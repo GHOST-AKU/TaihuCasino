@@ -4,6 +4,8 @@ import { redirect } from "next/navigation"
 import { PlayerHomePage } from "@/components/player-home-page"
 import { readMemberOverview } from "@/lib/member-data"
 
+export const dynamic = "force-dynamic"
+
 export default async function HomePage() {
   const cookieStore = await cookies()
   const member = await readMemberOverview(cookieStore)
