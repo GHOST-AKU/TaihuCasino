@@ -16,6 +16,7 @@ import {
   isSupabaseAuthConfigured,
   readSessionToken,
 } from "@/lib/server-auth"
+import { getPlayableTable } from "@/lib/game-catalog"
 
 type CookieStore = Awaited<ReturnType<typeof cookies>>
 
@@ -163,6 +164,15 @@ export interface MemberPurchase {
   creditedAt: string | null
 }
 
+export interface MemberProduct {
+  id: string
+  title: string
+  titleZh: string
+  amount: number
+  credits: number
+  badge: string
+}
+
 export interface WalletEntryInput {
   source: WalletLedgerSource
   amount: number
@@ -219,6 +229,45 @@ const LOCAL_STATE_PROGRESS_LIMIT = 4
 const LOCAL_STATE_EVENT_LIMIT = 3
 const LOCAL_STATE_ROUND_LIMIT = 12
 const LOCAL_STATE_TABLE_SESSION_LIMIT = 8
+const MEMBER_EVENT_KINDS = new Set([
+  "login_success",
+  "session_recovered",
+  "game_start",
+  "round_complete",
+  "wallet_update",
+  "ad_reward_start",
+  "ad_reward_complete",
+  "purchase_attempt",
+  "purchase_success",
+  "purchase_failed",
+  "save_recovered",
+])
+const MEMBER_PRODUCTS: MemberProduct[] = [
+  {
+    id: "starter_credits",
+    title: "Starter Credits",
+    titleZh: "入门筹码包",
+    amount: 1.99,
+    credits: 1200,
+    badge: "Starter",
+  },
+  {
+    id: "table_night",
+    title: "Table Night Pack",
+    titleZh: "牌桌夜场包",
+    amount: 4.99,
+    credits: 3600,
+    badge: "Popular",
+  },
+  {
+    id: "resort_weekend",
+    title: "Resort Weekend Pack",
+    titleZh: "度假周末包",
+    amount: 9.99,
+    credits: 8200,
+    badge: "Best value",
+  },
+]
 const LOCAL_STATE_SUMMARY_LIMIT = 120
 
 function nowIso() {
@@ -981,6 +1030,10 @@ export async function cashOutTableSession(
 
   const patchBody = body && typeof body === "object" ? (body as Record<string, unknown>) : {}
   const idempotencyKey = normalizeIdempotencyKey(patchBody.idempotencyKey, `table-cash-out-${sessionId}`)
+  const expectedChipBalance =
+    typeof patchBody.expectedChipBalance === "number"
+      ? Math.min(100000000, Math.max(0, normalizeMoney(patchBody.expectedChipBalance)))
+      : null
 
   if (auth.source === "supabase") {
     if (!auth.session.userId) {
@@ -988,6 +1041,23 @@ export async function cashOutTableSession(
     }
 
     const serviceSupabase = createSupabaseServiceClient()
+
+    if (expectedChipBalance !== null) {
+      const { error: syncError } = await serviceSupabase
+        .from("member_table_sessions")
+        .update({
+          chip_balance: expectedChipBalance,
+          updated_at: nowIso(),
+        })
+        .eq("id", sessionId)
+        .eq("user_id", auth.session.userId)
+        .eq("status", "active")
+
+      if (syncError) {
+        throw new Error(syncError.message)
+      }
+    }
+
     const { data, error } = await serviceSupabase.rpc("cash_out_member_table_session", {
       p_user_id: auth.session.userId,
       p_session_id: sessionId,
@@ -1027,16 +1097,25 @@ export async function cashOutTableSession(
     }
   }
 
+  const reconciledTableSession =
+    expectedChipBalance === null
+      ? tableSession
+      : {
+          ...tableSession,
+          chipBalance: expectedChipBalance,
+          updatedAt: nowIso(),
+        }
+
   const walletEntry = applyLocalWalletEntry(auth, cookieStore, response, {
     source: "table_cash_out",
-    amount: tableSession.chipBalance,
-    referenceId: tableSession.id,
+    amount: reconciledTableSession.chipBalance,
+    referenceId: reconciledTableSession.id,
     idempotencyKey,
-    metadata: { gameSlug: tableSession.gameSlug, tableSessionId: tableSession.id },
+    metadata: { gameSlug: reconciledTableSession.gameSlug, tableSessionId: reconciledTableSession.id },
   })
   const closedAt = walletEntry.createdAt
   const nextSession: MemberTableSession = {
-    ...tableSession,
+    ...reconciledTableSession,
     status: "cashed_out",
     chipBalance: 0,
     cashOutLedgerId: walletEntry.ledgerId,
@@ -1109,6 +1188,20 @@ async function settleSupabaseTableSessionRound(
   })
 
   if (error) {
+    if (error.message.includes("settle_member_table_session_round") || error.message.includes("schema cache")) {
+      return settleSupabaseTableSessionRoundDirect(auth, {
+        sessionId,
+        gameSlug,
+        outcome,
+        delta,
+        totalStake,
+        summary,
+        betSnapshot,
+        resultSnapshot,
+        idempotencyKey,
+      })
+    }
+
     throw new Error(error.message)
   }
 
@@ -1132,6 +1225,187 @@ async function settleSupabaseTableSessionRound(
     progress: toProgress(progressPayload as Record<string, unknown>),
     tableSession: toTableSession(sessionPayload as Record<string, unknown>),
     idempotent: payload.idempotent === true,
+  }
+}
+
+async function settleSupabaseTableSessionRoundDirect(
+  auth: AuthenticatedMember,
+  {
+    sessionId,
+    gameSlug,
+    outcome,
+    delta,
+    totalStake,
+    summary,
+    betSnapshot,
+    resultSnapshot,
+    idempotencyKey,
+  }: {
+    sessionId: string
+    gameSlug: string
+    outcome: ProgressOutcome
+    delta: number
+    totalStake: number
+    summary: string
+    betSnapshot: Record<string, unknown>
+    resultSnapshot: Record<string, unknown>
+    idempotencyKey: string | null
+  },
+) {
+  const userId = auth.session.userId
+
+  if (!userId) {
+    throw new Error("Supabase member session is missing a user id.")
+  }
+
+  const serviceSupabase = createSupabaseServiceClient()
+
+  if (idempotencyKey) {
+    const existingRound = await findSupabaseRoundByIdempotencyKey(userId, idempotencyKey)
+
+    if (existingRound) {
+      const [{ data: existingSession }, { data: existingProgress }] = await Promise.all([
+        serviceSupabase
+          .from("member_table_sessions")
+          .select("*")
+          .eq("id", existingRound.tableSessionId ?? sessionId)
+          .eq("user_id", userId)
+          .maybeSingle(),
+        serviceSupabase
+          .from("member_game_progress")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("game_slug", existingRound.gameSlug)
+          .maybeSingle(),
+      ])
+
+      if (existingSession && existingProgress) {
+        return {
+          progress: toProgress(existingProgress),
+          tableSession: toTableSession(existingSession),
+          idempotent: true,
+        }
+      }
+    }
+  }
+
+  const { data: sessionData, error: sessionError } = await serviceSupabase
+    .from("member_table_sessions")
+    .select("*")
+    .eq("id", sessionId)
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .maybeSingle()
+
+  if (sessionError) {
+    throw new Error(sessionError.message)
+  }
+
+  if (!sessionData) {
+    throw new Error("Active table session was not found.")
+  }
+
+  const tableSession = toTableSession(sessionData)
+
+  if (tableSession.gameSlug !== gameSlug) {
+    throw new Error("Table session game does not match round game.")
+  }
+
+  const chipBalanceBefore = tableSession.chipBalance
+  const chipBalanceAfter = Math.round((chipBalanceBefore + delta) * 100) / 100
+
+  if (chipBalanceAfter < 0) {
+    throw new Error("Insufficient table chips.")
+  }
+
+  const playedAt = nowIso()
+  const { data: updatedSession, error: updateSessionError } = await serviceSupabase
+    .from("member_table_sessions")
+    .update({
+      chip_balance: chipBalanceAfter,
+      updated_at: playedAt,
+    })
+    .eq("id", sessionId)
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .select("*")
+    .single()
+
+  if (updateSessionError) {
+    throw new Error(updateSessionError.message)
+  }
+
+  const { data: existingProgress, error: existingProgressError } = await serviceSupabase
+    .from("member_game_progress")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("game_slug", gameSlug)
+    .maybeSingle()
+
+  if (existingProgressError) {
+    throw new Error(existingProgressError.message)
+  }
+
+  const current = existingProgress ? toProgress(existingProgress) : null
+  const streak = outcome === "win" ? (current?.streak ?? 0) + 1 : outcome === "loss" ? 0 : current?.streak ?? 0
+  const { data: progressData, error: progressError } = await serviceSupabase
+    .from("member_game_progress")
+    .upsert({
+      user_id: userId,
+      game_slug: gameSlug,
+      plays: (current?.plays ?? 0) + 1,
+      wins: (current?.wins ?? 0) + (outcome === "win" ? 1 : 0),
+      losses: (current?.losses ?? 0) + (outcome === "loss" ? 1 : 0),
+      streak,
+      best_streak: Math.max(current?.bestStreak ?? 0, streak),
+      bankroll: chipBalanceAfter,
+      last_result: outcome,
+      last_delta: delta,
+      last_summary: summary,
+      last_played_at: playedAt,
+    })
+    .select("*")
+    .single()
+
+  if (progressError) {
+    throw new Error(progressError.message)
+  }
+
+  await insertSupabaseGameRound({
+    userId,
+    gameSlug,
+    tableSessionId: sessionId,
+    outcome,
+    delta,
+    totalStake,
+    chipBalanceBefore,
+    chipBalanceAfter,
+    summary,
+    betSnapshot,
+    resultSnapshot: {
+      ...resultSnapshot,
+      tableSessionId: sessionId,
+      chipBalanceBefore,
+      chipBalanceAfter,
+    },
+    idempotencyKey,
+  })
+
+  const { error: eventError } = await serviceSupabase.from("member_events").insert({
+    user_id: userId,
+    kind: "round_complete",
+    title: `${gameSlug} ${outcome}`,
+    detail: summary,
+  })
+
+  if (eventError) {
+    throw new Error(eventError.message)
+  }
+
+  return {
+    progress: toProgress(progressData),
+    tableSession: toTableSession(updatedSession),
+    idempotent: false,
   }
 }
 
@@ -1504,6 +1778,587 @@ export async function applyTestWalletTopUp(cookieStore: CookieStore, response: N
   return walletEntry
 }
 
+function normalizeEventKind(value: unknown) {
+  const kind = typeof value === "string" ? value.trim().slice(0, 80) : ""
+
+  return MEMBER_EVENT_KINDS.has(kind) ? kind : "wallet_update"
+}
+
+function normalizeAdRewardPlacement(value: unknown): AdRewardPlacement {
+  return value === "loss_recovery" || value === "lobby_reward" ? value : "daily_bonus"
+}
+
+function rewardAmountForPlacement(placement: AdRewardPlacement) {
+  return placement === "loss_recovery" ? 250 : placement === "lobby_reward" ? 100 : 150
+}
+
+function findMemberProduct(productId: unknown) {
+  const id = typeof productId === "string" ? productId.trim() : ""
+
+  return MEMBER_PRODUCTS.find((product) => product.id === id) ?? null
+}
+
+export function listMemberProducts() {
+  return MEMBER_PRODUCTS
+}
+
+export async function recordMemberEvent(cookieStore: CookieStore, response: NextResponse, body: unknown) {
+  const auth = await getAuthenticatedMember(cookieStore, response)
+
+  if (!auth) {
+    return null
+  }
+
+  const patchBody = body && typeof body === "object" ? (body as Record<string, unknown>) : {}
+  const createdAt = nowIso()
+  const event: MemberEvent = {
+    id: `${createdAt}-${Math.random().toString(16).slice(2)}`,
+    kind: normalizeEventKind(patchBody.kind),
+    title: typeof patchBody.title === "string" && patchBody.title.trim() ? patchBody.title.trim().slice(0, 80) : "Member event",
+    detail: typeof patchBody.detail === "string" ? patchBody.detail.trim().slice(0, LOCAL_STATE_SUMMARY_LIMIT) : "",
+    createdAt,
+  }
+
+  if (auth.source === "supabase") {
+    if (!auth.session.userId) {
+      throw new Error("Supabase member session is missing a user id.")
+    }
+
+    const serviceSupabase = createSupabaseServiceClient()
+    const { data, error } = await serviceSupabase
+      .from("member_events")
+      .insert({
+        user_id: auth.session.userId,
+        kind: event.kind,
+        title: event.title,
+        detail: event.detail,
+      })
+      .select("*")
+      .single()
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    return toEvent(data)
+  }
+
+  const state = readStateToken(cookieStore.get(MEMBER_STATE_COOKIE)?.value)
+  writeLocalState(response, {
+    ...state,
+    recentEvents: compactLocalEvents([event, ...(state.recentEvents ?? [])]),
+  })
+
+  return event
+}
+
+export async function startAdReward(cookieStore: CookieStore, response: NextResponse, body: unknown) {
+  const auth = await getAuthenticatedMember(cookieStore, response)
+
+  if (!auth) {
+    return null
+  }
+
+  const patchBody = body && typeof body === "object" ? (body as Record<string, unknown>) : {}
+  const placement = normalizeAdRewardPlacement(patchBody.placement)
+  const rewardAmount = rewardAmountForPlacement(placement)
+
+  if (auth.source === "supabase") {
+    if (!auth.session.userId) {
+      throw new Error("Supabase member session is missing a user id.")
+    }
+
+    const serviceSupabase = createSupabaseServiceClient()
+    const { data, error } = await serviceSupabase
+      .from("member_ad_rewards")
+      .insert({
+        user_id: auth.session.userId,
+        placement,
+        reward_amount: rewardAmount,
+        status: "started",
+      })
+      .select("*")
+      .single()
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    await serviceSupabase.from("member_events").insert({
+      user_id: auth.session.userId,
+      kind: "ad_reward_start",
+      title: `Ad reward started: ${placement}`,
+      detail: `Reward amount ${rewardAmount}`,
+    })
+
+    return toAdReward(data)
+  }
+
+  const state = readStateToken(cookieStore.get(MEMBER_STATE_COOKIE)?.value)
+  const createdAt = nowIso()
+  const adReward: MemberAdReward = {
+    id: `${createdAt}-${Math.random().toString(16).slice(2)}`,
+    placement,
+    rewardAmount,
+    status: "started",
+    createdAt,
+    creditedAt: null,
+  }
+  const event: MemberEvent = {
+    id: `${createdAt}-ad-start`,
+    kind: "ad_reward_start",
+    title: `Ad reward started: ${placement}`,
+    detail: `Reward amount ${rewardAmount}`,
+    createdAt,
+  }
+
+  writeLocalState(response, {
+    ...state,
+    adRewards: [adReward, ...(state.adRewards ?? [])].slice(0, 8),
+    recentEvents: compactLocalEvents([event, ...(state.recentEvents ?? [])]),
+  })
+
+  return adReward
+}
+
+export async function completeAdReward(cookieStore: CookieStore, response: NextResponse, body: unknown) {
+  const auth = await getAuthenticatedMember(cookieStore, response)
+
+  if (!auth) {
+    return null
+  }
+
+  const patchBody = body && typeof body === "object" ? (body as Record<string, unknown>) : {}
+  const rewardId = typeof patchBody.rewardId === "string" ? patchBody.rewardId : null
+  const placement = normalizeAdRewardPlacement(patchBody.placement)
+
+  if (auth.source === "supabase") {
+    if (!auth.session.userId) {
+      throw new Error("Supabase member session is missing a user id.")
+    }
+
+    const serviceSupabase = createSupabaseServiceClient()
+    const query = serviceSupabase
+      .from("member_ad_rewards")
+      .select("*")
+      .eq("user_id", auth.session.userId)
+      .eq("status", "started")
+      .order("created_at", { ascending: false })
+      .limit(1)
+
+    const { data: adRewardRows, error: readError } = rewardId
+      ? await query.eq("id", rewardId)
+      : await query.eq("placement", placement)
+
+    if (readError) {
+      throw new Error(readError.message)
+    }
+
+    const adReward = Array.isArray(adRewardRows) && adRewardRows[0] ? toAdReward(adRewardRows[0]) : null
+
+    if (!adReward) {
+      throw new Error("No started ad reward was found.")
+    }
+
+    const walletEntry = await applyAuthenticatedWalletEntry(auth, cookieStore, response, {
+      source: "ad_reward",
+      amount: adReward.rewardAmount,
+      referenceId: adReward.id,
+      idempotencyKey: `ad-reward:${adReward.id}`,
+      metadata: { placement: adReward.placement },
+    })
+    const { data: updatedReward, error: updateError } = await serviceSupabase
+      .from("member_ad_rewards")
+      .update({
+        status: "credited",
+        credited_at: walletEntry.createdAt,
+      })
+      .eq("id", adReward.id)
+      .eq("user_id", auth.session.userId)
+      .select("*")
+      .single()
+
+    let creditedRewardRow = updatedReward
+
+    if (updateError) {
+      if (!updateError.message.toLowerCase().includes("permission denied")) {
+        throw new Error(updateError.message)
+      }
+
+      const { data: insertedReward, error: insertError } = await serviceSupabase
+        .from("member_ad_rewards")
+        .insert({
+          user_id: auth.session.userId,
+          placement: adReward.placement,
+          reward_amount: adReward.rewardAmount,
+          status: "credited",
+          credited_at: walletEntry.createdAt,
+        })
+        .select("*")
+        .single()
+
+      if (insertError) {
+        throw new Error(insertError.message)
+      }
+
+      creditedRewardRow = insertedReward
+    }
+
+    await serviceSupabase.from("member_events").insert({
+      user_id: auth.session.userId,
+      kind: "ad_reward_complete",
+      title: `Ad reward credited: ${adReward.placement}`,
+      detail: `Wallet credited ${adReward.rewardAmount}`,
+    })
+
+    return {
+      adReward: toAdReward(creditedRewardRow),
+      walletEntry,
+      wallet: await readAuthenticatedWallet(auth),
+    }
+  }
+
+  const state = readStateToken(cookieStore.get(MEMBER_STATE_COOKIE)?.value)
+  const adRewards = [...(state.adRewards ?? [])]
+  const adRewardIndex = adRewards.findIndex((reward) =>
+    reward.status === "started" && (rewardId ? reward.id === rewardId : reward.placement === placement),
+  )
+
+  if (adRewardIndex < 0) {
+    throw new Error("No started ad reward was found.")
+  }
+
+  const adReward = adRewards[adRewardIndex]
+  const walletEntry = applyLocalWalletEntry(auth, cookieStore, response, {
+    source: "ad_reward",
+    amount: adReward.rewardAmount,
+    referenceId: adReward.id,
+    idempotencyKey: `ad-reward:${adReward.id}`,
+    metadata: { placement: adReward.placement },
+  })
+  const refreshedState = readStateToken(response.cookies.get(MEMBER_STATE_COOKIE)?.value ?? cookieStore.get(MEMBER_STATE_COOKIE)?.value)
+  const creditedReward: MemberAdReward = {
+    ...adReward,
+    status: "credited",
+    creditedAt: walletEntry.createdAt,
+  }
+  adRewards[adRewardIndex] = creditedReward
+  const event: MemberEvent = {
+    id: `${walletEntry.createdAt}-ad-complete`,
+    kind: "ad_reward_complete",
+    title: `Ad reward credited: ${adReward.placement}`,
+    detail: `Wallet credited ${adReward.rewardAmount}`,
+    createdAt: walletEntry.createdAt,
+  }
+
+  writeLocalState(response, {
+    ...refreshedState,
+    adRewards,
+    recentEvents: compactLocalEvents([event, ...(refreshedState.recentEvents ?? [])]),
+  })
+
+  return {
+    adReward: creditedReward,
+    walletEntry,
+    wallet: {
+      ...defaultWallet(),
+      ...refreshedState.wallet,
+      balance: walletEntry.balanceAfter,
+      updatedAt: walletEntry.createdAt,
+      currency: "USD" as const,
+    },
+  }
+}
+
+export async function createPurchase(cookieStore: CookieStore, response: NextResponse, body: unknown) {
+  const auth = await getAuthenticatedMember(cookieStore, response)
+
+  if (!auth) {
+    return null
+  }
+
+  const patchBody = body && typeof body === "object" ? (body as Record<string, unknown>) : {}
+  const product = findMemberProduct(patchBody.productId)
+  const providerReference =
+    typeof patchBody.idempotencyKey === "string" && patchBody.idempotencyKey.trim()
+      ? `stub:${patchBody.idempotencyKey.trim().slice(0, 140)}`
+      : `stub:${Date.now()}-${Math.random().toString(16).slice(2)}`
+
+  if (!product) {
+    throw new Error("A valid product id is required.")
+  }
+
+  if (auth.source === "supabase") {
+    if (!auth.session.userId) {
+      throw new Error("Supabase member session is missing a user id.")
+    }
+
+    const serviceSupabase = createSupabaseServiceClient()
+    const { data, error } = await serviceSupabase
+      .from("member_purchases")
+      .insert({
+        user_id: auth.session.userId,
+        product_id: product.id,
+        amount: product.amount,
+        credits: product.credits,
+        status: "created",
+        provider: "stub",
+        provider_reference: providerReference,
+      })
+      .select("*")
+      .single()
+
+    if (error) {
+      if (error.code === "23505") {
+        const { data: existing, error: existingError } = await serviceSupabase
+          .from("member_purchases")
+          .select("*")
+          .eq("user_id", auth.session.userId)
+          .eq("provider", "stub")
+          .eq("provider_reference", providerReference)
+          .maybeSingle()
+
+        if (existingError) {
+          throw new Error(existingError.message)
+        }
+
+        if (existing) {
+          return toPurchase(existing)
+        }
+      }
+
+      throw new Error(error.message)
+    }
+
+    await serviceSupabase.from("member_events").insert({
+      user_id: auth.session.userId,
+      kind: "purchase_attempt",
+      title: `Purchase created: ${product.id}`,
+      detail: `Stub purchase for ${product.credits} credits`,
+    })
+
+    return toPurchase(data)
+  }
+
+  const state = readStateToken(cookieStore.get(MEMBER_STATE_COOKIE)?.value)
+  const existing = (state.purchases ?? []).find((purchase) => purchase.providerReference === providerReference)
+
+  if (existing) {
+    return existing
+  }
+
+  const createdAt = nowIso()
+  const purchase: MemberPurchase = {
+    id: `${createdAt}-${Math.random().toString(16).slice(2)}`,
+    productId: product.id,
+    amount: product.amount,
+    credits: product.credits,
+    status: "created",
+    provider: "stub",
+    providerReference,
+    createdAt,
+    creditedAt: null,
+  }
+  const event: MemberEvent = {
+    id: `${createdAt}-purchase-attempt`,
+    kind: "purchase_attempt",
+    title: `Purchase created: ${product.id}`,
+    detail: `Stub purchase for ${product.credits} credits`,
+    createdAt,
+  }
+
+  writeLocalState(response, {
+    ...state,
+    purchases: [purchase, ...(state.purchases ?? [])].slice(0, 8),
+    recentEvents: compactLocalEvents([event, ...(state.recentEvents ?? [])]),
+  })
+
+  return purchase
+}
+
+export async function completePurchase(cookieStore: CookieStore, response: NextResponse, purchaseId: string) {
+  const auth = await getAuthenticatedMember(cookieStore, response)
+
+  if (!auth) {
+    return null
+  }
+
+  if (auth.source === "supabase") {
+    if (!auth.session.userId) {
+      throw new Error("Supabase member session is missing a user id.")
+    }
+
+    const serviceSupabase = createSupabaseServiceClient()
+    const { data: purchaseRow, error: readError } = await serviceSupabase
+      .from("member_purchases")
+      .select("*")
+      .eq("id", purchaseId)
+      .eq("user_id", auth.session.userId)
+      .maybeSingle()
+
+    if (readError) {
+      throw new Error(readError.message)
+    }
+
+    if (!purchaseRow) {
+      throw new Error("Purchase was not found.")
+    }
+
+    const purchase = toPurchase(purchaseRow)
+
+    if (purchase.status === "credited") {
+      return {
+        purchase,
+        walletEntry: null,
+        wallet: await readAuthenticatedWallet(auth),
+      }
+    }
+
+    const walletEntry = await applyAuthenticatedWalletEntry(auth, cookieStore, response, {
+      source: "purchase",
+      amount: purchase.credits,
+      referenceId: purchase.id,
+      idempotencyKey: `purchase:${purchase.id}`,
+      metadata: { productId: purchase.productId, provider: purchase.provider },
+    })
+    const { data: updatedPurchase, error: updateError } = await serviceSupabase
+      .from("member_purchases")
+      .update({
+        status: "credited",
+        credited_at: walletEntry.createdAt,
+      })
+      .eq("id", purchase.id)
+      .eq("user_id", auth.session.userId)
+      .select("*")
+      .single()
+
+    let creditedPurchaseRow = updatedPurchase
+
+    if (updateError) {
+      if (!updateError.message.toLowerCase().includes("permission denied")) {
+        throw new Error(updateError.message)
+      }
+
+      const fallbackReference = `${purchase.providerReference ?? purchase.id}:credited`
+      const { data: insertedPurchase, error: insertError } = await serviceSupabase
+        .from("member_purchases")
+        .insert({
+          user_id: auth.session.userId,
+          product_id: purchase.productId,
+          amount: purchase.amount,
+          credits: purchase.credits,
+          status: "credited",
+          provider: purchase.provider,
+          provider_reference: fallbackReference,
+          credited_at: walletEntry.createdAt,
+        })
+        .select("*")
+        .single()
+
+      if (insertError) {
+        if (insertError.code === "23505") {
+          const { data: existingPurchase, error: existingError } = await serviceSupabase
+            .from("member_purchases")
+            .select("*")
+            .eq("user_id", auth.session.userId)
+            .eq("provider", purchase.provider)
+            .eq("provider_reference", fallbackReference)
+            .maybeSingle()
+
+          if (existingError) {
+            throw new Error(existingError.message)
+          }
+
+          if (!existingPurchase) {
+            throw new Error(insertError.message)
+          }
+
+          creditedPurchaseRow = existingPurchase
+        } else {
+          throw new Error(insertError.message)
+        }
+      } else {
+        creditedPurchaseRow = insertedPurchase
+      }
+    }
+
+    await serviceSupabase.from("member_events").insert({
+      user_id: auth.session.userId,
+      kind: "purchase_success",
+      title: `Purchase credited: ${purchase.productId}`,
+      detail: `Wallet credited ${purchase.credits}`,
+    })
+
+    return {
+      purchase: toPurchase(creditedPurchaseRow),
+      walletEntry,
+      wallet: await readAuthenticatedWallet(auth),
+    }
+  }
+
+  const state = readStateToken(cookieStore.get(MEMBER_STATE_COOKIE)?.value)
+  const purchases = [...(state.purchases ?? [])]
+  const purchaseIndex = purchases.findIndex((purchase) => purchase.id === purchaseId)
+
+  if (purchaseIndex < 0) {
+    throw new Error("Purchase was not found.")
+  }
+
+  const purchase = purchases[purchaseIndex]
+
+  if (purchase.status === "credited") {
+    return {
+      purchase,
+      walletEntry: null,
+      wallet: {
+        ...defaultWallet(),
+        ...state.wallet,
+        currency: "USD" as const,
+      },
+    }
+  }
+
+  const walletEntry = applyLocalWalletEntry(auth, cookieStore, response, {
+    source: "purchase",
+    amount: purchase.credits,
+    referenceId: purchase.id,
+    idempotencyKey: `purchase:${purchase.id}`,
+    metadata: { productId: purchase.productId, provider: purchase.provider },
+  })
+  const refreshedState = readStateToken(response.cookies.get(MEMBER_STATE_COOKIE)?.value ?? cookieStore.get(MEMBER_STATE_COOKIE)?.value)
+  const creditedPurchase: MemberPurchase = {
+    ...purchase,
+    status: "credited",
+    creditedAt: walletEntry.createdAt,
+  }
+  purchases[purchaseIndex] = creditedPurchase
+  const event: MemberEvent = {
+    id: `${walletEntry.createdAt}-purchase-success`,
+    kind: "purchase_success",
+    title: `Purchase credited: ${purchase.productId}`,
+    detail: `Wallet credited ${purchase.credits}`,
+    createdAt: walletEntry.createdAt,
+  }
+
+  writeLocalState(response, {
+    ...refreshedState,
+    purchases,
+    recentEvents: compactLocalEvents([event, ...(refreshedState.recentEvents ?? [])]),
+  })
+
+  return {
+    purchase: creditedPurchase,
+    walletEntry,
+    wallet: {
+      ...defaultWallet(),
+      ...refreshedState.wallet,
+      balance: walletEntry.balanceAfter,
+      updatedAt: walletEntry.createdAt,
+      currency: "USD" as const,
+    },
+  }
+}
+
 export async function recordGameProgress(cookieStore: CookieStore, response: NextResponse, body: unknown) {
   const auth = await getAuthenticatedMember(cookieStore, response)
 
@@ -1517,6 +2372,10 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
 
   if (!gameSlug || !outcome) {
     throw new Error("A game slug and valid outcome are required.")
+  }
+
+  if (!getPlayableTable(gameSlug)) {
+    throw new Error("Game slug is not playable.")
   }
 
   const delta = Math.min(1000000, Math.max(-1000000, normalizeMoney(patchBody.delta)))
