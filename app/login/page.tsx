@@ -12,10 +12,11 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>
+  searchParams: Promise<{ mode?: string; next?: string }>
 }) {
   const params = await searchParams
   const testAccount = getLocalDemoCredentials()
+  const initialMode = params.mode === "register" ? "register" : "sign-in"
 
-  return <LoginForm next={params.next} testAccount={testAccount} />
+  return <LoginForm initialMode={initialMode} next={params.next} testAccount={testAccount} />
 }
