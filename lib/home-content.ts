@@ -196,13 +196,13 @@ export function getQuickActions(language: Language, viewerMode: ViewerMode): Hom
     ? [
         { key: "start", label: "开始试玩", description: "从百家乐或轮盘开始进入大厅", href: getGameRoute("baccarat", language), variant: "primary" },
         { key: "blackjack", label: "试试 21 点", description: "给喜欢策略感的玩家准备的桌台", href: getGameRoute("blackjack", language) },
-        { key: "register", label: "创建玩家档案", description: "预留后续接入注册与会员能力", href: "#top" },
+        { key: "register", label: "创建玩家档案", description: "创建账号并初始化会员档案", href: "/login?mode=register" },
         { key: "guide", label: "了解玩法", description: "先看推荐与最近动态，再选择桌台", href: "#leaderboard" },
       ]
     : [
         { key: "start", label: "Start Playing", description: "Begin with Baccarat or Roulette", href: getGameRoute("baccarat", language), variant: "primary" },
         { key: "blackjack", label: "Try Blackjack", description: "A stronger strategy pick for new players", href: getGameRoute("blackjack", language) },
-        { key: "register", label: "Create Profile", description: "Reserved for future sign-up and member flow", href: "#top" },
+        { key: "register", label: "Create Profile", description: "Create an account and member profile", href: "/login?mode=register" },
         { key: "guide", label: "How To Start", description: "Check recommendations before choosing a table", href: "#leaderboard" },
       ]
 }

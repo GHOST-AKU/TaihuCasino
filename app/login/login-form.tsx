@@ -2,12 +2,13 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { useEffect, useState } from "react"
+import Script from "next/script"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowRight, Eye, EyeOff, Lock, Mail, Spade } from "lucide-react"
+import { ArrowRight, Eye, EyeOff, Lock, Mail, Spade, UserPlus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { loginMember, readMemberSession, startOAuthSignIn, type OAuthProviderKey } from "@/lib/member-session"
+import { loginMember, readMemberSession, registerMember, startOAuthSignIn, type OAuthProviderKey } from "@/lib/member-session"
 import { cn } from "@/lib/utils"
 
 const providerButtons = [
@@ -50,9 +51,9 @@ const providerButtons = [
   {
     key: "amazon",
     label: "Amazon",
-    className: "bg-[#f8a51c] hover:bg-[#eb9b18]",
+    className: "bg-[#f8d994] hover:bg-[#edcb7c]",
     src: "/brands/amazon-logo.png",
-    imgClassName: "h-5 w-auto max-w-[5.7rem]",
+    imgClassName: "max-h-5 w-auto max-w-[5.7rem]",
     width: 91,
     height: 20,
   },
@@ -66,7 +67,7 @@ const providerButtons = [
     height: 20,
   },
 ] satisfies Array<{
-  key: OAuthProviderKey | "amazon"
+  key: OAuthProviderKey
   label: string
   className: string
   src: string
@@ -81,11 +82,38 @@ const stats = [
   { value: "99.9%", label: "Uptime" },
 ]
 
+const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (
+        container: HTMLElement,
+        options: {
+          sitekey: string
+          appearance?: "always" | "execute" | "interaction-only"
+          theme?: "auto" | "light" | "dark"
+          size?: "normal" | "compact" | "flexible" | "invisible"
+          callback: (token: string) => void
+          "expired-callback": () => void
+          "error-callback": () => void
+        },
+      ) => string
+      getResponse?: (widgetId?: string) => string
+      reset: (widgetId?: string) => void
+      remove?: (widgetId: string) => void
+    }
+  }
+}
+
 interface TestAccountHint {
   account: string
   password: string
   displayName?: string
 }
+
+type AuthMode = "sign-in" | "register"
+type CaptchaStatus = "idle" | "loading" | "verified" | "expired" | "error"
 
 function resolveRedirectTarget(nextTarget: string | null) {
   if (!nextTarget || !nextTarget.startsWith("/")) {
@@ -138,7 +166,7 @@ function ProviderButton({
           width={width}
           height={height}
           className={imgClassName}
-          style={keepImageWidthAuto ? { width: "auto" } : undefined}
+          style={keepImageWidthAuto ? { height: "auto", width: "auto" } : undefined}
         />
       )}
     </button>
@@ -155,6 +183,7 @@ function Field({
   icon,
   trailing,
   action,
+  autoComplete,
 }: {
   id: string
   label: string
@@ -165,6 +194,7 @@ function Field({
   icon: React.ReactNode
   trailing?: React.ReactNode
   action?: React.ReactNode
+  autoComplete?: string
 }) {
   return (
     <label htmlFor={id} className="block">
@@ -180,6 +210,7 @@ function Field({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
+          autoComplete={autoComplete}
           className="h-full w-full bg-transparent text-base text-foreground outline-none placeholder:text-[var(--auth-faint-text)]"
         />
         {trailing ? <span className="ml-3 text-[var(--auth-faint-text)]">{trailing}</span> : null}
@@ -189,19 +220,61 @@ function Field({
 }
 
 export function LoginForm({
+  initialMode = "sign-in",
   next,
   testAccount,
 }: {
+  initialMode?: AuthMode
   next?: string
   testAccount?: TestAccountHint | null
 }) {
   const router = useRouter()
+  const [authMode, setAuthMode] = useState<AuthMode>(initialMode)
   const [email, setEmail] = useState("")
+  const [displayName, setDisplayName] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState("")
+  const [statusMessage, setStatusMessage] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState("")
+  const [captchaStatus, setCaptchaStatus] = useState<CaptchaStatus>("idle")
+  const [turnstileReady, setTurnstileReady] = useState(false)
+  const turnstileContainerRef = useRef<HTMLDivElement | null>(null)
+  const turnstileWidgetIdRef = useRef<string | null>(null)
+  const isRegisterMode = authMode === "register"
+
+  function resetCaptcha() {
+    setCaptchaToken("")
+    setCaptchaStatus(isRegisterMode && turnstileSiteKey ? "loading" : "idle")
+
+    if (turnstileWidgetIdRef.current && window.turnstile) {
+      window.turnstile.reset(turnstileWidgetIdRef.current)
+      return
+    }
+
+    if (isRegisterMode && typeof window !== "undefined") {
+      window.location.reload()
+    }
+  }
+
+  function readCaptchaTokenFromWidget() {
+    const widgetResponse = turnstileWidgetIdRef.current
+      ? (window.turnstile?.getResponse?.(turnstileWidgetIdRef.current)?.trim() ?? "")
+      : ""
+
+    if (widgetResponse) {
+      return widgetResponse
+    }
+
+    const hiddenInput = turnstileContainerRef.current?.querySelector<HTMLInputElement>(
+      'input[name="cf-turnstile-response"]',
+    )
+
+    return hiddenInput?.value.trim() ?? ""
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -217,6 +290,90 @@ export function LoginForm({
     }
   }, [next, router])
 
+  useEffect(() => {
+    if (!isRegisterMode) {
+      setCaptchaToken("")
+      setCaptchaStatus("idle")
+      return
+    }
+
+    if (!turnstileReady || !turnstileSiteKey || !turnstileContainerRef.current || !window.turnstile) {
+      setCaptchaStatus(turnstileSiteKey ? "loading" : "idle")
+      return
+    }
+
+    setCaptchaStatus("loading")
+    turnstileWidgetIdRef.current = window.turnstile.render(turnstileContainerRef.current, {
+      sitekey: turnstileSiteKey,
+      appearance: "always",
+      theme: "light",
+      size: "normal",
+      callback(token) {
+        setCaptchaToken(token)
+        setCaptchaStatus("verified")
+      },
+      "expired-callback"() {
+        setCaptchaToken("")
+        setCaptchaStatus("expired")
+      },
+      "error-callback"() {
+        setCaptchaToken("")
+        setCaptchaStatus("error")
+      },
+    })
+
+    return () => {
+      if (turnstileWidgetIdRef.current && window.turnstile?.remove) {
+        window.turnstile.remove(turnstileWidgetIdRef.current)
+      }
+      turnstileWidgetIdRef.current = null
+    }
+  }, [isRegisterMode, turnstileReady])
+
+  useEffect(() => {
+    if (!isRegisterMode || !turnstileSiteKey || captchaToken) {
+      return
+    }
+
+    const startedAt = Date.now()
+    const tokenCheck = window.setInterval(() => {
+      const activeCaptchaToken = readCaptchaTokenFromWidget()
+
+      if (activeCaptchaToken) {
+        setCaptchaToken(activeCaptchaToken)
+        setCaptchaStatus("verified")
+        window.clearInterval(tokenCheck)
+        return
+      }
+
+      if (Date.now() - startedAt > 9000) {
+        setCaptchaStatus("error")
+        window.clearInterval(tokenCheck)
+      }
+    }, 500)
+
+    return () => {
+      window.clearInterval(tokenCheck)
+    }
+  }, [captchaToken, isRegisterMode, turnstileReady])
+
+  function switchAuthMode(mode: AuthMode) {
+    setAuthMode(mode)
+    setErrorMessage("")
+    setStatusMessage("")
+
+    const params = new URLSearchParams()
+    if (mode === "register") {
+      params.set("mode", "register")
+    }
+    if (next) {
+      params.set("next", next)
+    }
+
+    const query = params.toString()
+    router.replace(query ? `/login?${query}` : "/login", { scroll: false })
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -226,12 +383,87 @@ export function LoginForm({
       return
     }
 
+    if (isRegisterMode) {
+      const trimmedDisplayName = displayName.trim()
+      if (!trimmedDisplayName) {
+        setErrorMessage("Please enter a player name.")
+        return
+      }
+
+      if (password.trim().length < 8) {
+        setErrorMessage("Password must be at least 8 characters for account creation.")
+        return
+      }
+
+      if (password !== confirmPassword) {
+        setErrorMessage("Passwords do not match.")
+        return
+      }
+
+      if (!turnstileSiteKey) {
+        setErrorMessage("Security check is not configured.")
+        return
+      }
+
+      const activeCaptchaToken = captchaToken || readCaptchaTokenFromWidget()
+
+      if (!activeCaptchaToken) {
+        setErrorMessage("Please complete the security check.")
+        return
+      }
+
+      if (!captchaToken) {
+        setCaptchaToken(activeCaptchaToken)
+        setCaptchaStatus("verified")
+      }
+
+      setErrorMessage("")
+      setStatusMessage("")
+      setIsSubmitting(true)
+
+      try {
+        const result = await registerMember({
+          email: trimmedEmail,
+          password,
+          displayName: trimmedDisplayName,
+          captchaToken: activeCaptchaToken,
+          next,
+        })
+
+        if (result.session) {
+          router.push(resolveRedirectTarget(next ?? null))
+          router.refresh()
+          return
+        }
+
+        if (result.confirmationRequired) {
+          setStatusMessage("Check your email to confirm your Taihu member account before signing in.")
+          setPassword("")
+          setConfirmPassword("")
+          return
+        }
+
+        setPassword("")
+        setConfirmPassword("")
+        switchAuthMode("sign-in")
+        setStatusMessage("Account created. You can sign in now.")
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "Unable to create account.")
+        resetCaptcha()
+      } finally {
+        setIsSubmitting(false)
+      }
+      return
+    }
+
     if (password.trim().length < 4) {
       setErrorMessage("Password must be at least 4 characters for demo sign in.")
       return
     }
 
     setErrorMessage("")
+    setStatusMessage("")
+    resetCaptcha()
     setIsSubmitting(true)
 
     try {
@@ -252,17 +484,15 @@ export function LoginForm({
 
     setEmail(testAccount.account)
     setPassword(testAccount.password)
+    setAuthMode("sign-in")
     setErrorMessage("")
+    setStatusMessage("")
   }
 
-  async function handleProviderClick(provider: OAuthProviderKey | "amazon") {
-    if (provider === "amazon") {
-      setErrorMessage("Amazon sign-in is not supported by Supabase Auth yet.")
-      return
-    }
-
+  async function handleProviderClick(provider: OAuthProviderKey) {
     setLoadingProvider(provider)
     setErrorMessage("")
+    setStatusMessage("")
 
     try {
       await startOAuthSignIn(provider, next)
@@ -274,6 +504,16 @@ export function LoginForm({
 
   return (
     <main className="casino-auth-shell relative min-h-screen overflow-hidden">
+      {isRegisterMode && turnstileSiteKey ? (
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+          strategy="afterInteractive"
+          onLoad={() => setTurnstileReady(true)}
+          onReady={() => setTurnstileReady(true)}
+          onError={() => setCaptchaStatus("error")}
+        />
+      ) : null}
+
       <div className="pointer-events-none absolute inset-0">
         <div className="lobby-ambient-orb absolute left-0 top-0 h-80 w-80 rounded-full blur-3xl" />
         <div className="lobby-ambient-orb lobby-ambient-orb-secondary absolute bottom-0 right-0 h-96 w-96 rounded-full blur-3xl" />
@@ -347,11 +587,38 @@ export function LoginForm({
             </div>
 
             <div className="text-center">
-              <h2 className="font-serif text-[2.55rem] font-semibold tracking-tight text-foreground">Welcome Back</h2>
-              <p className="mt-2.5 text-base text-[var(--auth-soft-text)]">Sign in to continue your gaming journey</p>
+              <h2 className="font-serif text-[2.55rem] font-semibold tracking-tight text-foreground">
+                {isRegisterMode ? "Create Account" : "Welcome Back"}
+              </h2>
+              <p className="mt-2.5 text-base text-[var(--auth-soft-text)]">
+                {isRegisterMode ? "Create your Taihu member profile" : "Sign in to continue your gaming journey"}
+              </p>
             </div>
 
-            {testAccount ? (
+            <div className="mt-6 grid grid-cols-2 rounded-[1.25rem] border border-primary/15 bg-background/45 p-1">
+              <button
+                type="button"
+                onClick={() => switchAuthMode("sign-in")}
+                className={cn(
+                  "h-11 rounded-[1rem] text-sm font-semibold transition",
+                  !isRegisterMode ? "bg-primary text-primary-foreground shadow-sm" : "text-[var(--auth-soft-text)] hover:text-foreground",
+                )}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                onClick={() => switchAuthMode("register")}
+                className={cn(
+                  "h-11 rounded-[1rem] text-sm font-semibold transition",
+                  isRegisterMode ? "bg-primary text-primary-foreground shadow-sm" : "text-[var(--auth-soft-text)] hover:text-foreground",
+                )}
+              >
+                Create account
+              </button>
+            </div>
+
+            {testAccount && !isRegisterMode ? (
               <div className="mt-6 rounded-[1.35rem] border border-primary/20 bg-primary/10 p-4 text-left">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -379,19 +646,35 @@ export function LoginForm({
                   height={provider.height}
                   loading={loadingProvider === provider.key}
                   onClick={() => handleProviderClick(provider.key)}
-                  disabled={provider.key === "amazon"}
                   keepImageWidthAuto={provider.key === "amazon"}
                 />
               ))}
             </div>
 
+            <p className="mt-4 text-center text-sm leading-6 text-[var(--auth-soft-text)]">
+              First-time social sign-in automatically creates a Taihu member profile.
+            </p>
+
             <div className="my-7 flex items-center gap-4 text-sm text-[var(--auth-faint-text)]">
               <div className="h-px flex-1 bg-[var(--auth-divider)]" />
-              <span className="text-base">or continue with email</span>
+              <span className="text-base">{isRegisterMode ? "or create with email" : "or continue with email"}</span>
               <div className="h-px flex-1 bg-[var(--auth-divider)]" />
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {isRegisterMode ? (
+                <Field
+                  id="displayName"
+                  label="Player Name"
+                  type="text"
+                  value={displayName}
+                  onChange={setDisplayName}
+                  placeholder="Choose your member name"
+                  autoComplete="name"
+                  icon={<UserPlus className="h-5 w-5" />}
+                />
+              ) : null}
+
               <Field
                 id="email"
                 label="Email Address"
@@ -399,6 +682,7 @@ export function LoginForm({
                 value={email}
                 onChange={setEmail}
                 placeholder="Enter your email"
+                autoComplete="email"
                 icon={<Mail className="h-5 w-5" />}
               />
 
@@ -409,11 +693,14 @@ export function LoginForm({
                 value={password}
                 onChange={setPassword}
                 placeholder="Enter your password"
+                autoComplete={isRegisterMode ? "new-password" : "current-password"}
                 icon={<Lock className="h-5 w-5" />}
                 action={
+                  !isRegisterMode ? (
                   <Link href="#" className="text-sm font-medium text-primary hover:text-primary/80">
                     Forgot password?
                   </Link>
+                  ) : null
                 }
                 trailing={
                   <button
@@ -427,9 +714,60 @@ export function LoginForm({
                 }
               />
 
+              {isRegisterMode ? (
+                <Field
+                  id="confirmPassword"
+                  label="Confirm Password"
+                  type={showPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={setConfirmPassword}
+                  placeholder="Confirm your password"
+                  autoComplete="new-password"
+                  icon={<Lock className="h-5 w-5" />}
+                />
+              ) : null}
+
+              {isRegisterMode ? (
+                <div className="rounded-[1.2rem] border border-primary/15 bg-background/50 px-4 py-3">
+                  {turnstileSiteKey ? (
+                    <div className="space-y-2">
+                      <div ref={turnstileContainerRef} className="min-h-[65px]" />
+                      {captchaStatus === "loading" ? (
+                        <p className="text-xs font-medium text-[var(--auth-soft-text)]">Loading security check...</p>
+                      ) : null}
+                      {captchaStatus === "verified" ? (
+                        <p className="text-xs font-semibold text-primary">Security check complete.</p>
+                      ) : null}
+                      {captchaStatus === "expired" || captchaStatus === "error" ? (
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-xs font-medium text-red-700 dark:text-red-200">
+                            {captchaStatus === "expired" ? "Security check expired." : "Security check failed."}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={resetCaptcha}
+                            className="text-xs font-semibold text-primary hover:text-primary/80"
+                          >
+                            Retry
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-red-700 dark:text-red-200">Security check is not configured.</p>
+                  )}
+                </div>
+              ) : null}
+
               {errorMessage ? (
                 <div className="rounded-[1.2rem] border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
                   {errorMessage}
+                </div>
+              ) : null}
+
+              {statusMessage ? (
+                <div className="rounded-[1.2rem] border border-primary/25 bg-primary/10 px-4 py-3 text-sm leading-6 text-foreground">
+                  {statusMessage}
                 </div>
               ) : null}
 
@@ -438,13 +776,20 @@ export function LoginForm({
                 disabled={isSubmitting}
                 className="mt-2 h-14 w-full rounded-[1.4rem] bg-primary text-lg font-semibold text-primary-foreground shadow-[0_20px_60px_rgba(45,201,142,0.18)] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-primary/90"
               >
-                {isSubmitting ? "Signing In..." : "Sign In"}
+                {isSubmitting ? (isRegisterMode ? "Creating Account..." : "Signing In...") : isRegisterMode ? "Create Account" : "Sign In"}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </form>
 
             <p className="mt-7 text-center text-base text-[var(--auth-soft-text)]">
-              Account required. Registration can be connected to Supabase Auth when production credentials are ready.
+              {isRegisterMode ? "Already have an account?" : "New to TaihuCasino?"}{" "}
+              <button
+                type="button"
+                onClick={() => switchAuthMode(isRegisterMode ? "sign-in" : "register")}
+                className="font-semibold text-primary hover:text-primary/80"
+              >
+                {isRegisterMode ? "Sign in" : "Create a member profile"}
+              </button>
             </p>
 
             <p className="mt-5 text-center text-xs leading-6 text-[var(--auth-faint-text)]">

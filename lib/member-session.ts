@@ -6,7 +6,12 @@ export interface MemberSession {
   provider?: "supabase" | "local"
 }
 
-export type OAuthProviderKey = "google" | "apple" | "microsoft" | "facebook" | "x"
+export type OAuthProviderKey = "google" | "apple" | "microsoft" | "facebook" | "amazon" | "x"
+
+export interface RegisterMemberResult {
+  confirmationRequired: boolean
+  session: MemberSession | null
+}
 
 export async function loginMember(account: string, password: string): Promise<MemberSession> {
   const response = await fetch("/api/auth/login", {
@@ -29,29 +34,54 @@ export async function loginMember(account: string, password: string): Promise<Me
   return payload.session
 }
 
+export async function registerMember({
+  email,
+  password,
+  displayName,
+  next,
+  captchaToken,
+}: {
+  email: string
+  password: string
+  displayName: string
+  next?: string
+  captchaToken?: string
+}): Promise<RegisterMemberResult> {
+  const response = await fetch("/api/auth/register", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ email, password, displayName, next, captchaToken }),
+  })
+
+  const payload = (await response.json().catch(() => null)) as {
+    confirmationRequired?: boolean
+    session?: MemberSession | null
+    error?: string
+  } | null
+
+  if (!response.ok || !payload) {
+    throw new Error(payload?.error ?? "Unable to create account.")
+  }
+
+  return {
+    confirmationRequired: Boolean(payload.confirmationRequired),
+    session: payload.session ?? null,
+  }
+}
+
 export async function startOAuthSignIn(provider: OAuthProviderKey, next?: string) {
   if (typeof window === "undefined") {
     return
   }
 
-  const response = await fetch("/api/auth/oauth", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({ provider, next }),
-  })
-
-  const payload = (await response.json().catch(() => null)) as {
-    redirectTo?: string
-    error?: string
-  } | null
-
-  if (!response.ok || !payload?.redirectTo) {
-    throw new Error(payload?.error ?? "Unable to start sign in.")
+  const params = new URLSearchParams({ provider })
+  if (next) {
+    params.set("next", next)
   }
 
-  window.location.assign(payload.redirectTo)
+  window.location.href = `/api/auth/oauth?${params.toString()}`
 }
 
 export async function readMemberSession(): Promise<MemberSession | null> {
