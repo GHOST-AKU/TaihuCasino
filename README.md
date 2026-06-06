@@ -102,20 +102,36 @@ pnpm start
 
 ## Authentication Environment
 
-The formal Next.js product line uses Supabase Auth for member identity and SSR cookie sessions. Configure local and production environments with:
+The formal product line uses Supabase Auth for member identity and SSR cookie sessions.
 
-- `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL.
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: Supabase publishable key. `NEXT_PUBLIC_SUPABASE_ANON_KEY` is accepted as a compatibility fallback.
+正式产品线使用 Supabase Auth 作为会员身份来源，并使用 SSR cookie session。
+
+Production deployments should configure:
+
+生产环境应配置：
+
+- `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL. / Supabase 项目 URL。
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: Supabase publishable key. `NEXT_PUBLIC_SUPABASE_ANON_KEY` is accepted as a compatibility fallback. / Supabase publishable key。`NEXT_PUBLIC_SUPABASE_ANON_KEY` 可作为兼容回退。
+- `SUPABASE_SERVICE_ROLE_KEY`: server-only Supabase service role key used by member and wallet mutation paths. Never expose it through `NEXT_PUBLIC_*`. / 仅服务端使用的 Supabase service role key，用于会员和钱包写入路径。绝不能通过 `NEXT_PUBLIC_*` 暴露。
+- `TAIHU_SESSION_SECRET`: a long random secret used to sign fallback session cookies. / 用于签名回退 session cookie 的长随机密钥。
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY`: required when registration remains enabled with Cloudflare Turnstile. / 如果注册页继续启用 Cloudflare Turnstile，则需要配置。
+
+Supabase Auth production setup also needs Site URL, `/auth/callback` redirect allowlist, OAuth provider configuration, and CAPTCHA/Turnstile backend settings when registration is enabled. See `docs/DEPLOYMENT_READINESS.md`.
+
+Supabase Auth 生产设置还需要配置 Site URL、`/auth/callback` redirect allowlist、OAuth provider，以及启用注册时的 CAPTCHA/Turnstile 后台设置。详见 `docs/DEPLOYMENT_READINESS.md`。
 
 The app keeps a legacy local fallback for development when Supabase variables are absent:
 
-- `TAIHU_SESSION_SECRET`: a long random secret used to sign fallback session cookies.
-- `TAIHU_AUTH_ACCOUNT` and `TAIHU_AUTH_PASSWORD`: single-account fallback credentials, or
-- `TAIHU_AUTH_USERS`: JSON array of fallback user records, for example `[{"account":"member@example.com","password":"change-me","displayName":"Member"}]`.
+- `TAIHU_AUTH_ACCOUNT` and `TAIHU_AUTH_PASSWORD`: single-account fallback credentials. / 单个回退账号。
+- `TAIHU_AUTH_USERS`: JSON array of fallback user records, for example `[{"account":"member@example.com","password":"change-me","displayName":"Member"}]`. / 回退用户 JSON 数组，例如 `[{"account":"member@example.com","password":"change-me","displayName":"Member"}]`。
 
 Local development falls back to `demo@taihu.casino` / `taihu-demo-2026` when neither Supabase nor fallback auth env vars are set. Production deployments should configure Supabase Auth and should not rely on the fallback account.
 
-Supabase profile schema and RLS notes live in `docs/SUPABASE_AUTH_SCHEMA.md`. The initial SQL migration is `supabase/migrations/20260418_init_auth_profiles.sql`.
+当 Supabase 和回退账号变量都不存在时，本地开发会回退到 `demo@taihu.casino` / `taihu-demo-2026`。生产部署必须配置 Supabase Auth，不应依赖回退账号。
+
+Supabase profile schema, RLS notes, and member data boundary live in `docs/SUPABASE_AUTH_SCHEMA.md`. The initial SQL migration is `supabase/migrations/20260418_init_auth_profiles.sql`.
+
+Supabase profile schema、RLS 说明和会员数据边界见 `docs/SUPABASE_AUTH_SCHEMA.md`。初始 SQL migration 是 `supabase/migrations/20260418_init_auth_profiles.sql`。
 
 ## Temporary Test Branch Scope
 

@@ -1,6 +1,6 @@
 .obsidian/
 gcm-diagnose.log
-tsconfig.tsbuildinfo
+*.tsbuildinfo
 .preview-next*.log
 .preview-next*.err.log
 .playwright-cli/

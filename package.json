@@ -3,13 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
-    "ci": "npm run typecheck && npm run build"
+    "typecheck": "next typegen && tsc --noEmit -p tsconfig.typecheck.json",
+    "ci": "corepack pnpm typecheck && corepack pnpm build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
