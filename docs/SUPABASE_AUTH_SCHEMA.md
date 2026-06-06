@@ -19,11 +19,20 @@ Set these variables in local and deployment environments:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+TAIHU_SESSION_SECRET=
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=
 ```
 
-`NEXT_PUBLIC_SUPABASE_ANON_KEY` is also accepted as a compatibility fallback. Use `SUPABASE_SERVICE_ROLE_KEY` only for future server-only admin tasks; it is not required for the current login/session flow.
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` is also accepted as a compatibility fallback. `SUPABASE_SERVICE_ROLE_KEY` is not required for the auth/session handshake itself, but it is required by current server-side member and wallet mutation paths. Keep it server-only and never expose it through `NEXT_PUBLIC_*`. `TAIHU_SESSION_SECRET` signs fallback session cookies and should be set in production so fallback paths never use local development defaults.
+
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` 也可作为兼容回退。`SUPABASE_SERVICE_ROLE_KEY` 不是登录/session 握手本身的必需项，但当前服务端会员和钱包写入路径需要它。该变量必须只存在于服务端环境，绝不能通过 `NEXT_PUBLIC_*` 暴露。`TAIHU_SESSION_SECRET` 用于签名回退 session cookie，生产环境应配置它，避免回退路径使用本地开发默认值。
 
 If Supabase variables are missing, local development can still use the legacy demo account path from `TAIHU_AUTH_*`. Production should configure Supabase and should not rely on the legacy fallback.
+
+If registration remains enabled, configure both `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and Supabase Auth CAPTCHA/Turnstile backend settings. Production OAuth also requires the Supabase Site URL, `/auth/callback` redirect allowlist, and the enabled provider credentials.
+
+如果注册页继续启用，需要同时配置 `NEXT_PUBLIC_TURNSTILE_SITE_KEY` 和 Supabase Auth CAPTCHA/Turnstile 后台设置。生产 OAuth 还需要配置 Supabase Site URL、`/auth/callback` redirect allowlist，以及已启用 provider 的凭据。
 
 ## Profile Boundary
 
@@ -62,7 +71,9 @@ It creates member-owned tables for the new member center and migrated game route
 - `public.member_game_progress`: per-game plays, wins, losses, streaks, bankroll, and latest settlement summary.
 - `public.member_events`: short audit/event stream for member-facing activity.
 
-All four tables enable RLS and only allow authenticated users to read, insert, or update rows where `auth.uid() = user_id`. The app deliberately does not use a service role for normal member reads/writes.
+All four tables enable RLS and only allow authenticated users to read, insert, or update rows where `auth.uid() = user_id`. Normal profile/settings/progress reads and writes stay user-scoped. Current wallet and member mutation paths that need trusted server-side writes use `SUPABASE_SERVICE_ROLE_KEY` through server-only code.
+
+这四张表都启用 RLS，只允许已登录用户读写 `auth.uid() = user_id` 的行。普通 profile/settings/progress 读写仍然保持用户作用域。当前需要可信服务端写入的钱包和会员 mutation 路径，会通过服务端代码使用 `SUPABASE_SERVICE_ROLE_KEY`。
 
 The API contract is:
 

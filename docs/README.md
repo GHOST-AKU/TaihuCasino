@@ -23,6 +23,7 @@ All formal documents should be bilingual in English and Chinese.
 
 ## Engineering / 工程文档
 
+- `DEPLOYMENT_READINESS.md`
 - `TECH_STACK_DECISION.md`
 - `AUTH0_MEMBER_COUNTER_SETUP.md`
 - `subagent-peer-review.md`
