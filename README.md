@@ -24,6 +24,13 @@ This restructure did two main things:
 - `TypeScript`
 - `Tailwind CSS 4`
 
+## Delivery Hub / 协作入口
+
+- Project board / 项目看板: [TaihuCasino Delivery](https://github.com/users/GHOST-AKU/projects/2)
+- Wiki / 流程与手册入口: [TaihuCasino Wiki](https://github.com/GHOST-AKU/TaihuCasino/wiki)
+- Wiki source in repo / 仓库内 Wiki 源文件: [`docs/wiki/Home.md`](./docs/wiki/Home.md)
+- Backlog bootstrap issues / 首批 backlog: [Open backlog items](https://github.com/GHOST-AKU/TaihuCasino/issues?q=is%3Aissue%20is%3Aopen%20no%3Aassignee)
+
 ## Main Directories / 主要目录
 
 ```text
