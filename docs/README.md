@@ -14,6 +14,7 @@ All formal documents should be bilingual in English and Chinese.
 
 - `DOCUMENT_BILINGUAL_AUDIT.md` - bilingual documentation status and next batches  
   `DOCUMENT_BILINGUAL_AUDIT.md` - 双语文档状态与后续处理批次
+- `wiki/Home.md` - wiki-ready navigation pages for workflow and release operations / 面向 Wiki 的流程与发布导航页面
 - `PROJECT_STRUCTURE_CLEAN.md` - quick project structure reference  
   `PROJECT_STRUCTURE_CLEAN.md` - 项目结构快速参考
 - `CODEBASE_BOUNDARY_PLAN.md` - formal boundary and migration plan  
