@@ -91,7 +91,7 @@ Environment variables alone are not enough. Before promoting a production deploy
 
 - Set the Supabase Auth Site URL to the production origin. / 将 Supabase Auth Site URL 设置为生产域名。
 - Add the production `/auth/callback` URL to the redirect allowlist. Add preview URLs if preview OAuth testing is required. / 将生产环境 `/auth/callback` 加入 redirect allowlist。如需在预览环境测试 OAuth，也加入预览 URL。
-- Configure OAuth providers used by the login page: Google, Apple, Microsoft/Azure, Facebook, and X. Amazon is disabled in the current app. / 配置登录页使用的 OAuth provider：Google、Apple、Microsoft/Azure、Facebook 和 X。当前应用中 Amazon 已禁用。
+- Configure OAuth providers used by the login page: Google, Apple, Microsoft/Azure, Facebook, and X. Amazon is explicitly out of scope. / 配置登录页使用的 OAuth provider：Google、Apple、Microsoft/Azure、Facebook 和 X。Amazon 已明确排除在支持范围之外。
 - If registration is enabled, configure Supabase CAPTCHA/Turnstile backend settings in addition to `NEXT_PUBLIC_TURNSTILE_SITE_KEY`. The registration API passes `captchaToken` to `supabase.auth.signUp`. / 如果启用注册，除 `NEXT_PUBLIC_TURNSTILE_SITE_KEY` 外，还要配置 Supabase CAPTCHA/Turnstile 后台设置。注册 API 会把 `captchaToken` 传给 `supabase.auth.signUp`。
 - Apply the Supabase migrations in `supabase/migrations/` before testing member, wallet, table session, ad reward, purchase, and game round APIs. / 在测试会员、钱包、桌台 session、广告奖励、购买和游戏回合 API 前，先应用 `supabase/migrations/` 中的迁移。
 - Keep `SUPABASE_SERVICE_ROLE_KEY` server-only. It is required by server-side member and wallet mutation code paths, but must never be exposed in `NEXT_PUBLIC_*` variables. / `SUPABASE_SERVICE_ROLE_KEY` 必须只存在于服务端环境。服务端会员和钱包写入路径需要它，但绝不能放进 `NEXT_PUBLIC_*` 变量。

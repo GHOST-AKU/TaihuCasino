@@ -9,7 +9,6 @@ const providerMap = {
   apple: "apple",
   microsoft: "azure",
   facebook: "facebook",
-  amazon: "custom:amazon",
   x: "x",
 } satisfies Record<string, Provider>
 

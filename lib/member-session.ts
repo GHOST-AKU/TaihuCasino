@@ -6,7 +6,7 @@ export interface MemberSession {
   provider?: "supabase" | "local"
 }
 
-export type OAuthProviderKey = "google" | "apple" | "microsoft" | "facebook" | "amazon" | "x"
+export type OAuthProviderKey = "google" | "apple" | "microsoft" | "facebook" | "x"
 
 export interface RegisterMemberResult {
   confirmationRequired: boolean

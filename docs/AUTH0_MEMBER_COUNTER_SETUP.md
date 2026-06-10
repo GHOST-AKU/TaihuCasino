@@ -23,7 +23,6 @@ window.TAIHU_AUTH_CONFIG = {
     google: { connection: "google-oauth2", enabled: true },
     apple: { connection: "apple", enabled: false },
     microsoft: { connection: "windowslive", enabled: true },
-    amazon: { connection: "amazon", enabled: false },
     github: { connection: "github", enabled: false },
     facebook: { connection: "facebook", enabled: false },
     x: { connection: "twitter", enabled: false },
@@ -47,8 +46,8 @@ window.TAIHU_AUTH_CONFIG = {
    把同一地址加入 Allowed Logout URLs。
 4. Enable Google and Microsoft first, and confirm that real login and callback flows work.  
    优先启用 Google 和 Microsoft，确认真实登录与回调流程可用。
-5. After the formal domain is ready, enable Apple, Amazon, and other smaller providers one by one.  
-   等正式域名准备好后，再逐个启用 Apple、Amazon 和其他小型 provider。
+5. After the formal domain is ready, enable Apple and other approved providers one by one.
+   等正式域名准备好后，再逐个启用 Apple 和其他已批准的 provider。
 
 ## Notes / 说明
 
@@ -56,5 +55,5 @@ window.TAIHU_AUTH_CONFIG = {
   本页使用 `cacheLocation: "localstorage"`，方便静态站刷新后恢复会话。
 - `window.login(provider)` and `window.logout()` are exposed by the page script.  
   `window.login(provider)` 与 `window.logout()` 已由页面脚本暴露。
-- Whether Apple, Amazon, WeChat, and similar providers can go live immediately depends on provider backend setup, domain readiness, and platform review, not only on page code.  
-  Apple、Amazon、WeChat 等 provider 能否立刻上线，不只取决于页面代码，还取决于提供商后台、域名和平台审核状态。
+- Whether Apple, WeChat, and similar providers can go live immediately depends on provider backend setup, domain readiness, and platform review, not only on page code.
+  Apple、WeChat 等 provider 能否立刻上线，不只取决于页面代码，还取决于提供商后台、域名和平台审核状态。
