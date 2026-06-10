@@ -12,8 +12,9 @@
     "start": "next start",
     "lint": "eslint .",
     "audit:prod": "corepack pnpm audit --prod --audit-level=high",
+    "test:stub-crediting": "node --test tests/stub-crediting.test.mjs",
     "typecheck": "next typegen && tsc --noEmit -p tsconfig.typecheck.json",
-    "ci": "corepack pnpm audit:prod && corepack pnpm typecheck && corepack pnpm build"
+    "ci": "corepack pnpm audit:prod && corepack pnpm test:stub-crediting && corepack pnpm typecheck && corepack pnpm build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

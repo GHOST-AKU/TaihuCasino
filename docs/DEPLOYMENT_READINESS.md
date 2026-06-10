@@ -78,6 +78,7 @@ Optional development/testing switch:
 可选开发/测试开关：
 
 - `TAIHU_ENABLE_TEST_WALLET_TOPUP`: enables the test wallet top-up endpoint in production only when explicitly set to `true`. Keep it unset or false for normal production deployments. / 仅在显式设置为 `true` 时允许生产环境测试充值入口。常规生产部署应保持未设置或 false。
+- `TAIHU_ENABLE_STUB_CREDITING`: enables stub purchase and ad-reward crediting in production only when explicitly set to `true`. Keep it unset or false for real production; verified receipt, signed webhook, or ad-provider proof must use a separate trusted path. / 仅在显式设置为 `true` 时允许生产环境 Stub 购买与广告奖励入账。真实生产环境应保持未设置或 false；经验证的收据、签名 webhook 或广告供应商证明必须使用独立可信路径。
 
 When Supabase variables are missing, local development can use the built-in demo account or the `TAIHU_AUTH_*` fallback. Production deployments should configure Supabase and should not rely on demo or fallback credentials.
 

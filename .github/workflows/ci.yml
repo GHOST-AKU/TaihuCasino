@@ -30,6 +30,9 @@ jobs:
       - name: Audit production dependencies
         run: pnpm audit:prod
 
+      - name: Test production stub crediting guard
+        run: pnpm test:stub-crediting
+
       - name: Typecheck
         run: pnpm typecheck
 

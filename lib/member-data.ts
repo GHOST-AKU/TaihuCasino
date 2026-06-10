@@ -17,6 +17,7 @@ import {
   readSessionToken,
 } from "@/lib/server-auth"
 import { getPlayableTable } from "@/lib/game-catalog"
+import { createStubCreditIdempotencyKey, requireStubCreditingEnabled } from "@/lib/stub-crediting"
 
 type CookieStore = Awaited<ReturnType<typeof cookies>>
 
@@ -1853,6 +1854,8 @@ export async function recordMemberEvent(cookieStore: CookieStore, response: Next
 }
 
 export async function startAdReward(cookieStore: CookieStore, response: NextResponse, body: unknown) {
+  requireStubCreditingEnabled()
+
   const auth = await getAuthenticatedMember(cookieStore, response)
 
   if (!auth) {
@@ -1922,6 +1925,8 @@ export async function startAdReward(cookieStore: CookieStore, response: NextResp
 }
 
 export async function completeAdReward(cookieStore: CookieStore, response: NextResponse, body: unknown) {
+  requireStubCreditingEnabled()
+
   const auth = await getAuthenticatedMember(cookieStore, response)
 
   if (!auth) {
@@ -1964,7 +1969,7 @@ export async function completeAdReward(cookieStore: CookieStore, response: NextR
       source: "ad_reward",
       amount: adReward.rewardAmount,
       referenceId: adReward.id,
-      idempotencyKey: `ad-reward:${adReward.id}`,
+      idempotencyKey: createStubCreditIdempotencyKey("ad-reward", adReward.id),
       metadata: { placement: adReward.placement },
     })
     const { data: updatedReward, error: updateError } = await serviceSupabase
@@ -2033,7 +2038,7 @@ export async function completeAdReward(cookieStore: CookieStore, response: NextR
     source: "ad_reward",
     amount: adReward.rewardAmount,
     referenceId: adReward.id,
-    idempotencyKey: `ad-reward:${adReward.id}`,
+    idempotencyKey: createStubCreditIdempotencyKey("ad-reward", adReward.id),
     metadata: { placement: adReward.placement },
   })
   const refreshedState = readStateToken(response.cookies.get(MEMBER_STATE_COOKIE)?.value ?? cookieStore.get(MEMBER_STATE_COOKIE)?.value)
@@ -2071,6 +2076,8 @@ export async function completeAdReward(cookieStore: CookieStore, response: NextR
 }
 
 export async function createPurchase(cookieStore: CookieStore, response: NextResponse, body: unknown) {
+  requireStubCreditingEnabled()
+
   const auth = await getAuthenticatedMember(cookieStore, response)
 
   if (!auth) {
@@ -2177,6 +2184,8 @@ export async function createPurchase(cookieStore: CookieStore, response: NextRes
 }
 
 export async function completePurchase(cookieStore: CookieStore, response: NextResponse, purchaseId: string) {
+  requireStubCreditingEnabled()
+
   const auth = await getAuthenticatedMember(cookieStore, response)
 
   if (!auth) {
@@ -2218,7 +2227,7 @@ export async function completePurchase(cookieStore: CookieStore, response: NextR
       source: "purchase",
       amount: purchase.credits,
       referenceId: purchase.id,
-      idempotencyKey: `purchase:${purchase.id}`,
+      idempotencyKey: createStubCreditIdempotencyKey("purchase", purchase.id),
       metadata: { productId: purchase.productId, provider: purchase.provider },
     })
     const { data: updatedPurchase, error: updateError } = await serviceSupabase
@@ -2322,7 +2331,7 @@ export async function completePurchase(cookieStore: CookieStore, response: NextR
     source: "purchase",
     amount: purchase.credits,
     referenceId: purchase.id,
-    idempotencyKey: `purchase:${purchase.id}`,
+    idempotencyKey: createStubCreditIdempotencyKey("purchase", purchase.id),
     metadata: { productId: purchase.productId, provider: purchase.provider },
   })
   const refreshedState = readStateToken(response.cookies.get(MEMBER_STATE_COOKIE)?.value ?? cookieStore.get(MEMBER_STATE_COOKIE)?.value)
