@@ -917,12 +917,17 @@ export function BaccaratTablePage({
     setIsSyncingRound(true)
 
     try {
-      const serverBankroll = await persistServerProgress(entry, record, activeTableSession.id)
+      const serverResult = await persistServerProgress(entry, record, activeTableSession.id)
+      const serverBankroll = serverResult.bankroll
 
       if (typeof serverBankroll === "number") {
         setBankroll(serverBankroll)
         setTableSession((current) => current ? { ...current, chipBalance: serverBankroll } : current)
         persistLocal(serverBankroll, nextHistory, nextStats, round)
+      }
+
+      if (serverResult.settlement) {
+        setMessage(serverResult.settlement.summary)
       }
     } catch (error) {
       console.error("baccarat round sync failed", error)

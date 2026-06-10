@@ -80,8 +80,12 @@ test("client contracts and database migration close direct-write boundaries", as
     readFile(new URL("../supabase/migrations/20260610160000_authoritative_settlement_boundary.sql", import.meta.url), "utf8"),
   ])
 
+  const clientInputContract = roundClient.slice(
+    roundClient.indexOf("export interface ClientGameRoundInput"),
+    roundClient.indexOf("export interface ClientAuthoritativeSettlement"),
+  )
   for (const forbidden of ["outcome:", "delta:", "bankroll:", "resultSnapshot:"]) {
-    assert.equal(roundClient.includes(forbidden), false)
+    assert.equal(clientInputContract.includes(forbidden), false)
   }
   assert.equal(cashOutClient.includes("expectedChipBalance"), false)
   assert.equal(memberData.includes("patchBody.expectedChipBalance"), false)

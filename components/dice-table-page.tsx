@@ -585,12 +585,25 @@ export function DiceTablePage({
       setIsSyncingRound(true)
       void (async () => {
         try {
-          const serverBankroll = await persistDiceProgress(entry, record, activeTableSession.id)
+          const serverResult = await persistDiceProgress(entry, record, activeTableSession.id)
+          const serverBankroll = serverResult.bankroll
 
           if (typeof serverBankroll === "number") {
             setBankroll(serverBankroll)
             setTableSession((current) => current ? { ...current, chipBalance: serverBankroll } : current)
             persistLocal(serverBankroll, nextStats, actualDice, result.sum)
+          }
+
+          const serverDice = serverResult.settlement?.resultSnapshot.dice
+          const serverSum = serverResult.settlement?.resultSnapshot.sum
+
+          if (Array.isArray(serverDice) && serverDice.length === 3 && typeof serverSum === "number") {
+            setDice(serverDice as [number, number, number])
+            setLastSum(serverSum)
+          }
+
+          if (serverResult.settlement) {
+            setSubText(serverResult.settlement.summary)
           }
         } catch (error) {
           console.error("dice round sync failed", error)

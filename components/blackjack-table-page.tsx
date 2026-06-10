@@ -662,18 +662,23 @@ export function BlackjackTablePage({
     setIsSyncingRound(true)
     void (async () => {
       try {
-        const serverBankroll = await persistBlackjackProgress(
+        const serverResult = await persistBlackjackProgress(
           entry,
           settled.hands,
           currentInsuranceBet,
           `blackjack-${entry.slug}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
           activeTableSession.id,
         )
+        const serverBankroll = serverResult.bankroll
 
         if (typeof serverBankroll === "number") {
           setBankroll(serverBankroll)
           setTableSession((current) => current ? { ...current, chipBalance: serverBankroll } : current)
           persistLocal(serverBankroll, settled.stats)
+        }
+
+        if (serverResult.settlement) {
+          setMessage(serverResult.settlement.summary)
         }
       } catch (error) {
         console.error("blackjack round sync failed", error)

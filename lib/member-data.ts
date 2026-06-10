@@ -2419,7 +2419,7 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
       resultSnapshot,
       idempotencyKey,
     })
-    return tableRound.progress
+    return { progress: tableRound.progress, settlement }
   }
 
   {
@@ -2433,7 +2433,7 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
     const current = existingIndex >= 0 ? progress[existingIndex] : undefined
 
     if (existingRound && current) {
-      return current
+      return { progress: current, settlement }
     }
 
     const sessions = [...(state.tableSessions ?? [])]
@@ -2518,7 +2518,7 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
       ]),
     })
 
-    return nextProgress
+    return { progress: nextProgress, settlement }
   }
 }
 

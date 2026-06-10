@@ -49,9 +49,9 @@ export async function POST(request: Request) {
   const cookieStore = await cookies()
 
   try {
-    const progress = await recordGameProgress(cookieStore, response, await request.json().catch(() => null))
+    const result = await recordGameProgress(cookieStore, response, await request.json().catch(() => null))
 
-    if (!progress) {
+    if (!result) {
       return NextResponse.json(
         { error: "Authentication is required." },
         {
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { progress },
+      result,
       {
         headers: response.headers,
       },

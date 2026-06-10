@@ -821,17 +821,33 @@ export function RouletteTablePage({
         setIsSyncingRound(true)
 
         try {
-          const serverBankroll = await persistRouletteProgress(
+          const serverResult = await persistRouletteProgress(
             entry,
             bets,
             `roulette-${entry.slug}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
             activeTableSession.id,
           )
+          const serverBankroll = serverResult.bankroll
 
           if (typeof serverBankroll === "number") {
             setBankroll(serverBankroll)
             setTableSession((current) => current ? { ...current, chipBalance: serverBankroll } : current)
             persistLocal(serverBankroll, nextStats, settledResult, finalWheelAngle)
+          }
+
+          const serverNumber = serverResult.settlement?.resultSnapshot.result
+
+          if (typeof serverNumber === "number") {
+            const serverWheelAngle = wheelAngleForResult(serverNumber)
+            setResult(serverNumber)
+            setPointerNumber(serverNumber)
+            pointerNumberRef.current = serverNumber
+            wheelAngle.current = serverWheelAngle
+            drawWheel(canvasRef.current, serverWheelAngle, null, ballPocketRadius, serverNumber)
+          }
+
+          if (serverResult.settlement) {
+            setMessage(serverResult.settlement.summary)
           }
         } catch (error) {
           console.error("roulette round sync failed", error)
