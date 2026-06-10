@@ -497,35 +497,14 @@ function calculatePreview(bets: BetLedger) {
 async function persistServerProgress(
   entry: CasinoTableEntry,
   record: BaccaratHistory,
-  language: Language,
-  tableSessionId?: string,
+  tableSessionId: string,
 ) {
-  const summary =
-    language === "zh"
-      ? `${winnerText(record.winner, language)} ${record.playerPoint}:${record.bankerPoint}，本轮 ${formatDelta(record.delta)}`
-      : `${winnerText(record.winner, language)} ${record.playerPoint}:${record.bankerPoint}, round ${formatDelta(record.delta)}`
-
   return recordClientGameRound({
     gameSlug: entry.slug,
-    outcome: outcomeFromDelta(record.delta),
-    delta: record.delta,
-    bankroll: record.bankroll,
-    summary,
     idempotencyKey: record.id,
     tableSessionId,
-    totalStake: record.totalStake,
     betSnapshot: {
       bets: record.bets,
-      totalStake: record.totalStake,
-    },
-    resultSnapshot: {
-      winner: record.winner,
-      playerPoint: record.playerPoint,
-      bankerPoint: record.bankerPoint,
-      playerCards: record.playerCards,
-      bankerCards: record.bankerCards,
-      playerPair: record.playerPair,
-      bankerPair: record.bankerPair,
     },
   })
 }
@@ -804,7 +783,7 @@ export function BaccaratTablePage({
     setMessage(isChinese ? "正在带走筹码并结算回钱包..." : "Cashing out table chips to your wallet...")
 
     try {
-      const result = await cashOutClientTableSession(tableSession.id, "baccarat-cash-out", tableSession.chipBalance)
+      const result = await cashOutClientTableSession(tableSession.id, "baccarat-cash-out")
 
       setTableSession(null)
       setBankroll(0)
@@ -938,7 +917,7 @@ export function BaccaratTablePage({
     setIsSyncingRound(true)
 
     try {
-      const serverBankroll = await persistServerProgress(entry, record, languageThisRound, activeTableSession.id)
+      const serverBankroll = await persistServerProgress(entry, record, activeTableSession.id)
 
       if (typeof serverBankroll === "number") {
         setBankroll(serverBankroll)

@@ -18,6 +18,7 @@ import {
 } from "@/lib/server-auth"
 import { getPlayableTable } from "@/lib/game-catalog"
 import { createStubCreditIdempotencyKey, requireStubCreditingEnabled } from "@/lib/stub-crediting"
+import { settleAuthoritativeRound } from "@/lib/authoritative-settlement"
 
 type CookieStore = Awaited<ReturnType<typeof cookies>>
 
@@ -1031,10 +1032,6 @@ export async function cashOutTableSession(
 
   const patchBody = body && typeof body === "object" ? (body as Record<string, unknown>) : {}
   const idempotencyKey = normalizeIdempotencyKey(patchBody.idempotencyKey, `table-cash-out-${sessionId}`)
-  const expectedChipBalance =
-    typeof patchBody.expectedChipBalance === "number"
-      ? Math.min(100000000, Math.max(0, normalizeMoney(patchBody.expectedChipBalance)))
-      : null
 
   if (auth.source === "supabase") {
     if (!auth.session.userId) {
@@ -1042,23 +1039,6 @@ export async function cashOutTableSession(
     }
 
     const serviceSupabase = createSupabaseServiceClient()
-
-    if (expectedChipBalance !== null) {
-      const { error: syncError } = await serviceSupabase
-        .from("member_table_sessions")
-        .update({
-          chip_balance: expectedChipBalance,
-          updated_at: nowIso(),
-        })
-        .eq("id", sessionId)
-        .eq("user_id", auth.session.userId)
-        .eq("status", "active")
-
-      if (syncError) {
-        throw new Error(syncError.message)
-      }
-    }
-
     const { data, error } = await serviceSupabase.rpc("cash_out_member_table_session", {
       p_user_id: auth.session.userId,
       p_session_id: sessionId,
@@ -1098,25 +1078,16 @@ export async function cashOutTableSession(
     }
   }
 
-  const reconciledTableSession =
-    expectedChipBalance === null
-      ? tableSession
-      : {
-          ...tableSession,
-          chipBalance: expectedChipBalance,
-          updatedAt: nowIso(),
-        }
-
   const walletEntry = applyLocalWalletEntry(auth, cookieStore, response, {
     source: "table_cash_out",
-    amount: reconciledTableSession.chipBalance,
-    referenceId: reconciledTableSession.id,
+    amount: tableSession.chipBalance,
+    referenceId: tableSession.id,
     idempotencyKey,
-    metadata: { gameSlug: reconciledTableSession.gameSlug, tableSessionId: reconciledTableSession.id },
+    metadata: { gameSlug: tableSession.gameSlug, tableSessionId: tableSession.id },
   })
   const closedAt = walletEntry.createdAt
   const nextSession: MemberTableSession = {
-    ...reconciledTableSession,
+    ...tableSession,
     status: "cashed_out",
     chipBalance: 0,
     cashOutLedgerId: walletEntry.ledgerId,
@@ -1175,6 +1146,30 @@ async function settleSupabaseTableSessionRound(
   }
 
   const serviceSupabase = createSupabaseServiceClient()
+  const { data: activeSession, error: activeSessionError } = await serviceSupabase
+    .from("member_table_sessions")
+    .select("game_slug, chip_balance")
+    .eq("id", sessionId)
+    .eq("user_id", auth.session.userId)
+    .eq("status", "active")
+    .maybeSingle()
+
+  if (activeSessionError) {
+    throw new Error(activeSessionError.message)
+  }
+
+  if (!activeSession) {
+    throw new Error("Active table session was not found.")
+  }
+
+  if (activeSession.game_slug !== gameSlug) {
+    throw new Error("Table session game does not match round game.")
+  }
+
+  if (totalStake > normalizeMoney(activeSession.chip_balance)) {
+    throw new Error("Insufficient table chips for this stake.")
+  }
+
   const { data, error } = await serviceSupabase.rpc("settle_member_table_session_round", {
     p_user_id: auth.session.userId,
     p_session_id: sessionId,
@@ -1313,6 +1308,11 @@ async function settleSupabaseTableSessionRoundDirect(
   }
 
   const chipBalanceBefore = tableSession.chipBalance
+
+  if (totalStake > chipBalanceBefore) {
+    throw new Error("Insufficient table chips for this stake.")
+  }
+
   const chipBalanceAfter = Math.round((chipBalanceBefore + delta) * 100) / 100
 
   if (chipBalanceAfter < 0) {
@@ -2377,24 +2377,21 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
 
   const patchBody = body && typeof body === "object" ? (body as Record<string, unknown>) : {}
   const gameSlug = typeof patchBody.gameSlug === "string" ? patchBody.gameSlug.slice(0, 80) : ""
-  const outcome = patchBody.outcome === "win" || patchBody.outcome === "loss" || patchBody.outcome === "push" ? patchBody.outcome : null
+  const table = getPlayableTable(gameSlug)
 
-  if (!gameSlug || !outcome) {
-    throw new Error("A game slug and valid outcome are required.")
-  }
-
-  if (!getPlayableTable(gameSlug)) {
+  if (!gameSlug || !table) {
     throw new Error("Game slug is not playable.")
   }
 
-  const delta = Math.min(1000000, Math.max(-1000000, normalizeMoney(patchBody.delta)))
-  const clientBankroll = normalizeNumber(patchBody.bankroll, 25000, 0, 100000000)
   const idempotencyKey = typeof patchBody.idempotencyKey === "string" ? patchBody.idempotencyKey.slice(0, 160) : null
   const tableSessionId = typeof patchBody.tableSessionId === "string" ? patchBody.tableSessionId.slice(0, 80) : null
-  const summary = typeof patchBody.summary === "string" ? patchBody.summary.slice(0, 280) : ""
-  const totalStake = normalizeNumber(patchBody.totalStake, Math.abs(delta), 0, 100000000)
-  const betSnapshot = normalizeRecord(patchBody.betSnapshot)
-  const resultSnapshot = normalizeRecord(patchBody.resultSnapshot)
+
+  if (!idempotencyKey || !tableSessionId) {
+    throw new Error("A table session and idempotency key are required for authoritative settlement.")
+  }
+
+  const settlement = settleAuthoritativeRound(table.ruleSet, normalizeRecord(patchBody.betSnapshot))
+  const { outcome, delta, totalStake, summary, betSnapshot, resultSnapshot } = settlement
   const playedAt = nowIso()
   const event: MemberEvent = {
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -2411,131 +2408,21 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
       throw new Error("Supabase member session is missing a user id.")
     }
 
-    if (tableSessionId) {
-      const tableRound = await settleSupabaseTableSessionRound(auth, {
-        sessionId: tableSessionId,
-        gameSlug,
-        outcome,
-        delta,
-        totalStake,
-        summary,
-        betSnapshot,
-        resultSnapshot,
-        idempotencyKey,
-      })
-
-      return tableRound.progress
-    }
-
-    const walletEntry = await applyAuthenticatedWalletEntry(auth, cookieStore, response, {
-      source: "game_round",
-      amount: delta,
-      idempotencyKey,
-      metadata: {
-        gameSlug,
-        outcome,
-        summary,
-        totalStake,
-        betSnapshot,
-        resultSnapshot,
-        clientBankroll,
-      },
-    })
-    const bankroll = walletEntry.balanceAfter
-    const existingRound =
-      idempotencyKey ? await findSupabaseRoundByIdempotencyKey(userId, idempotencyKey) : null
-
-    const { data: existing, error: existingError } = await auth.supabase
-      .from("member_game_progress")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("game_slug", gameSlug)
-      .maybeSingle()
-
-    if (existingError) {
-      throw new Error(existingError.message)
-    }
-
-    const current = existing ? toProgress(existing) : null
-
-    if (walletEntry.idempotent && current) {
-      if (!existingRound) {
-        await insertSupabaseGameRound({
-          userId,
-          gameSlug,
-          outcome,
-          delta,
-          totalStake,
-          summary,
-          betSnapshot,
-          resultSnapshot: {
-            ...resultSnapshot,
-            walletLedgerId: walletEntry.ledgerId,
-            balanceBefore: walletEntry.balanceBefore,
-            balanceAfter: walletEntry.balanceAfter,
-          },
-          idempotencyKey,
-        })
-      }
-
-      return current
-    }
-
-    const streak = outcome === "win" ? (current?.streak ?? 0) + 1 : outcome === "loss" ? 0 : current?.streak ?? 0
-    const progress = {
-      user_id: userId,
-      game_slug: gameSlug,
-      plays: (current?.plays ?? 0) + 1,
-      wins: (current?.wins ?? 0) + (outcome === "win" ? 1 : 0),
-      losses: (current?.losses ?? 0) + (outcome === "loss" ? 1 : 0),
-      streak,
-      best_streak: Math.max(current?.bestStreak ?? 0, streak),
-      bankroll,
-      last_result: outcome,
-      last_delta: delta,
-      last_summary: summary,
-      last_played_at: playedAt,
-    }
-    const { data, error } = await auth.supabase.from("member_game_progress").upsert(progress).select("*").single()
-
-    if (error) {
-      throw new Error(error.message)
-    }
-
-    await insertSupabaseGameRound({
-      userId,
+    const tableRound = await settleSupabaseTableSessionRound(auth, {
+      sessionId: tableSessionId,
       gameSlug,
       outcome,
       delta,
       totalStake,
       summary,
       betSnapshot,
-      resultSnapshot: {
-        ...resultSnapshot,
-        walletLedgerId: walletEntry.ledgerId,
-        balanceBefore: walletEntry.balanceBefore,
-        balanceAfter: walletEntry.balanceAfter,
-      },
+      resultSnapshot,
       idempotencyKey,
     })
-
-    const { error: eventError } = await auth.supabase
-      .from("member_events")
-      .insert({
-        user_id: userId,
-        kind: event.kind,
-        title: event.title,
-        detail: event.detail,
-      })
-
-    if (eventError) {
-      throw new Error(eventError.message)
-    }
-
-    return toProgress(data)
+    return tableRound.progress
   }
 
-  if (tableSessionId) {
+  {
     const state = readStateToken(cookieStore.get(MEMBER_STATE_COOKIE)?.value)
     const existingRound =
       idempotencyKey && state.gameRounds
@@ -2557,7 +2444,16 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
       throw new Error("Active table session was not found.")
     }
 
+    if (tableSession.gameSlug !== gameSlug) {
+      throw new Error("Table session game does not match round game.")
+    }
+
     const chipBalanceBefore = tableSession.chipBalance
+
+    if (totalStake > chipBalanceBefore) {
+      throw new Error("Insufficient table chips for this stake.")
+    }
+
     const chipBalanceAfter = Math.round((chipBalanceBefore + delta) * 100) / 100
 
     if (chipBalanceAfter < 0) {
@@ -2624,126 +2520,6 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
 
     return nextProgress
   }
-
-  const walletEntry = await applyAuthenticatedWalletEntry(auth, cookieStore, response, {
-    source: "game_round",
-    amount: delta,
-    idempotencyKey,
-    metadata: {
-      gameSlug,
-      outcome,
-      summary,
-      totalStake,
-      betSnapshot,
-      resultSnapshot,
-      clientBankroll,
-    },
-  })
-  const state = readStateToken(cookieStore.get(MEMBER_STATE_COOKIE)?.value)
-  const existingRound =
-    idempotencyKey && state.gameRounds
-      ? state.gameRounds.find((round) => round.idempotencyKey === idempotencyKey)
-      : undefined
-  const progress = [...(state.progress ?? [])]
-  const existingIndex = progress.findIndex((item) => item.gameSlug === gameSlug)
-  const current = existingIndex >= 0 ? progress[existingIndex] : undefined
-
-  if (walletEntry.idempotent && current) {
-    if (!existingRound) {
-      writeLocalState(response, {
-        ...state,
-        wallet: {
-          ...(state.wallet ?? defaultWallet()),
-          balance: walletEntry.balanceAfter,
-          updatedAt: walletEntry.createdAt,
-        },
-        gameRounds: compactLocalGameRounds([
-          {
-            id: `${playedAt}-${Math.random().toString(16).slice(2)}`,
-            gameSlug,
-            tableSessionId: null,
-            roundStatus: "settled",
-            totalStake,
-            delta,
-            outcome,
-            chipBalanceBefore: null,
-            chipBalanceAfter: null,
-            resultSummary: summary,
-            betSnapshot,
-            resultSnapshot: {
-              ...resultSnapshot,
-              walletLedgerId: walletEntry.ledgerId,
-              balanceBefore: walletEntry.balanceBefore,
-              balanceAfter: walletEntry.balanceAfter,
-            },
-            idempotencyKey,
-            createdAt: playedAt,
-          },
-          ...(state.gameRounds ?? []),
-        ]),
-      })
-    }
-
-    return current
-  }
-
-  const streak = outcome === "win" ? (current?.streak ?? 0) + 1 : outcome === "loss" ? 0 : current?.streak ?? 0
-  const nextProgress: MemberGameProgress = {
-    gameSlug,
-    plays: (current?.plays ?? 0) + 1,
-    wins: (current?.wins ?? 0) + (outcome === "win" ? 1 : 0),
-    losses: (current?.losses ?? 0) + (outcome === "loss" ? 1 : 0),
-    streak,
-    bestStreak: Math.max(current?.bestStreak ?? 0, streak),
-    bankroll: walletEntry.balanceAfter,
-    lastResult: outcome,
-    lastDelta: delta,
-    lastSummary: summary,
-    lastPlayedAt: playedAt,
-  }
-
-  if (existingIndex >= 0) {
-    progress[existingIndex] = nextProgress
-  } else {
-    progress.unshift(nextProgress)
-  }
-
-  writeLocalState(response, {
-    ...state,
-    wallet: {
-      ...(state.wallet ?? defaultWallet()),
-      balance: walletEntry.balanceAfter,
-      updatedAt: walletEntry.createdAt,
-    },
-    progress: compactLocalProgress(progress),
-    recentEvents: compactLocalEvents([event, ...(state.recentEvents ?? [])]),
-    gameRounds: compactLocalGameRounds([
-      {
-        id: `${playedAt}-${Math.random().toString(16).slice(2)}`,
-        gameSlug,
-        tableSessionId: null,
-        roundStatus: "settled",
-        totalStake,
-        delta,
-        outcome,
-        chipBalanceBefore: null,
-        chipBalanceAfter: null,
-        resultSummary: summary,
-        betSnapshot,
-        resultSnapshot: {
-          ...resultSnapshot,
-          walletLedgerId: walletEntry.ledgerId,
-          balanceBefore: walletEntry.balanceBefore,
-          balanceAfter: walletEntry.balanceAfter,
-        },
-        idempotencyKey,
-        createdAt: playedAt,
-      },
-      ...(state.gameRounds ?? []),
-    ]),
-  })
-
-  return nextProgress
 }
 
 export function isSameOriginMutation(request: Request) {

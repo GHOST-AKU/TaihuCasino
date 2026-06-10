@@ -1,16 +1,8 @@
-export type ClientRoundOutcome = "win" | "loss" | "push"
-
 export interface ClientGameRoundInput {
   gameSlug: string
-  outcome: ClientRoundOutcome
-  delta: number
-  bankroll: number
-  summary: string
   idempotencyKey: string
-  tableSessionId?: string
-  totalStake: number
+  tableSessionId: string
   betSnapshot: Record<string, unknown>
-  resultSnapshot: Record<string, unknown>
 }
 
 export async function recordClientGameRound(input: ClientGameRoundInput) {

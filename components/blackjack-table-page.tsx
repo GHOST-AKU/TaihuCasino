@@ -389,44 +389,20 @@ function settleHands({
 
 async function persistBlackjackProgress(
   entry: CasinoTableEntry,
-  delta: number,
-  bankroll: number,
-  summary: string,
-  totalStake: number,
   hands: BlackjackHand[],
-  dealerCards: BlackjackCard[],
   insuranceBet: number,
   idempotencyKey: string,
-  tableSessionId?: string,
+  tableSessionId: string,
 ) {
   return recordClientGameRound({
     gameSlug: entry.slug,
-    outcome: delta > 0 ? "win" : delta < 0 ? "loss" : "push",
-    delta,
-    bankroll,
-    summary,
     idempotencyKey,
     tableSessionId,
-    totalStake,
     betSnapshot: {
       hands: hands.map((hand) => ({
-        label: hand.label,
         bet: hand.bet,
-        doubled: hand.doubled,
-        fromSplit: hand.fromSplit,
       })),
       insuranceBet,
-      totalStake,
-    },
-    resultSnapshot: {
-      dealerCards,
-      hands: hands.map((hand) => ({
-        label: hand.label,
-        cards: hand.cards,
-        resultLabel: hand.resultLabel,
-        busted: hand.busted,
-        naturalBlackjack: hand.naturalBlackjack,
-      })),
     },
   })
 }
@@ -631,7 +607,7 @@ export function BlackjackTablePage({
     setMessage(isChinese ? "正在带走筹码并结算回钱包..." : "Cashing out table chips to your wallet...")
 
     try {
-      const result = await cashOutClientTableSession(tableSession.id, "blackjack-cash-out", tableSession.chipBalance)
+      const result = await cashOutClientTableSession(tableSession.id, "blackjack-cash-out")
 
       setTableSession(null)
       setBankroll(0)
@@ -688,12 +664,7 @@ export function BlackjackTablePage({
       try {
         const serverBankroll = await persistBlackjackProgress(
           entry,
-          settled.roundDelta,
-          settled.balance,
-          settled.message,
-          settled.totalStake,
           settled.hands,
-          currentDealer,
           currentInsuranceBet,
           `blackjack-${entry.slug}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
           activeTableSession.id,
