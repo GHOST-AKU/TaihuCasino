@@ -2368,6 +2368,17 @@ export async function completePurchase(cookieStore: CookieStore, response: NextR
   }
 }
 
+function settlementFromGameRound(round: MemberGameRound) {
+  return {
+    outcome: round.outcome,
+    delta: round.delta,
+    totalStake: round.totalStake,
+    summary: round.resultSummary,
+    betSnapshot: round.betSnapshot,
+    resultSnapshot: round.resultSnapshot,
+  }
+}
+
 export async function recordGameProgress(cookieStore: CookieStore, response: NextResponse, body: unknown) {
   const auth = await getAuthenticatedMember(cookieStore, response)
 
@@ -2419,6 +2430,11 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
       resultSnapshot,
       idempotencyKey,
     })
+    if (tableRound.idempotent) {
+      const existingRound = await findSupabaseRoundByIdempotencyKey(userId, idempotencyKey)
+      if (!existingRound) throw new Error("Idempotent table round could not be loaded.")
+      return { progress: tableRound.progress, settlement: settlementFromGameRound(existingRound) }
+    }
     return { progress: tableRound.progress, settlement }
   }
 
@@ -2433,7 +2449,7 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
     const current = existingIndex >= 0 ? progress[existingIndex] : undefined
 
     if (existingRound && current) {
-      return { progress: current, settlement }
+      return { progress: current, settlement: settlementFromGameRound(existingRound) }
     }
 
     const sessions = [...(state.tableSessions ?? [])]

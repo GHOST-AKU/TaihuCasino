@@ -228,6 +228,10 @@ function splitValue(card: BlackjackCard) {
   return card.rank >= 10 ? 10 : card.rank
 }
 
+function roundMoney(value: number) {
+  return Math.round(value * 100) / 100
+}
+
 function formatMoney(value: number) {
   return value.toLocaleString("en-US", {
     maximumFractionDigits: value % 1 === 0 ? 0 : 2,
@@ -401,6 +405,12 @@ async function persistBlackjackProgress(
     betSnapshot: {
       hands: hands.map((hand) => ({
         bet: hand.bet,
+        actions: hand.doubled
+          ? ["double"]
+          : [
+              ...Array.from({ length: Math.max(0, hand.cards.length - 2) }, () => "hit"),
+              ...(hand.busted || hand.naturalBlackjack || handTotal(hand.cards) === 21 ? [] : ["stand"]),
+            ],
       })),
       insuranceBet,
     },
@@ -678,6 +688,50 @@ export function BlackjackTablePage({
         }
 
         if (serverResult.settlement) {
+          const snapshot = serverResult.settlement.resultSnapshot
+          const serverDealerCards = Array.isArray(snapshot.dealerCards)
+            ? snapshot.dealerCards.flatMap((rank, index) => typeof rank === "number" && rank >= 1 && rank <= 13
+              ? [{ rank, suit: suits[index % suits.length] }]
+              : [])
+            : []
+          const serverHands = Array.isArray(snapshot.hands) ? snapshot.hands : []
+          const authoritativeHands = settled.hands.map((hand, index) => {
+            const serverHand = serverHands[index]
+            if (!serverHand || typeof serverHand !== "object" || Array.isArray(serverHand)) return hand
+            const values = serverHand as Record<string, unknown>
+            const cards = Array.isArray(values.cards)
+              ? values.cards.flatMap((rank, cardIndex) => typeof rank === "number" && rank >= 1 && rank <= 13
+                ? [{ rank, suit: suits[(index + cardIndex) % suits.length] }]
+                : [])
+              : []
+            const handDelta = typeof values.delta === "number" ? values.delta : 0
+            return {
+              ...hand,
+              cards: cards.length >= 2 ? cards : hand.cards,
+              naturalBlackjack: values.naturalBlackjack === true,
+              busted: typeof values.playerTotal === "number" && values.playerTotal > 21,
+              resultLabel: handDelta > 0 ? (isChinese ? "服务端判定：赢" : "Server result: Win")
+                : handDelta < 0 ? (isChinese ? "服务端判定：输" : "Server result: Loss")
+                  : (isChinese ? "服务端判定：和" : "Server result: Push"),
+            }
+          })
+          const authoritativeDelta = serverResult.settlement.delta
+          const optimisticHandWins = settled.hands.filter((hand) => hand.code === "P" || hand.code === "PB").length
+          const authoritativeHandWins = serverHands.filter((hand) => {
+            if (!hand || typeof hand !== "object" || Array.isArray(hand)) return false
+            return typeof (hand as Record<string, unknown>).delta === "number" && (hand as Record<string, number>).delta > 0
+          }).length
+          const authoritativeStats = {
+            ...settled.stats,
+            wins: settled.stats.wins - optimisticHandWins + authoritativeHandWins,
+            totalDelta: roundMoney(settled.stats.totalDelta - settled.roundDelta + authoritativeDelta),
+            lastDelta: authoritativeDelta,
+          }
+          if (serverDealerCards.length >= 2) setDealerCards(serverDealerCards)
+          setHands(authoritativeHands)
+          setRevealDealer(true)
+          setStats(authoritativeStats)
+          if (typeof serverBankroll === "number") persistLocal(serverBankroll, authoritativeStats)
           setMessage(serverResult.settlement.summary)
         }
       } catch (error) {

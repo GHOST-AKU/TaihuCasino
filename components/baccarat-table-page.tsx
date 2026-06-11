@@ -269,6 +269,35 @@ function hasPair(cards: BaccaratCard[]) {
   return cards.length >= 2 && cards[0].rank === cards[1].rank
 }
 
+function authoritativeBaccaratRound(snapshot: Record<string, unknown>): BaccaratRound | null {
+  const parseCards = (value: unknown) => Array.isArray(value)
+    ? value.flatMap((card) => {
+        if (!card || typeof card !== "object" || Array.isArray(card)) return []
+        const { rank, suit } = card as Record<string, unknown>
+        return typeof rank === "number" && rank >= 1 && rank <= 13 && suits.includes(suit as Suit)
+          ? [{ rank, suit: suit as Suit }]
+          : []
+      })
+    : []
+  const playerCards = parseCards(snapshot.playerCards)
+  const bankerCards = parseCards(snapshot.bankerCards)
+  const winner = snapshot.winner
+
+  if (playerCards.length < 2 || bankerCards.length < 2 || (winner !== "P" && winner !== "B" && winner !== "T")) {
+    return null
+  }
+
+  return {
+    playerCards,
+    bankerCards,
+    playerPoint: handPoint(playerCards),
+    bankerPoint: handPoint(bankerCards),
+    winner,
+    playerPair: hasPair(playerCards),
+    bankerPair: hasPair(bankerCards),
+  }
+}
+
 function shouldBankerDraw(bankerPoint: number, playerThirdPoint: number | null) {
   if (playerThirdPoint === null) {
     return bankerPoint <= 5
@@ -919,8 +948,36 @@ export function BaccaratTablePage({
     try {
       const serverResult = await persistServerProgress(entry, record, activeTableSession.id)
       const serverBankroll = serverResult.bankroll
+      const authoritativeRound = serverResult.settlement
+        ? authoritativeBaccaratRound(serverResult.settlement.resultSnapshot)
+        : null
 
-      if (typeof serverBankroll === "number") {
+      if (serverResult.settlement && authoritativeRound) {
+        const authoritativeDelta = serverResult.settlement.delta
+        const authoritativeBankroll = typeof serverBankroll === "number"
+          ? serverBankroll
+          : roundMoney(bankroll + authoritativeDelta)
+        const authoritativeRecord: BaccaratHistory = {
+          ...record,
+          ...authoritativeRound,
+          delta: authoritativeDelta,
+          bankroll: authoritativeBankroll,
+        }
+        const authoritativeHistory = [authoritativeRecord, ...history].slice(0, 30)
+        const authoritativeStats: BaccaratStats = {
+          ...nextStats,
+          hitRounds: nextStats.hitRounds - (delta > 0 ? 1 : 0) + (authoritativeDelta > 0 ? 1 : 0),
+          totalDelta: roundMoney(nextStats.totalDelta - delta + authoritativeDelta),
+          lastDelta: authoritativeDelta,
+          ties: nextStats.ties - (round.winner === "T" ? 1 : 0) + (authoritativeRound.winner === "T" ? 1 : 0),
+        }
+        setLastRound(authoritativeRound)
+        setBankroll(authoritativeBankroll)
+        setTableSession((current) => current ? { ...current, chipBalance: authoritativeBankroll } : current)
+        setHistory(authoritativeHistory)
+        setStats(authoritativeStats)
+        persistLocal(authoritativeBankroll, authoritativeHistory, authoritativeStats, authoritativeRound)
+      } else if (typeof serverBankroll === "number") {
         setBankroll(serverBankroll)
         setTableSession((current) => current ? { ...current, chipBalance: serverBankroll } : current)
         persistLocal(serverBankroll, nextHistory, nextStats, round)

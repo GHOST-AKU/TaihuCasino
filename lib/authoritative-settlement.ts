@@ -51,14 +51,53 @@ function canonicalLedger<const Key extends string>(value: unknown, keys: readonl
   return Object.fromEntries(keys.map((key) => [key, amount(source[key])])) as Record<Key, number>
 }
 
+function baccaratCardPoint(rank: number) {
+  return rank >= 10 ? 0 : rank
+}
+
+function baccaratHandPoint(cards: Array<{ rank: number }>) {
+  return cards.reduce((sum, card) => sum + baccaratCardPoint(card.rank), 0) % 10
+}
+
+function shouldBankerDraw(bankerPoint: number, playerThirdPoint: number | null) {
+  if (playerThirdPoint === null) return bankerPoint <= 5
+  if (bankerPoint <= 2) return true
+  if (bankerPoint === 3) return playerThirdPoint !== 8
+  if (bankerPoint === 4) return playerThirdPoint >= 2 && playerThirdPoint <= 7
+  if (bankerPoint === 5) return playerThirdPoint >= 4 && playerThirdPoint <= 7
+  if (bankerPoint === 6) return playerThirdPoint === 6 || playerThirdPoint === 7
+  return false
+}
+
+function drawBaccaratCard(rng: RandomInt) {
+  return { rank: rng(13) + 1, suit: ["spades", "hearts", "diamonds", "clubs"][rng(4)] }
+}
+
 function settleBaccarat(betSnapshot: Record<string, unknown>, rng: RandomInt): AuthoritativeSettlement {
   const bets = canonicalLedger(record(betSnapshot).bets, baccaratKeys)
   const totalStake = requireStake(Object.values(bets).reduce((sum, bet) => sum + bet, 0))
-  const playerPoint = rng(10)
-  const bankerPoint = rng(10)
+  const playerCards = [drawBaccaratCard(rng), drawBaccaratCard(rng)]
+  const bankerCards = [drawBaccaratCard(rng), drawBaccaratCard(rng)]
+  let playerPoint = baccaratHandPoint(playerCards)
+  let bankerPoint = baccaratHandPoint(bankerCards)
+
+  if (playerPoint < 8 && bankerPoint < 8) {
+    let playerThirdPoint: number | null = null
+    if (playerPoint <= 5) {
+      const thirdCard = drawBaccaratCard(rng)
+      playerCards.push(thirdCard)
+      playerThirdPoint = baccaratCardPoint(thirdCard.rank)
+      playerPoint = baccaratHandPoint(playerCards)
+    }
+    if (shouldBankerDraw(bankerPoint, playerThirdPoint)) {
+      bankerCards.push(drawBaccaratCard(rng))
+      bankerPoint = baccaratHandPoint(bankerCards)
+    }
+  }
+
   const winner = playerPoint === bankerPoint ? "T" : playerPoint > bankerPoint ? "P" : "B"
-  const playerPair = rng(13) === 0
-  const bankerPair = rng(13) === 0
+  const playerPair = playerCards[0].rank === playerCards[1].rank
+  const bankerPair = bankerCards[0].rank === bankerCards[1].rank
   let delta = 0
 
   if (winner === "P") {
@@ -79,7 +118,7 @@ function settleBaccarat(betSnapshot: Record<string, unknown>, rng: RandomInt): A
     totalStake,
     summary: `Baccarat ${winner} ${playerPoint}:${bankerPoint}; ${delta >= 0 ? "+" : ""}${delta}`,
     betSnapshot: { bets, totalStake },
-    resultSnapshot: { winner, playerPoint, bankerPoint, playerPair, bankerPair, rng: "node:crypto.randomInt" },
+    resultSnapshot: { winner, playerPoint, bankerPoint, playerPair, bankerPair, playerCards, bankerCards, rng: "node:crypto.randomInt" },
   }
 }
 
@@ -194,29 +233,42 @@ function settleBlackjack(betSnapshot: Record<string, unknown>, rng: RandomInt): 
   const hands = (Array.isArray(source.hands) ? source.hands : []).flatMap((value) => {
     const hand = record(value)
     const bet = amount(hand.bet)
-    return bet > 0 ? [{ bet }] : []
+    const actions = (Array.isArray(hand.actions) ? hand.actions : [])
+      .filter((action): action is string => action === "hit" || action === "stand" || action === "double")
+      .slice(0, 10)
+    return bet > 0 ? [{ bet, actions }] : []
   }).slice(0, 4)
   const insuranceBet = amount(source.insuranceBet)
   const totalStake = requireStake(hands.reduce((sum, hand) => sum + hand.bet, insuranceBet))
   const dealerCards = [drawCard(rng), drawCard(rng)]
-  while (cardTotal(dealerCards) < 17) dealerCards.push(drawCard(rng))
+  const settledHands = hands.map(({ bet, actions }) => {
+    const cards = [drawCard(rng), drawCard(rng)]
+    const appliedActions: string[] = []
+
+    for (const action of actions) {
+      if (cardTotal(cards) >= 21 || appliedActions.includes("stand") || appliedActions.includes("double")) break
+      appliedActions.push(action)
+      if (action === "hit" || action === "double") cards.push(drawCard(rng))
+    }
+
+    const playerTotal = cardTotal(cards)
+    return { bet, actions: appliedActions, cards, playerTotal, naturalBlackjack: cards.length === 2 && playerTotal === 21 }
+  })
+  const allBusted = settledHands.every((hand) => hand.playerTotal > 21)
+  if (!allBusted) while (cardTotal(dealerCards) < 17) dealerCards.push(drawCard(rng))
   const dealerTotal = cardTotal(dealerCards)
   const dealerBlackjack = dealerCards.length === 2 && dealerTotal === 21
   let delta = dealerBlackjack && insuranceBet > 0 ? insuranceBet * 2 : -insuranceBet
-  const settledHands = hands.map(({ bet }) => {
-    const cards = [drawCard(rng), drawCard(rng)]
-    while (cardTotal(cards) < 17) cards.push(drawCard(rng))
-    const playerTotal = cardTotal(cards)
-    const naturalBlackjack = cards.length === 2 && playerTotal === 21
-    const handDelta = playerTotal > 21 || (dealerBlackjack && !naturalBlackjack)
-      ? -bet
-      : naturalBlackjack && !dealerBlackjack
-        ? bet * 1.5
-        : dealerTotal > 21 || playerTotal > dealerTotal
-          ? bet
-          : playerTotal < dealerTotal ? -bet : 0
+  const resultHands = settledHands.map((hand) => {
+    const handDelta = hand.playerTotal > 21 || (dealerBlackjack && !hand.naturalBlackjack)
+      ? -hand.bet
+      : hand.naturalBlackjack && !dealerBlackjack
+        ? hand.bet * 1.5
+        : dealerTotal > 21 || hand.playerTotal > dealerTotal
+          ? hand.bet
+          : hand.playerTotal < dealerTotal ? -hand.bet : 0
     delta += handDelta
-    return { bet, cards, playerTotal, naturalBlackjack, delta: money(handDelta) }
+    return { ...hand, delta: money(handDelta) }
   })
   delta = money(delta)
 
@@ -225,8 +277,8 @@ function settleBlackjack(betSnapshot: Record<string, unknown>, rng: RandomInt): 
     delta,
     totalStake,
     summary: `Blackjack dealer ${dealerTotal}; ${delta >= 0 ? "+" : ""}${delta}`,
-    betSnapshot: { hands: hands.map(({ bet }) => ({ bet })), insuranceBet, totalStake },
-    resultSnapshot: { dealerCards, dealerTotal, hands: settledHands, rng: "node:crypto.randomInt" },
+    betSnapshot: { hands: hands.map(({ bet, actions }) => ({ bet, actions })), insuranceBet, totalStake },
+    resultSnapshot: { dealerCards, dealerTotal, hands: resultHands, rng: "node:crypto.randomInt" },
   }
 }
 
