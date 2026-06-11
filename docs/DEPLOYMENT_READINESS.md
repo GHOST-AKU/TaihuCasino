@@ -78,6 +78,11 @@ Optional development/testing switch:
 可选开发/测试开关：
 
 - `TAIHU_ENABLE_TEST_WALLET_TOPUP`: enables the test wallet top-up endpoint in production only when explicitly set to `true`. Keep it unset or false for normal production deployments. / 仅在显式设置为 `true` 时允许生产环境测试充值入口。常规生产部署应保持未设置或 false。
+- `TAIHU_ENABLE_STUB_CREDITING`: enables stub purchase and ad-reward crediting in production only when explicitly set to `true`. Keep it unset or false for real production; verified receipt, signed webhook, or ad-provider proof must use a separate trusted path. / 仅在显式设置为 `true` 时允许生产环境 Stub 购买与广告奖励入账。真实生产环境应保持未设置或 false；经验证的收据、签名 webhook 或广告供应商证明必须使用独立可信路径。
+
+Authoritative wagering boundary:
+
+- Core-game clients submit only a table session, idempotency key, and canonical bet intent. The server generates results with `node:crypto.randomInt`, calculates payouts from fixed rules, and records the audit snapshots. Client `delta`, `outcome`, result, bankroll, and cash-out chip-balance fields are ignored or unavailable. Apply `20260610160000_authoritative_settlement_boundary.sql` before production promotion to enforce the atomic stake check and revoke direct player writes to progress/events. / 核心游戏客户端仅提交桌台会话、幂等键和规范化下注意图。服务端使用 `node:crypto.randomInt` 生成结果、按固定规则计算赔付并记录审计快照。客户端无法提交最终 `delta`、`outcome`、结果、余额或 cash-out 筹码余额。生产发布前必须应用 `20260610160000_authoritative_settlement_boundary.sql`，以启用原子下注校验并撤销玩家对 progress/events 的直接写权限。
 
 When Supabase variables are missing, local development can use the built-in demo account or the `TAIHU_AUTH_*` fallback. Production deployments should configure Supabase and should not rely on demo or fallback credentials.
 
@@ -91,7 +96,7 @@ Environment variables alone are not enough. Before promoting a production deploy
 
 - Set the Supabase Auth Site URL to the production origin. / 将 Supabase Auth Site URL 设置为生产域名。
 - Add the production `/auth/callback` URL to the redirect allowlist. Add preview URLs if preview OAuth testing is required. / 将生产环境 `/auth/callback` 加入 redirect allowlist。如需在预览环境测试 OAuth，也加入预览 URL。
-- Configure OAuth providers used by the login page: Google, Apple, Microsoft/Azure, Facebook, and X. Amazon is disabled in the current app. / 配置登录页使用的 OAuth provider：Google、Apple、Microsoft/Azure、Facebook 和 X。当前应用中 Amazon 已禁用。
+- Configure OAuth providers used by the login page: Google, Apple, Microsoft/Azure, Facebook, and X. Amazon is explicitly out of scope. / 配置登录页使用的 OAuth provider：Google、Apple、Microsoft/Azure、Facebook 和 X。Amazon 已明确排除在支持范围之外。
 - If registration is enabled, configure Supabase CAPTCHA/Turnstile backend settings in addition to `NEXT_PUBLIC_TURNSTILE_SITE_KEY`. The registration API passes `captchaToken` to `supabase.auth.signUp`. / 如果启用注册，除 `NEXT_PUBLIC_TURNSTILE_SITE_KEY` 外，还要配置 Supabase CAPTCHA/Turnstile 后台设置。注册 API 会把 `captchaToken` 传给 `supabase.auth.signUp`。
 - Apply the Supabase migrations in `supabase/migrations/` before testing member, wallet, table session, ad reward, purchase, and game round APIs. / 在测试会员、钱包、桌台 session、广告奖励、购买和游戏回合 API 前，先应用 `supabase/migrations/` 中的迁移。
 - Keep `SUPABASE_SERVICE_ROLE_KEY` server-only. It is required by server-side member and wallet mutation code paths, but must never be exposed in `NEXT_PUBLIC_*` variables. / `SUPABASE_SERVICE_ROLE_KEY` 必须只存在于服务端环境。服务端会员和钱包写入路径需要它，但绝不能放进 `NEXT_PUBLIC_*` 变量。

@@ -94,7 +94,7 @@ The login page now starts real Supabase OAuth for:
 - Facebook
 - X
 
-Amazon remains disabled because Supabase Auth does not expose an Amazon provider in the installed auth provider type list.
+Amazon is intentionally unsupported and excluded from the product OAuth scope.
 
 ## Session Rules
 

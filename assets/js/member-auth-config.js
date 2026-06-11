@@ -23,12 +23,6 @@ window.TAIHU_AUTH_CONFIG = window.TAIHU_AUTH_CONFIG || {
       enabled: true,
       hint: "使用 Microsoft 账号登录。"
     },
-    amazon: {
-      label: "Amazon",
-      connection: "amazon",
-      enabled: false,
-      pendingMessage: "即将开放"
-    },
     github: {
       label: "GitHub",
       connection: "github",

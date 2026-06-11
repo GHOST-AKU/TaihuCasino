@@ -27,6 +27,15 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Audit production dependencies
+        run: pnpm audit:prod
+
+      - name: Test authoritative settlement boundary
+        run: pnpm test:authoritative-settlement
+
+      - name: Test production stub crediting guard
+        run: pnpm test:stub-crediting
+
       - name: Typecheck
         run: pnpm typecheck
 

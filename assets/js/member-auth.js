@@ -34,7 +34,6 @@
     google: { displayName: "Google", badge: "可用" },
     apple: { displayName: "Apple", badge: "即将开放" },
     microsoft: { displayName: "Microsoft", badge: "可用" },
-    amazon: { displayName: "Amazon", badge: "即将开放" },
     github: { displayName: "GitHub", badge: "即将开放" },
     facebook: { displayName: "Facebook", badge: "即将开放" },
     x: { displayName: "X", badge: "即将开放" },

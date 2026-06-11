@@ -220,26 +220,14 @@ function resolveDiceRound(bets: DiceBetLedger, dice: [number, number, number], l
 async function persistDiceProgress(
   entry: CasinoTableEntry,
   record: DiceHistory,
-  bankroll: number,
-  tableSessionId?: string,
+  tableSessionId: string,
 ) {
   return recordClientGameRound({
     gameSlug: entry.slug,
-    outcome: record.delta > 0 ? "win" : record.delta < 0 ? "loss" : "push",
-    delta: record.delta,
-    bankroll,
-    summary: `${record.dice.join("+")}=${record.sum}; ${formatDelta(record.delta)}`,
     idempotencyKey: record.id,
     tableSessionId,
-    totalStake: record.totalStake,
     betSnapshot: {
       bets: record.bets,
-      totalStake: record.totalStake,
-    },
-    resultSnapshot: {
-      dice: record.dice,
-      sum: record.sum,
-      triple: record.triple,
     },
   })
 }
@@ -432,7 +420,7 @@ export function DiceTablePage({
     setSubText(isChinese ? "正在带走筹码并结算回钱包。" : "Cashing out table chips to your wallet.")
 
     try {
-      const result = await cashOutClientTableSession(tableSession.id, "dice-cash-out", tableSession.chipBalance)
+      const result = await cashOutClientTableSession(tableSession.id, "dice-cash-out")
 
       setTableSession(null)
       setBankroll(0)
@@ -597,12 +585,25 @@ export function DiceTablePage({
       setIsSyncingRound(true)
       void (async () => {
         try {
-          const serverBankroll = await persistDiceProgress(entry, record, nextBankroll, activeTableSession.id)
+          const serverResult = await persistDiceProgress(entry, record, activeTableSession.id)
+          const serverBankroll = serverResult.bankroll
 
           if (typeof serverBankroll === "number") {
             setBankroll(serverBankroll)
             setTableSession((current) => current ? { ...current, chipBalance: serverBankroll } : current)
             persistLocal(serverBankroll, nextStats, actualDice, result.sum)
+          }
+
+          const serverDice = serverResult.settlement?.resultSnapshot.dice
+          const serverSum = serverResult.settlement?.resultSnapshot.sum
+
+          if (Array.isArray(serverDice) && serverDice.length === 3 && typeof serverSum === "number") {
+            setDice(serverDice as [number, number, number])
+            setLastSum(serverSum)
+          }
+
+          if (serverResult.settlement) {
+            setSubText(serverResult.settlement.summary)
           }
         } catch (error) {
           console.error("dice round sync failed", error)

@@ -13,7 +13,6 @@
   --google: #ffffff;
   --apple: #101214;
   --microsoft: #0d3f90;
-  --amazon: #1f2a38;
 }
 
 * {
@@ -363,10 +362,6 @@ input {
   background: linear-gradient(135deg, #0871df 0%, #0d3f90 100%);
 }
 
-.member-provider-card[data-provider-theme="amazon"] .member-provider-card__icon {
-  background: linear-gradient(135deg, #223244 0%, #101927 100%);
-}
-
 .member-provider-card[data-provider-theme="github"] .member-provider-card__icon {
   background: linear-gradient(135deg, #2f343d 0%, #11161d 100%);
 }
@@ -420,7 +415,6 @@ input {
   background: linear-gradient(180deg, #1e77de 0%, #0f4ea7 100%);
 }
 
-.member-provider-card button:not([disabled])[data-provider-theme="amazon"],
 .member-provider-card button:not([disabled])[data-provider-theme="github"],
 .member-provider-card button:not([disabled])[data-provider-theme="x"] {
   background: linear-gradient(180deg, #33475d 0%, #172435 100%);

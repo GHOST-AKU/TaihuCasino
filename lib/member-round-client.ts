@@ -1,15 +1,15 @@
-export type ClientRoundOutcome = "win" | "loss" | "push"
-
 export interface ClientGameRoundInput {
   gameSlug: string
-  outcome: ClientRoundOutcome
-  delta: number
-  bankroll: number
-  summary: string
   idempotencyKey: string
-  tableSessionId?: string
-  totalStake: number
+  tableSessionId: string
   betSnapshot: Record<string, unknown>
+}
+
+export interface ClientAuthoritativeSettlement {
+  outcome: "win" | "loss" | "push"
+  delta: number
+  totalStake: number
+  summary: string
   resultSnapshot: Record<string, unknown>
 }
 
@@ -22,11 +22,15 @@ export async function recordClientGameRound(input: ClientGameRoundInput) {
   const payload = (await response.json().catch(() => null)) as {
     error?: string
     progress?: { bankroll?: unknown }
+    settlement?: ClientAuthoritativeSettlement
   } | null
 
   if (!response.ok) {
     throw new Error(payload?.error ?? "Unable to record game round.")
   }
 
-  return typeof payload?.progress?.bankroll === "number" ? payload.progress.bankroll : null
+  return {
+    bankroll: typeof payload?.progress?.bankroll === "number" ? payload.progress.bankroll : null,
+    settlement: payload?.settlement ?? null,
+  }
 }

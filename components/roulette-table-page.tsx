@@ -325,30 +325,16 @@ function drawWheel(
 
 async function persistRouletteProgress(
   entry: CasinoTableEntry,
-  result: number,
-  delta: number,
-  bankroll: number,
-  totalStake: number,
   bets: RouletteBet[],
   idempotencyKey: string,
-  tableSessionId?: string,
+  tableSessionId: string,
 ) {
   return recordClientGameRound({
     gameSlug: entry.slug,
-    outcome: delta > 0 ? "win" : delta < 0 ? "loss" : "push",
-    delta,
-    bankroll,
-    summary: `Roulette ${result} ${numberColor(result)}; ${formatDelta(delta)}`,
     idempotencyKey,
     tableSessionId,
-    totalStake,
     betSnapshot: {
-      bets,
-      totalStake,
-    },
-    resultSnapshot: {
-      result,
-      color: numberColor(result),
+      bets: bets.map(({ key, amount }) => ({ key, amount })),
     },
   })
 }
@@ -571,7 +557,7 @@ export function RouletteTablePage({
     setMessage(isChinese ? "正在带走筹码并结算回钱包..." : "Cashing out table chips to your wallet...")
 
     try {
-      const result = await cashOutClientTableSession(tableSession.id, "roulette-cash-out", tableSession.chipBalance)
+      const result = await cashOutClientTableSession(tableSession.id, "roulette-cash-out")
 
       setTableSession(null)
       setBankroll(0)
@@ -835,21 +821,33 @@ export function RouletteTablePage({
         setIsSyncingRound(true)
 
         try {
-          const serverBankroll = await persistRouletteProgress(
+          const serverResult = await persistRouletteProgress(
             entry,
-            settledResult,
-            delta,
-            nextBankroll,
-            preview.totalStake,
             bets,
             `roulette-${entry.slug}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
             activeTableSession.id,
           )
+          const serverBankroll = serverResult.bankroll
 
           if (typeof serverBankroll === "number") {
             setBankroll(serverBankroll)
             setTableSession((current) => current ? { ...current, chipBalance: serverBankroll } : current)
             persistLocal(serverBankroll, nextStats, settledResult, finalWheelAngle)
+          }
+
+          const serverNumber = serverResult.settlement?.resultSnapshot.result
+
+          if (typeof serverNumber === "number") {
+            const serverWheelAngle = wheelAngleForResult(serverNumber)
+            setResult(serverNumber)
+            setPointerNumber(serverNumber)
+            pointerNumberRef.current = serverNumber
+            wheelAngle.current = serverWheelAngle
+            drawWheel(canvasRef.current, serverWheelAngle, null, ballPocketRadius, serverNumber)
+          }
+
+          if (serverResult.settlement) {
+            setMessage(serverResult.settlement.summary)
           }
         } catch (error) {
           console.error("roulette round sync failed", error)

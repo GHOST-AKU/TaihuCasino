@@ -49,15 +49,6 @@ const providerButtons = [
     height: 24,
   },
   {
-    key: "amazon",
-    label: "Amazon",
-    className: "bg-[#f8d994] hover:bg-[#edcb7c]",
-    src: "/brands/amazon-logo.png",
-    imgClassName: "max-h-5 w-auto max-w-[5.7rem]",
-    width: 91,
-    height: 20,
-  },
-  {
     key: "x",
     label: "X",
     className: "bg-black hover:bg-[#121212]",
@@ -133,7 +124,6 @@ function ProviderButton({
   loading,
   onClick,
   disabled,
-  keepImageWidthAuto,
 }: {
   label: string
   className: string
@@ -144,7 +134,6 @@ function ProviderButton({
   loading: boolean
   onClick: () => void
   disabled?: boolean
-  keepImageWidthAuto?: boolean
 }) {
   return (
     <button
@@ -166,7 +155,6 @@ function ProviderButton({
           width={width}
           height={height}
           className={imgClassName}
-          style={keepImageWidthAuto ? { height: "auto", width: "auto" } : undefined}
         />
       )}
     </button>
@@ -646,7 +634,6 @@ export function LoginForm({
                   height={provider.height}
                   loading={loadingProvider === provider.key}
                   onClick={() => handleProviderClick(provider.key)}
-                  keepImageWidthAuto={provider.key === "amazon"}
                 />
               ))}
             </div>
