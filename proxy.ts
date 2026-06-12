@@ -12,7 +12,9 @@ function getSupabaseKey() {
 }
 
 function isPublicPath(pathname: string) {
+  const publicPages = new Set(["/terms", "/privacy", "/responsible-gaming", "/support"])
   return (
+    publicPages.has(pathname) ||
     pathname === "/login" ||
     pathname.startsWith("/login/") ||
     pathname.startsWith("/api/") ||

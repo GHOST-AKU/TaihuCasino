@@ -68,9 +68,9 @@ const providerButtons = [
 }>
 
 const stats = [
-  { value: "50K+", label: "Active Players" },
-  { value: "$2M+", label: "Daily Volume" },
-  { value: "99.9%", label: "Uptime" },
+  { value: "Virtual", label: "No cash value" },
+  { value: "Calm", label: "Responsible pacing" },
+  { value: "Clear", label: "Explainable play" },
 ]
 
 const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""
@@ -222,6 +222,8 @@ export function LoginForm({
   const [displayName, setDisplayName] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [ageAttested, setAgeAttested] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState("")
@@ -388,6 +390,11 @@ export function LoginForm({
         return
       }
 
+      if (!termsAccepted || !ageAttested) {
+        setErrorMessage("Accept the draft Terms and Privacy framework and confirm age eligibility to continue.")
+        return
+      }
+
       if (!turnstileSiteKey) {
         setErrorMessage("Security check is not configured.")
         return
@@ -415,6 +422,9 @@ export function LoginForm({
           password,
           displayName: trimmedDisplayName,
           captchaToken: activeCaptchaToken,
+          termsAccepted,
+          ageAttested,
+          locale: navigator.language,
           next,
         })
 
@@ -478,12 +488,16 @@ export function LoginForm({
   }
 
   async function handleProviderClick(provider: OAuthProviderKey) {
+    if (!termsAccepted || !ageAttested) {
+      setErrorMessage("Accept the draft Terms and Privacy framework and confirm age eligibility before social sign-in.")
+      return
+    }
     setLoadingProvider(provider)
     setErrorMessage("")
     setStatusMessage("")
 
     try {
-      await startOAuthSignIn(provider, next)
+      await startOAuthSignIn(provider, next, termsAccepted, ageAttested, navigator.language)
     } catch (error) {
       setLoadingProvider(null)
       setErrorMessage(error instanceof Error ? error.message : "Unable to start sign in.")
@@ -542,8 +556,8 @@ export function LoginForm({
                 Meets Fortune
               </h1>
               <p className="mt-6 max-w-[31rem] text-[1.02rem] leading-8 text-[var(--auth-showcase-muted)]">
-                Join thousands of players in our premium gaming experience. Baccarat,
-                Blackjack, Texas Hold&apos;em and more await you.
+                A casino-themed leisure game built around virtual tokens, understandable randomness,
+                and calm play. No cash-out or real-world prize redemption.
               </p>
             </div>
 
@@ -622,7 +636,18 @@ export function LoginForm({
               </div>
             ) : null}
 
-            <div className="mt-8 grid grid-cols-3 gap-3">
+            <div className="mt-6 space-y-3 rounded-[1.2rem] border border-primary/15 bg-background/50 px-4 py-4 text-sm text-[var(--auth-soft-text)]">
+              <label className="flex items-start gap-3">
+                <input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} className="mt-1 h-4 w-4 accent-[var(--primary)]" />
+                <span>I accept the draft <Link href="/terms" className="text-primary underline">Terms</Link> and <Link href="/privacy" className="text-primary underline">Privacy framework</Link>.</span>
+              </label>
+              <label className="flex items-start gap-3">
+                <input type="checkbox" checked={ageAttested} onChange={(event) => setAgeAttested(event.target.checked)} className="mt-1 h-4 w-4 accent-[var(--primary)]" />
+                <span>I confirm that I meet the age requirement applicable in my location. The final numeric threshold is pending jurisdiction review.</span>
+              </label>
+            </div>
+
+            <div className="mt-5 grid grid-cols-3 gap-3">
               {providerButtons.map((provider) => (
                 <ProviderButton
                   key={provider.key}
@@ -780,12 +805,12 @@ export function LoginForm({
             </p>
 
             <p className="mt-5 text-center text-xs leading-6 text-[var(--auth-faint-text)]">
-              By signing in, you agree to our{" "}
-              <Link href="#" className="underline underline-offset-4 hover:text-foreground">
+              By using TaihuCasino, you acknowledge our draft{" "}
+              <Link href="/terms" className="underline underline-offset-4 hover:text-foreground">
                 Terms of Service
               </Link>{" "}
               and{" "}
-              <Link href="#" className="underline underline-offset-4 hover:text-foreground">
+              <Link href="/privacy" className="underline underline-offset-4 hover:text-foreground">
                 Privacy Policy
               </Link>
             </p>

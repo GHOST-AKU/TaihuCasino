@@ -7,6 +7,7 @@ import {
   isSupabaseAuthConfigured,
 } from "@/lib/server-auth"
 import { enforceRateLimit } from "@/lib/rate-limit"
+import { AGE_ATTESTATION_VERSION, PRIVACY_VERSION, TERMS_VERSION } from "@/lib/legal"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MIN_PASSWORD_LENGTH = 8
@@ -26,12 +27,18 @@ function parseRegistrationBody(body: {
   displayName?: unknown
   captchaToken?: unknown
   next?: unknown
+  termsAccepted?: unknown
+  ageAttested?: unknown
+  locale?: unknown
 } | null) {
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : ""
   const password = typeof body?.password === "string" ? body.password : ""
   const displayName = typeof body?.displayName === "string" ? body.displayName.trim() : ""
   const captchaToken = typeof body?.captchaToken === "string" ? body.captchaToken.trim() : ""
   const next = resolveRedirectTarget(body?.next)
+  const termsAccepted = body?.termsAccepted === true
+  const ageAttested = body?.ageAttested === true
+  const locale = typeof body?.locale === "string" ? body.locale.trim().slice(0, 20) : "en"
 
   if (!EMAIL_PATTERN.test(email)) {
     return { error: "A valid email address is required." }
@@ -53,7 +60,15 @@ function parseRegistrationBody(body: {
     return { error: "Please complete the security check." }
   }
 
-  return { data: { email, password, displayName, captchaToken, next } }
+  if (!termsAccepted) {
+    return { error: "You must accept the Terms and Privacy framework to create an account." }
+  }
+
+  if (!ageAttested) {
+    return { error: "You must confirm that you meet the age requirement for your location." }
+  }
+
+  return { data: { email, password, displayName, captchaToken, next, termsAccepted, ageAttested, locale } }
 }
 
 export async function POST(request: Request) {
@@ -67,6 +82,9 @@ export async function POST(request: Request) {
     displayName?: unknown
     captchaToken?: unknown
     next?: unknown
+    termsAccepted?: unknown
+    ageAttested?: unknown
+    locale?: unknown
   } | null
   const parsed = parseRegistrationBody(body)
 
@@ -88,7 +106,7 @@ export async function POST(request: Request) {
   const cookieStore = await cookies()
   const supabase = createSupabaseAuthClient(cookieStore, response)
   const origin = new URL(request.url).origin
-  const { email, password, displayName, captchaToken, next } = parsed.data
+  const { email, password, displayName, captchaToken, next, ageAttested, locale } = parsed.data
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -96,6 +114,11 @@ export async function POST(request: Request) {
       captchaToken,
       data: {
         display_name: displayName,
+        terms_version: TERMS_VERSION,
+        privacy_version: PRIVACY_VERSION,
+        age_attestation_version: AGE_ATTESTATION_VERSION,
+        age_attested: ageAttested,
+        locale,
       },
       emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
     },

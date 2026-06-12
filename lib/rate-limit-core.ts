@@ -19,6 +19,8 @@ export const RATE_LIMIT_POLICIES = {
   "member.ad-reward-start": { limit: 12, windowSeconds: 900, failClosed: true },
   "member.ad-reward-complete": { limit: 8, windowSeconds: 900, failClosed: true },
   "member.test-topup": { limit: 5, windowSeconds: 3600, failClosed: true },
+  "member.data-export": { limit: 5, windowSeconds: 3600, failClosed: true },
+  "member.account-deletion": { limit: 8, windowSeconds: 3600, failClosed: true },
 } as const satisfies Record<string, RateLimitPolicy>
 
 export type RateLimitAction = keyof typeof RATE_LIMIT_POLICIES

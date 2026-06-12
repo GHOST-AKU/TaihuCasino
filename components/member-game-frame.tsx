@@ -68,6 +68,9 @@ export function MemberGameFrame({
             <Link href={`/?lang=${language}#history`} className="transition-colors hover:text-foreground">
               {copy.labels.history}
             </Link>
+            <Link href="/terms" className="transition-colors hover:text-foreground">{copy.labels.terms}</Link>
+            <Link href="/privacy" className="transition-colors hover:text-foreground">{copy.labels.privacy}</Link>
+            <Link href="/support" className="transition-colors hover:text-foreground">{copy.labels.support}</Link>
           </div>
         </div>
       </footer>

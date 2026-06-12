@@ -6,6 +6,7 @@ import { Bell, Eye, Gamepad2, LockKeyhole, Settings } from "lucide-react"
 import { MemberCenterShell } from "@/components/member-center-shell"
 import { MemberSettingsForm } from "@/components/member-settings-form"
 import { MemberSignOutButton } from "@/components/member-sign-out-button"
+import { AccountRightsPanel } from "@/components/account-rights-panel"
 import { Button } from "@/components/ui/button"
 import { ThemePanelSurface } from "@/components/theme-page-shell"
 import { readMemberOverview } from "@/lib/member-data"
@@ -112,6 +113,10 @@ export default async function MemberSettingsPage() {
           </ThemePanelSurface>
         </aside>
       </div>
+      <ThemePanelSurface className="mt-6 p-6">
+        <h2 className="mb-5 text-lg font-semibold text-foreground">Account rights / 账户权利</h2>
+        <AccountRightsPanel />
+      </ThemePanelSurface>
     </MemberCenterShell>
   )
 }
