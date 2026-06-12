@@ -2,6 +2,7 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
 import { cashOutTableSession, isSameOriginMutation } from "@/lib/member-data"
+import { enforceRateLimit, recordSecuritySignal } from "@/lib/rate-limit"
 
 export async function POST(
   request: Request,
@@ -26,6 +27,8 @@ export async function POST(
   )
   const cookieStore = await cookies()
   const body = await request.json().catch(() => null)
+  const limited = await enforceRateLimit(request, "member.cash-out", { identifiers: [id] })
+  if (limited) return limited
 
   try {
     const result = await cashOutTableSession(cookieStore, response, id, body)
@@ -38,6 +41,10 @@ export async function POST(
           headers: response.headers,
         },
       )
+    }
+
+    if (result.idempotent) {
+      await recordSecuritySignal(request, "member.cash-out", "replayed_idempotency_key", [id])
     }
 
     return NextResponse.json(

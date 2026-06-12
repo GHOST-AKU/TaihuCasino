@@ -58,6 +58,7 @@ Supabase 生产认证和会员 API 必需变量：
 - `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL. / Supabase 项目 URL。
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: Supabase publishable key. `NEXT_PUBLIC_SUPABASE_ANON_KEY` is accepted as a compatibility fallback. / Supabase publishable key。`NEXT_PUBLIC_SUPABASE_ANON_KEY` 可作为兼容回退。
 - `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key used only by server-side member and wallet mutation paths. Never expose it to the browser. / Supabase service role key，仅用于服务端会员和钱包写入路径，绝不能暴露到浏览器。
+- `TAIHU_RATE_LIMIT_SECRET`: Independent high-entropy HMAC secret used to hash client and account identifiers for shared API rate limits. Rotate it deliberately; rotation starts fresh buckets. Never expose it to the browser. / 用于共享 API 限流客户端与账户标识 HMAC 哈希的独立高熵密钥。轮换会开启新的限流桶，必须有计划地执行，绝不能暴露到浏览器。
 - `TAIHU_SESSION_SECRET`: long random secret for signing fallback member session cookies. Configure it in production so legacy/fallback cookie paths cannot fail open or use development defaults. / 用于签名回退会员 session cookie 的长随机密钥。生产环境必须配置，避免 legacy/fallback cookie 路径使用开发默认值或异常。
 
 Required when registration remains enabled with Cloudflare Turnstile:
@@ -100,6 +101,9 @@ Environment variables alone are not enough. Before promoting a production deploy
 - If registration is enabled, configure Supabase CAPTCHA/Turnstile backend settings in addition to `NEXT_PUBLIC_TURNSTILE_SITE_KEY`. The registration API passes `captchaToken` to `supabase.auth.signUp`. / 如果启用注册，除 `NEXT_PUBLIC_TURNSTILE_SITE_KEY` 外，还要配置 Supabase CAPTCHA/Turnstile 后台设置。注册 API 会把 `captchaToken` 传给 `supabase.auth.signUp`。
 - Apply the Supabase migrations in `supabase/migrations/` before testing member, wallet, table session, ad reward, purchase, and game round APIs. / 在测试会员、钱包、桌台 session、广告奖励、购买和游戏回合 API 前，先应用 `supabase/migrations/` 中的迁移。
 - Keep `SUPABASE_SERVICE_ROLE_KEY` server-only. It is required by server-side member and wallet mutation code paths, but must never be exposed in `NEXT_PUBLIC_*` variables. / `SUPABASE_SERVICE_ROLE_KEY` 必须只存在于服务端环境。服务端会员和钱包写入路径需要它，但绝不能放进 `NEXT_PUBLIC_*` 变量。
+- Apply `20260612090000_api_abuse_protection.sql` before enabling production traffic. The application-level limiter uses a service-role-only atomic Postgres RPC and fails closed for sensitive production mutations if the limiter is unavailable. / 启用生产流量前必须应用 `20260612090000_api_abuse_protection.sql`。应用级限流使用仅限 service role 的 Postgres 原子 RPC；生产环境限流不可用时，敏感写入会 fail-closed。
+- In Vercel production, client identity trusts `x-vercel-forwarded-for` (falling back to `x-real-ip`) only when `VERCEL=1`. Arbitrary `x-forwarded-for` is ignored. Non-Vercel public deployments must define and test an equivalent trusted-proxy rule before launch. / Vercel 生产环境仅在 `VERCEL=1` 时信任 `x-vercel-forwarded-for`（回退到 `x-real-ip`），任意 `x-forwarded-for` 会被忽略。非 Vercel 公网部署上线前必须定义并测试等价可信代理规则。
+- Schedule `cleanup_api_abuse_protection(90)` at least daily and monitor `security_events` for blocked requests, login failures, and limiter storage errors. The table stores HMAC hashes, not raw IP addresses, passwords, tokens, cookies, or request bodies. / 至少每日调度一次 `cleanup_api_abuse_protection(90)`，并监控 `security_events` 中的阻断请求、登录失败和限流存储异常。表中只保存 HMAC 哈希，不保存原始 IP、密码、token、cookie 或完整请求体。
 
 ## Hosting Notes / 托管说明
 

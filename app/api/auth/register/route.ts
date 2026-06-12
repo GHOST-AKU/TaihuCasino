@@ -6,6 +6,7 @@ import {
   createSupabaseAuthClient,
   isSupabaseAuthConfigured,
 } from "@/lib/server-auth"
+import { enforceRateLimit } from "@/lib/rate-limit"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MIN_PASSWORD_LENGTH = 8
@@ -72,6 +73,9 @@ export async function POST(request: Request) {
   if ("error" in parsed) {
     return NextResponse.json({ error: parsed.error }, { status: 400 })
   }
+
+  const limited = await enforceRateLimit(request, "auth.register", { identifiers: [parsed.data.email] })
+  if (limited) return limited
 
   const response = NextResponse.json(
     { session: null },

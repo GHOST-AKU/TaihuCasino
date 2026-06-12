@@ -2,6 +2,7 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
 import { completeAdReward, isSameOriginMutation } from "@/lib/member-data"
+import { enforceRateLimit } from "@/lib/rate-limit"
 
 export async function POST(request: Request) {
   if (!isSameOriginMutation(request)) {
@@ -17,9 +18,14 @@ export async function POST(request: Request) {
     },
   )
   const cookieStore = await cookies()
+  const body = await request.json().catch(() => null) as Record<string, unknown> | null
+  const limited = await enforceRateLimit(request, "member.ad-reward-complete", {
+    identifiers: [body?.adRewardId, body?.id],
+  })
+  if (limited) return limited
 
   try {
-    const result = await completeAdReward(cookieStore, response, await request.json().catch(() => null))
+    const result = await completeAdReward(cookieStore, response, body)
 
     if (!result) {
       return NextResponse.json(

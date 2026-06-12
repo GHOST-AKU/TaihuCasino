@@ -36,6 +36,9 @@ jobs:
       - name: Test production stub crediting guard
         run: pnpm test:stub-crediting
 
+      - name: Test API abuse protection
+        run: pnpm test:rate-limit
+
       - name: Typecheck
         run: pnpm typecheck
 

@@ -11,6 +11,7 @@ import {
   isSupabaseAuthConfigured,
   validateCredentials,
 } from "@/lib/server-auth"
+import { enforceRateLimit } from "@/lib/rate-limit"
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
@@ -24,6 +25,9 @@ export async function POST(request: Request) {
   if (!account || !password) {
     return NextResponse.json({ error: "Account and password are required." }, { status: 400 })
   }
+
+  const limited = await enforceRateLimit(request, "auth.login", { identifiers: [account] })
+  if (limited) return limited
 
   if (isSupabaseAuthConfigured()) {
     try {
@@ -45,6 +49,12 @@ export async function POST(request: Request) {
       })
 
       if (error || !data.user) {
+        const failureLimited = await enforceRateLimit(request, "auth.login.failure", {
+          auditAllowed: true,
+          identifiers: [account],
+          reason: "invalid_credentials",
+        })
+        if (failureLimited) return failureLimited
         return NextResponse.json({ error: "Invalid account or password." }, { status: 401 })
       }
 
@@ -72,6 +82,12 @@ export async function POST(request: Request) {
   }
 
   if (!session || !token) {
+    const failureLimited = await enforceRateLimit(request, "auth.login.failure", {
+      auditAllowed: true,
+      identifiers: [account],
+      reason: "invalid_credentials",
+    })
+    if (failureLimited) return failureLimited
     return NextResponse.json({ error: "Invalid account or password." }, { status: 401 })
   }
 

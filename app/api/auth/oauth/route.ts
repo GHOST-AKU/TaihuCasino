@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import type { Provider } from "@supabase/supabase-js"
 
 import { createSupabaseAuthClient, isSupabaseAuthConfigured } from "@/lib/server-auth"
+import { enforceRateLimit } from "@/lib/rate-limit"
 
 const providerMap = {
   google: "google",
@@ -21,6 +22,9 @@ function resolveRedirectTarget(nextTarget: unknown) {
 }
 
 async function createOAuthRedirect(request: Request, providerKey: string, nextTarget: unknown) {
+  const limited = await enforceRateLimit(request, "auth.oauth", { identifiers: [providerKey] })
+  if (limited) return { limited }
+
   if (!isSupabaseAuthConfigured()) {
     return { error: "Supabase authentication is not configured.", status: 501 }
   }
@@ -74,6 +78,10 @@ export async function GET(request: Request) {
     })
   }
 
+  if ("limited" in result) {
+    return result.limited
+  }
+
   return NextResponse.redirect(result.redirectTo, {
     headers: result.headers,
   })
@@ -89,6 +97,10 @@ export async function POST(request: Request) {
 
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: result.status })
+  }
+
+  if ("limited" in result) {
+    return result.limited
   }
 
   return NextResponse.json(

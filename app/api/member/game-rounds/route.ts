@@ -2,6 +2,7 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
 import { isSameOriginMutation, readMemberOverview, recordGameProgress } from "@/lib/member-data"
+import { enforceRateLimit, recordSecuritySignal } from "@/lib/rate-limit"
 
 export async function GET() {
   const response = NextResponse.json(
@@ -47,9 +48,14 @@ export async function POST(request: Request) {
     },
   )
   const cookieStore = await cookies()
+  const body = await request.json().catch(() => null) as Record<string, unknown> | null
+  const limited = await enforceRateLimit(request, "member.game-rounds", {
+    identifiers: [body?.gameSlug, body?.tableSessionId],
+  })
+  if (limited) return limited
 
   try {
-    const result = await recordGameProgress(cookieStore, response, await request.json().catch(() => null))
+    const result = await recordGameProgress(cookieStore, response, body)
 
     if (!result) {
       return NextResponse.json(
@@ -59,6 +65,13 @@ export async function POST(request: Request) {
           headers: response.headers,
         },
       )
+    }
+
+    if (result.idempotent) {
+      await recordSecuritySignal(request, "member.game-rounds", "replayed_idempotency_key", [
+        body?.idempotencyKey,
+        body?.tableSessionId,
+      ])
     }
 
     return NextResponse.json(
