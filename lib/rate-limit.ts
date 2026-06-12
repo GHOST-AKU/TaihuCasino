@@ -7,6 +7,7 @@ import { NextResponse } from "next/server"
 import { createSupabaseServiceClient, getSessionSecret } from "@/lib/server-auth"
 import {
   RATE_LIMIT_POLICIES,
+  createRateLimitDimensionKeys,
   createRateLimitKey,
   normalizeIdentifier,
   resolveTrustedClientAddress,
@@ -85,48 +86,61 @@ export async function enforceRateLimit(
   const requestId = request.headers.get("x-request-id")?.slice(0, 120) || randomUUID()
   const policy = options.policy ?? RATE_LIMIT_POLICIES[action]
   const clientAddress = resolveTrustedClientAddress(request.url, request.headers)
-  const identifiers = [
-    clientAddress,
-    getSessionFingerprint(request),
-    ...(options.identifiers ?? []).map((value) => normalizeIdentifier(value)),
-  ]
-  let keyHash = ""
+  const sessionFingerprint = getSessionFingerprint(request)
+  let keyHashes: string[] = []
 
   try {
-    keyHash = createRateLimitKey(getRateLimitSecret(), action, identifiers)
+    const buckets = createRateLimitDimensionKeys(getRateLimitSecret(), action, [
+      { name: "client", value: clientAddress },
+      { name: "session", value: sessionFingerprint },
+      { name: "user", value: options.userId },
+      ...(options.identifiers ?? []).map((value, index) => ({ name: `identifier:${index}`, value })),
+    ])
+    keyHashes = buckets.map(({ keyHash }) => keyHash)
     const supabase = createSupabaseServiceClient()
-    const { data, error } = await supabase.rpc("consume_api_rate_limit", {
-      p_action: action,
-      p_key_hash: keyHash,
-      p_limit: policy.limit,
-      p_window_seconds: policy.windowSeconds,
-    })
+    const consumed = await Promise.all(buckets.map(async (bucket) => {
+      const { data, error } = await supabase.rpc("consume_api_rate_limit", {
+        p_action: action,
+        p_key_hash: bucket.keyHash,
+        p_limit: policy.limit,
+        p_window_seconds: policy.windowSeconds,
+      })
 
-    if (error) throw error
+      if (error) throw error
+      return { ...bucket, result: (data ?? {}) as ConsumeResult }
+    }))
 
-    const result = (data ?? {}) as ConsumeResult
-    if (result.allowed === false) {
-      await recordEvent(action, "blocked", keyHash, requestId, {
+    const blocked = consumed.find(({ result }) => result.allowed === false)
+    if (blocked) {
+      await recordEvent(action, "blocked", blocked.keyHash, requestId, {
         ...options,
         reason: options.reason ?? "rate_limit_exceeded",
-        metadata: { ...options.metadata, count: result.count ?? 0, limit: result.limit ?? policy.limit },
+        metadata: {
+          ...options.metadata,
+          dimension: blocked.dimension,
+          count: blocked.result.count ?? 0,
+          limit: blocked.result.limit ?? policy.limit,
+        },
       })
       return NextResponse.json(
         { error: "Too many requests.", requestId },
-        { status: 429, headers: responseHeaders(requestId, Math.max(1, result.retry_after ?? policy.windowSeconds)) },
+        {
+          status: 429,
+          headers: responseHeaders(requestId, Math.max(1, blocked.result.retry_after ?? policy.windowSeconds)),
+        },
       )
     }
 
     if (options.auditAllowed) {
-      await recordEvent(action, "observed", keyHash, requestId, options)
+      await recordEvent(action, "observed", keyHashes[0] ?? "", requestId, options)
     }
 
     return null
   } catch {
     if (process.env.NODE_ENV !== "production") return null
 
-    if (keyHash) {
-      await recordEvent(action, "storage_error", keyHash, requestId, {
+    if (keyHashes[0]) {
+      await recordEvent(action, "storage_error", keyHashes[0], requestId, {
         ...options,
         reason: "rate_limit_storage_unavailable",
       })

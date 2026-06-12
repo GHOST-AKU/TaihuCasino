@@ -4,6 +4,7 @@ import test from "node:test"
 
 import {
   RATE_LIMIT_POLICIES,
+  createRateLimitDimensionKeys,
   createRateLimitKey,
   resolveTrustedClientAddress,
 } from "../lib/rate-limit-core.ts"
@@ -42,6 +43,25 @@ test("rate-limit keys isolate actions and account identifiers without storing ra
   assert.notEqual(loginA, registerA)
   assert.equal(loginA.includes("player-a@example.com"), false)
   assert.match(loginA, /^[a-f0-9]{64}$/)
+})
+
+test("rate-limit dimensions preserve client and account buckets independently", () => {
+  const secret = "test-rate-limit-secret"
+  const dimensions = (client, account) => createRateLimitDimensionKeys(secret, "auth.login", [
+    { name: "client", value: client },
+    { name: "session", value: "" },
+    { name: "identifier:0", value: account },
+  ])
+
+  const first = dimensions("198.51.100.20", "player-a@example.com")
+  const rotatedAccount = dimensions("198.51.100.20", "player-b@example.com")
+  const rotatedClient = dimensions("198.51.100.21", "player-a@example.com")
+
+  assert.deepEqual(first.map(({ dimension }) => dimension), ["client", "identifier:0"])
+  assert.equal(first[0].keyHash, rotatedAccount[0].keyHash, "rotating accounts must retain the client bucket")
+  assert.equal(first[1].keyHash, rotatedClient[1].keyHash, "rotating clients must retain the account bucket")
+  assert.notEqual(first[1].keyHash, rotatedAccount[1].keyHash)
+  assert.notEqual(first[0].keyHash, rotatedClient[0].keyHash)
 })
 
 test("sensitive mutation policies fail closed and have finite windows", () => {

@@ -46,3 +46,30 @@ export function createRateLimitKey(secret: string, action: string, identifiers: 
   const normalized = identifiers.map((value) => normalizeIdentifier(value)).filter(Boolean).join("|")
   return createHmac("sha256", secret).update(`${action}|${normalized || "anonymous"}`).digest("hex")
 }
+
+export interface RateLimitDimension {
+  name: string
+  value: unknown
+}
+
+export interface RateLimitDimensionKey {
+  dimension: string
+  keyHash: string
+}
+
+export function createRateLimitDimensionKeys(
+  secret: string,
+  action: string,
+  dimensions: RateLimitDimension[],
+): RateLimitDimensionKey[] {
+  return dimensions.flatMap(({ name, value }) => {
+    const normalizedName = normalizeIdentifier(name, 80)
+    const normalizedValue = normalizeIdentifier(value)
+    if (!normalizedName || !normalizedValue) return []
+
+    return [{
+      dimension: normalizedName,
+      keyHash: createRateLimitKey(secret, action, [normalizedName, normalizedValue]),
+    }]
+  })
+}
