@@ -2,6 +2,7 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
 import { completePurchase, isSameOriginMutation } from "@/lib/member-data"
+import { enforceRateLimit } from "@/lib/rate-limit"
 
 export async function POST(
   request: Request,
@@ -25,6 +26,8 @@ export async function POST(
     },
   )
   const cookieStore = await cookies()
+  const limited = await enforceRateLimit(request, "member.purchase-complete", { identifiers: [id] })
+  if (limited) return limited
 
   try {
     const result = await completePurchase(cookieStore, response, id)

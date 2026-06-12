@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TaihuCasino #54 滥用防护完成报告</title>
+  <style>
+    :root { --bg:#07111f; --panel:#0d1b2d; --line:#203652; --text:#e8f1ff; --muted:#91a7c3; --green:#54d6a0; --blue:#67a9ff; --amber:#ffc766; --red:#ff7b86; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--text); background:radial-gradient(circle at 15% 0%,#17345a 0,transparent 35%),var(--bg); font:15px/1.6 Inter,Segoe UI,Arial,sans-serif; }
+    main { max-width:1180px; margin:auto; padding:48px 24px 80px; }
+    h1,h2,h3,p { margin-top:0; }
+    h1 { font-size:clamp(32px,5vw,62px); line-height:1.05; letter-spacing:-.04em; margin-bottom:18px; }
+    h2 { font-size:24px; margin:0 0 18px; }
+    .eyebrow { color:var(--green); font-weight:700; letter-spacing:.16em; text-transform:uppercase; }
+    .lead { max-width:780px; color:#bfd0e6; font-size:18px; }
+    .hero,.panel { border:1px solid var(--line); background:linear-gradient(145deg,rgba(20,42,70,.92),rgba(8,22,38,.92)); border-radius:22px; box-shadow:0 24px 80px rgba(0,0,0,.28); }
+    .hero { padding:38px; margin-bottom:24px; }
+    .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:18px; margin:18px 0; }
+    .panel { padding:24px; }
+    .span-4 { grid-column:span 4; } .span-6 { grid-column:span 6; } .span-8 { grid-column:span 8; } .span-12 { grid-column:span 12; }
+    .metric { font-size:42px; font-weight:800; color:var(--green); line-height:1; margin:10px 0; }
+    .muted { color:var(--muted); }
+    .pill { display:inline-block; padding:5px 10px; margin:3px; border:1px solid var(--line); border-radius:999px; color:#c7d8ed; background:#0b1727; font-size:12px; }
+    .ok { color:var(--green); } .warn { color:var(--amber); }
+    .flow { display:flex; align-items:stretch; gap:10px; overflow:auto; padding-bottom:6px; }
+    .step { min-width:175px; flex:1; padding:16px; border:1px solid var(--line); border-radius:16px; background:#091728; }
+    .arrow { align-self:center; color:var(--blue); font-size:24px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th,td { padding:11px 10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { color:#9fb7d4; font-weight:600; }
+    code { color:#a8c9ff; }
+    .bar { height:8px; border-radius:99px; background:#132943; overflow:hidden; margin-top:8px; }
+    .bar span { display:block; height:100%; background:linear-gradient(90deg,var(--green),var(--blue)); }
+    ul { padding-left:20px; margin-bottom:0; }
+    footer { margin-top:26px; color:var(--muted); font-size:12px; text-align:center; }
+    @media(max-width:850px){ .span-4,.span-6,.span-8{grid-column:span 12}.hero{padding:25px}.arrow{display:none}.flow{display:grid}.step{min-width:0} }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="eyebrow">GitHub #54 / Linear GHO-33</div>
+    <h1>API 滥用防护<br>完成说明</h1>
+    <p class="lead">敏感请求现在会先经过共享限流层，再进入登录、游戏结算、cash-out、购买和广告奖励逻辑。计数存储于 Supabase Postgres，可跨 Vercel 多实例共享。</p>
+    <span class="pill ok">迁移已部署</span><span class="pill ok">完整 CI 通过</span><span class="pill ok">11 个入口已保护</span><span class="pill warn">生产密钥待配置</span>
+  </section>
+
+  <section class="grid">
+    <article class="panel span-4"><div class="muted">受保护入口</div><div class="metric">11</div><div>认证 3 个，会员敏感写入 8 个</div></article>
+    <article class="panel span-4"><div class="muted">新增自动测试</div><div class="metric">7</div><div>代理伪造、隔离、权限、fail-closed 等</div></article>
+    <article class="panel span-4"><div class="muted">云端状态</div><div class="metric">健康</div><div>Supabase <code>ACTIVE_HEALTHY</code></div></article>
+  </section>
+
+  <section class="panel">
+    <h2>请求现在如何通过系统</h2>
+    <div class="flow">
+      <div class="step"><strong>1. 请求进入</strong><br><span class="muted">登录、注册、结算或资金敏感操作</span></div><div class="arrow">→</div>
+      <div class="step"><strong>2. 可信身份提取</strong><br><span class="muted">仅在 Vercel 环境信任代理提供的客户端地址</span></div><div class="arrow">→</div>
+      <div class="step"><strong>3. HMAC 哈希</strong><br><span class="muted">原始 IP、账户、cookie 不写入数据库</span></div><div class="arrow">→</div>
+      <div class="step"><strong>4. 原子 RPC 计数</strong><br><span class="muted">Postgres 跨实例共享并避免并发竞态</span></div><div class="arrow">→</div>
+      <div class="step"><strong>5. 放行或阻断</strong><br><span class="muted">超限返回 429 + Retry-After；生产存储异常返回 503</span></div>
+    </div>
+  </section>
+
+  <section class="grid">
+    <article class="panel span-8">
+      <h2>保护范围</h2>
+      <table><thead><tr><th>类别</th><th>入口</th><th>策略重点</th></tr></thead><tbody>
+        <tr><td>认证</td><td><code>/api/auth/login</code><br><code>/api/auth/register</code><br><code>/api/auth/oauth</code></td><td>账户/provider 隔离；登录失败单独记录并限制</td></tr>
+        <tr><td>游戏与桌台</td><td><code>/api/member/game-rounds</code><br><code>/api/member/table-sessions</code><br><code>.../[id]/cash-out</code></td><td>按会话、游戏和资源标识隔离</td></tr>
+        <tr><td>筹码敏感</td><td>purchase、purchase complete、ad reward start/complete、test top-up</td><td>更严格阈值；生产环境 fail-closed</td></tr>
+      </tbody></table>
+    </article>
+    <article class="panel span-4">
+      <h2>数据边界</h2>
+      <p class="ok"><strong>不会存储</strong></p>
+      <span class="pill">原始 IP</span><span class="pill">密码</span><span class="pill">Token</span><span class="pill">Cookie</span><span class="pill">完整请求体</span>
+      <p class="ok" style="margin-top:18px"><strong>会存储</strong></p>
+      <span class="pill">HMAC 标识</span><span class="pill">动作</span><span class="pill">结果</span><span class="pill">请求 ID</span><span class="pill">安全原因</span>
+    </article>
+  </section>
+
+  <section class="grid">
+    <article class="panel span-6">
+      <h2>验证结果</h2>
+      <p><span class="ok">●</span> <code>corepack pnpm run ci</code> 全部通过</p>
+      <p><span class="ok">●</span> 生产依赖审计：无已知漏洞</p>
+      <p><span class="ok">●</span> TypeScript 与 Next.js production build 通过</p>
+      <p><span class="ok">●</span> Supabase 迁移 <code>api_abuse_protection</code> 已记录</p>
+      <p><span class="ok">●</span> 云端 RPC 实测：阈值阻断、标识隔离、窗口恢复、角色权限均通过</p>
+      <div class="bar"><span style="width:100%"></span></div>
+    </article>
+    <article class="panel span-6">
+      <h2>Advisor 复查</h2>
+      <p><span class="ok">●</span> 新表无安全漏洞警告</p>
+      <p><span class="muted">●</span> 两条 RLS 无策略提示属于预期：用户角色完全无访问策略，只允许 service role</p>
+      <p><span class="warn">●</span> 既有警告：Supabase 泄露密码保护未启用</p>
+      <p><span class="muted">●</span> 新索引尚未使用属于刚部署后的正常提示</p>
+    </article>
+  </section>
+
+  <section class="panel">
+    <h2>上线前仍需配置</h2>
+    <ul>
+      <li>在 Vercel Preview 与 Production 配置独立高熵 <code>TAIHU_RATE_LIMIT_SECRET</code>。</li>
+      <li>确认 Supabase Auth 自带 Rate Limits 与 Turnstile 后台配置。</li>
+      <li>每日调度 <code>cleanup_api_abuse_protection(90)</code>，并监控 <code>security_events</code>。</li>
+      <li>根据套餐决定是否启用 Supabase 泄露密码保护。</li>
+    </ul>
+  </section>
+  <footer>生成日期：2026-06-12 · 分支：codex/p1-launch-readiness · TaihuCasino P1 Launch Readiness</footer>
+</main>
+</body>
+</html>

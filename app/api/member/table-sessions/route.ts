@@ -2,6 +2,7 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
 import { isSameOriginMutation, openTableSession } from "@/lib/member-data"
+import { enforceRateLimit, recordSecuritySignal } from "@/lib/rate-limit"
 
 export async function POST(request: Request) {
   if (!isSameOriginMutation(request)) {
@@ -24,6 +25,10 @@ export async function POST(request: Request) {
     : contentType.includes("form")
       ? Object.fromEntries((await request.formData()).entries())
       : null
+  const limited = await enforceRateLimit(request, "member.table-sessions", {
+    identifiers: [body && typeof body === "object" ? (body as Record<string, unknown>).gameSlug : ""],
+  })
+  if (limited) return limited
 
   try {
     const result = await openTableSession(cookieStore, response, body)
@@ -43,6 +48,10 @@ export async function POST(request: Request) {
           headers: response.headers,
         },
       )
+    }
+
+    if (result.idempotent) {
+      await recordSecuritySignal(request, "member.table-sessions", "replayed_idempotency_key")
     }
 
     if (acceptsHtml) {

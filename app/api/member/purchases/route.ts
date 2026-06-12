@@ -2,6 +2,7 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
 import { createPurchase, isSameOriginMutation, readMemberOverview } from "@/lib/member-data"
+import { enforceRateLimit } from "@/lib/rate-limit"
 
 export async function GET() {
   const response = NextResponse.json(
@@ -47,9 +48,12 @@ export async function POST(request: Request) {
     },
   )
   const cookieStore = await cookies()
+  const body = await request.json().catch(() => null) as Record<string, unknown> | null
+  const limited = await enforceRateLimit(request, "member.purchases", { identifiers: [body?.productId] })
+  if (limited) return limited
 
   try {
-    const purchase = await createPurchase(cookieStore, response, await request.json().catch(() => null))
+    const purchase = await createPurchase(cookieStore, response, body)
 
     if (!purchase) {
       return NextResponse.json(

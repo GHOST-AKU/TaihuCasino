@@ -2,6 +2,7 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
 import { applyTestWalletTopUp, isSameOriginMutation } from "@/lib/member-data"
+import { enforceRateLimit } from "@/lib/rate-limit"
 
 export async function POST(request: Request) {
   if (!isSameOriginMutation(request)) {
@@ -26,6 +27,8 @@ export async function POST(request: Request) {
       : contentType.includes("form")
         ? Object.fromEntries((await request.formData()).entries())
         : null
+    const limited = await enforceRateLimit(request, "member.test-topup")
+    if (limited) return limited
     const walletEntry = await applyTestWalletTopUp(cookieStore, response, body)
 
     if (!walletEntry) {

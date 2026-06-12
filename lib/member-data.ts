@@ -2433,9 +2433,9 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
     if (tableRound.idempotent) {
       const existingRound = await findSupabaseRoundByIdempotencyKey(userId, idempotencyKey)
       if (!existingRound) throw new Error("Idempotent table round could not be loaded.")
-      return { progress: tableRound.progress, settlement: settlementFromGameRound(existingRound) }
+      return { progress: tableRound.progress, settlement: settlementFromGameRound(existingRound), idempotent: true }
     }
-    return { progress: tableRound.progress, settlement }
+    return { progress: tableRound.progress, settlement, idempotent: false }
   }
 
   {
@@ -2449,7 +2449,7 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
     const current = existingIndex >= 0 ? progress[existingIndex] : undefined
 
     if (existingRound && current) {
-      return { progress: current, settlement: settlementFromGameRound(existingRound) }
+      return { progress: current, settlement: settlementFromGameRound(existingRound), idempotent: true }
     }
 
     const sessions = [...(state.tableSessions ?? [])]
@@ -2534,7 +2534,7 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
       ]),
     })
 
-    return { progress: nextProgress, settlement }
+    return { progress: nextProgress, settlement, idempotent: false }
   }
 }
 
