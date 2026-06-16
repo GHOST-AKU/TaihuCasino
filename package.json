@@ -15,8 +15,9 @@
     "test:authoritative-settlement": "node --test tests/authoritative-settlement.test.mjs",
     "test:stub-crediting": "node --test tests/stub-crediting.test.mjs",
     "test:rate-limit": "node --test tests/rate-limit.test.mjs",
+    "test:legal-account-rights": "node --test tests/legal-account-rights.test.mjs",
     "typecheck": "next typegen && tsc --noEmit -p tsconfig.typecheck.json",
-    "ci": "corepack pnpm audit:prod && corepack pnpm test:authoritative-settlement && corepack pnpm test:stub-crediting && corepack pnpm test:rate-limit && corepack pnpm typecheck && corepack pnpm build"
+    "ci": "corepack pnpm audit:prod && corepack pnpm test:authoritative-settlement && corepack pnpm test:stub-crediting && corepack pnpm test:rate-limit && corepack pnpm test:legal-account-rights && corepack pnpm typecheck && corepack pnpm build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

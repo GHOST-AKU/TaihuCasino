@@ -21,7 +21,12 @@ function resolveRedirectTarget(nextTarget: unknown) {
   return nextTarget
 }
 
-async function createOAuthRedirect(request: Request, providerKey: string, nextTarget: unknown) {
+async function createOAuthRedirect(
+  request: Request,
+  providerKey: string,
+  nextTarget: unknown,
+  consent: { termsAccepted: boolean; ageAttested: boolean; locale: string },
+) {
   const limited = await enforceRateLimit(request, "auth.oauth", { identifiers: [providerKey] })
   if (limited) return { limited }
 
@@ -33,6 +38,9 @@ async function createOAuthRedirect(request: Request, providerKey: string, nextTa
 
   if (!provider) {
     return { error: "Unsupported sign-in provider.", status: 400 }
+  }
+  if (!consent.termsAccepted || !consent.ageAttested) {
+    return { error: "Terms, Privacy, and age eligibility acknowledgement are required.", status: 400 }
   }
 
   const response = NextResponse.json(
@@ -50,7 +58,7 @@ async function createOAuthRedirect(request: Request, providerKey: string, nextTa
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: `${origin}/auth/callback?next=${next}`,
+      redirectTo: `${origin}/auth/callback?next=${next}&consent=1&locale=${encodeURIComponent(consent.locale)}`,
     },
   })
 
@@ -67,6 +75,11 @@ export async function GET(request: Request) {
     request,
     requestUrl.searchParams.get("provider") ?? "",
     requestUrl.searchParams.get("next"),
+    {
+      termsAccepted: requestUrl.searchParams.get("termsAccepted") === "true",
+      ageAttested: requestUrl.searchParams.get("ageAttested") === "true",
+      locale: requestUrl.searchParams.get("locale")?.slice(0, 20) || "en",
+    },
   )
 
   if ("error" in result) {
@@ -91,9 +104,16 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     provider?: unknown
     next?: unknown
+    termsAccepted?: unknown
+    ageAttested?: unknown
+    locale?: unknown
   } | null
   const providerKey = typeof body?.provider === "string" ? body.provider : ""
-  const result = await createOAuthRedirect(request, providerKey, body?.next)
+  const result = await createOAuthRedirect(request, providerKey, body?.next, {
+    termsAccepted: body?.termsAccepted === true,
+    ageAttested: body?.ageAttested === true,
+    locale: typeof body?.locale === "string" ? body.locale.slice(0, 20) : "en",
+  })
 
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: result.status })

@@ -611,10 +611,10 @@ export function PlayerHomePage({ initialLanguage, initialMemberName, initialMemb
               <span className="text-sm text-muted-foreground">{copy.labels.footerTagline}</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <a href="#top" className="transition-colors hover:text-foreground">{copy.labels.terms}</a>
-              <a href="#top" className="transition-colors hover:text-foreground">{copy.labels.privacy}</a>
-              <a href="#top" className="transition-colors hover:text-foreground">{copy.labels.support}</a>
-              <a href="#top" className="transition-colors hover:text-foreground">{copy.labels.responsibleGaming}</a>
+              <Link href="/terms" className="transition-colors hover:text-foreground">{copy.labels.terms}</Link>
+              <Link href="/privacy" className="transition-colors hover:text-foreground">{copy.labels.privacy}</Link>
+              <Link href="/support" className="transition-colors hover:text-foreground">{copy.labels.support}</Link>
+              <Link href="/responsible-gaming" className="transition-colors hover:text-foreground">{copy.labels.responsibleGaming}</Link>
             </div>
           </div>
         </footer>

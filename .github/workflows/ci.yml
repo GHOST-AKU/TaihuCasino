@@ -39,6 +39,9 @@ jobs:
       - name: Test API abuse protection
         run: pnpm test:rate-limit
 
+      - name: Test legal and account-rights framework
+        run: pnpm test:legal-account-rights
+
       - name: Typecheck
         run: pnpm typecheck
 

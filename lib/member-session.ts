@@ -40,19 +40,25 @@ export async function registerMember({
   displayName,
   next,
   captchaToken,
+  termsAccepted,
+  ageAttested,
+  locale,
 }: {
   email: string
   password: string
   displayName: string
   next?: string
   captchaToken?: string
+  termsAccepted: boolean
+  ageAttested: boolean
+  locale?: string
 }): Promise<RegisterMemberResult> {
   const response = await fetch("/api/auth/register", {
     method: "POST",
     headers: {
       "content-type": "application/json",
     },
-    body: JSON.stringify({ email, password, displayName, next, captchaToken }),
+    body: JSON.stringify({ email, password, displayName, next, captchaToken, termsAccepted, ageAttested, locale }),
   })
 
   const payload = (await response.json().catch(() => null)) as {
@@ -71,12 +77,21 @@ export async function registerMember({
   }
 }
 
-export async function startOAuthSignIn(provider: OAuthProviderKey, next?: string) {
+export async function startOAuthSignIn(
+  provider: OAuthProviderKey,
+  next: string | undefined,
+  termsAccepted: boolean,
+  ageAttested: boolean,
+  locale?: string,
+) {
   if (typeof window === "undefined") {
     return
   }
 
   const params = new URLSearchParams({ provider })
+  params.set("termsAccepted", String(termsAccepted))
+  params.set("ageAttested", String(ageAttested))
+  if (locale) params.set("locale", locale)
   if (next) {
     params.set("next", next)
   }
