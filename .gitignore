@@ -4,6 +4,8 @@ gcm-diagnose.log
 .preview-next*.log
 .preview-next*.err.log
 .playwright-cli/
+playwright-report/
+test-results/
 supabase/.temp/
 
 # Next.js / Node

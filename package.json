@@ -16,8 +16,12 @@
     "test:stub-crediting": "node --test tests/stub-crediting.test.mjs",
     "test:rate-limit": "node --test tests/rate-limit.test.mjs",
     "test:legal-account-rights": "node --test tests/legal-account-rights.test.mjs",
+    "test:api-security": "node --test tests/api-security-regression.test.mjs",
+    "test:node": "corepack pnpm test:authoritative-settlement && corepack pnpm test:stub-crediting && corepack pnpm test:rate-limit && corepack pnpm test:legal-account-rights && corepack pnpm test:api-security",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium",
     "typecheck": "next typegen && tsc --noEmit -p tsconfig.typecheck.json",
-    "ci": "corepack pnpm audit:prod && corepack pnpm test:authoritative-settlement && corepack pnpm test:stub-crediting && corepack pnpm test:rate-limit && corepack pnpm test:legal-account-rights && corepack pnpm typecheck && corepack pnpm build"
+    "ci": "corepack pnpm lint && corepack pnpm audit:prod && corepack pnpm test:node && corepack pnpm typecheck && corepack pnpm build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -73,10 +77,13 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.0",
     "@tailwindcss/postcss": "^4.2.0",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "eslint": "^9.39.1",
+    "eslint-config-next": "^16.2.7",
     "postcss": "^8.5.15",
     "supabase": "^2.98.0",
     "tailwindcss": "^4.2.0",

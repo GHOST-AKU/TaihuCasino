@@ -125,6 +125,33 @@ The host must provide Node.js 24 for parity with CI and must keep server-only en
 
 托管平台应提供 Node.js 24，以保持和 CI 一致，并确保服务端专用环境变量不会进入客户端 bundle。
 
+## Release Automation Gate / 发布自动化门禁
+
+GitHub Actions now separates the release gate into four required-check candidates:
+
+GitHub Actions 现在把发布门禁拆成四个可设置为必需检查的 job：
+
+- `Quality gate / 质量门禁`: ESLint and TypeScript checks. / ESLint 与 TypeScript 检查。
+- `API and security regression / API 与安全回归`: production dependency audit plus settlement, stub-crediting, abuse-protection, legal/account-rights, and API security regression tests. / 生产依赖审计，以及结算、stub 入账、滥用防护、法律/账户权利和 API 安全回归测试。
+- `Production build / 生产构建`: production `next build`. / 生产构建。
+- `Playwright E2E / 浏览器端到端`: isolated browser/API flow covering login, four core tables, replay safety, cash-out, and rejected attack attempts. / 隔离浏览器/API 流程，覆盖登录、四张核心桌、重放安全、cash-out 和攻击尝试拒绝。
+
+Playwright failure artifacts are uploaded only on failure from `playwright-report/` and `test-results/e2e/`. These artifacts use local non-production E2E credentials and must not include production secrets.
+
+Playwright 只在失败时上传 `playwright-report/` 与 `test-results/e2e/`。这些证据使用本地非生产 E2E 凭据，不应包含生产秘密。
+
+Local command groups:
+
+本地命令组：
+
+```powershell
+corepack pnpm lint
+corepack pnpm test:node
+corepack pnpm typecheck
+corepack pnpm build
+corepack pnpm test:e2e
+```
+
 ## Final Gate / 最终检查
 
 Before opening or merging a deploy-readiness PR, run:
@@ -136,9 +163,9 @@ corepack pnpm run ci
 git status --short --branch
 ```
 
-`corepack pnpm run ci` runs the same typecheck and production build gates.
+`corepack pnpm run ci` runs lint, production dependency audit, Node security regression tests, typecheck, and production build. Playwright E2E is also enforced in GitHub Actions as a separate job so browser failure evidence can be uploaded cleanly.
 
-`corepack pnpm run ci` 会执行同一套类型检查和生产构建 gate。
+`corepack pnpm run ci` 会执行 lint、生产依赖审计、Node 安全回归测试、类型检查和生产构建。Playwright E2E 在 GitHub Actions 中作为独立 job 执行，便于单独上传浏览器失败证据。
 
 The branch should have only intentional source and documentation changes. Generated `.next` output and TypeScript build info files should remain untracked.
 

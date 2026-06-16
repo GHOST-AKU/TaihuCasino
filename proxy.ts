@@ -47,7 +47,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next({ request })
   }
 
-  let response = NextResponse.next({
+  const response = NextResponse.next({
     request,
     headers: {
       "cache-control": "private, no-store",
