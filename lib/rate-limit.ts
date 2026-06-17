@@ -24,6 +24,7 @@ interface ConsumeResult {
 interface EnforceRateLimitOptions {
   auditAllowed?: boolean
   identifiers?: unknown[]
+  requestId?: string
   userId?: string
   metadata?: Record<string, string | number | boolean>
   reason?: string
@@ -83,7 +84,7 @@ export async function enforceRateLimit(
   action: RateLimitAction,
   options: EnforceRateLimitOptions = {},
 ) {
-  const requestId = request.headers.get("x-request-id")?.slice(0, 120) || randomUUID()
+  const requestId = options.requestId ?? request.headers.get("x-request-id")?.slice(0, 120) ?? randomUUID()
   const policy = options.policy ?? RATE_LIMIT_POLICIES[action]
   const clientAddress = resolveTrustedClientAddress(request.url, request.headers)
   const sessionFingerprint = getSessionFingerprint(request)
@@ -160,9 +161,10 @@ export async function recordSecuritySignal(
   action: RateLimitAction,
   reason: string,
   identifiers: unknown[] = [],
+  observationRequestId?: string,
 ) {
   try {
-    const requestId = request.headers.get("x-request-id")?.slice(0, 120) || randomUUID()
+    const requestId = observationRequestId ?? request.headers.get("x-request-id")?.slice(0, 120) ?? randomUUID()
     const clientAddress = resolveTrustedClientAddress(request.url, request.headers)
     const keyHash = createRateLimitKey(getRateLimitSecret(), action, [
       clientAddress,

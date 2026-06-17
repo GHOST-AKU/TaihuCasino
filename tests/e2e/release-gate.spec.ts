@@ -24,12 +24,14 @@ const coreTables = [
   },
 ]
 
-async function signIn(request: APIRequestContext) {
+async function signIn(request: APIRequestContext, requestId = "e2e-login-request") {
   const response = await request.post("/api/auth/login", {
+    headers: { "x-request-id": requestId },
     data: testAccount,
   })
   expect(response.status()).toBe(200)
   expect(response.headers()["cache-control"]).toContain("no-store")
+  expect(response.headers()["x-request-id"]).toBe(requestId)
   const body = await response.json()
   expect(body.session.account).toBe(testAccount.account)
 }
@@ -62,6 +64,7 @@ test("four core tables support buy-in, authoritative round settlement, replay sa
 
   for (const table of coreTables) {
     const buyIn = await request.post("/api/member/table-sessions", {
+      headers: { "x-request-id": `e2e-${table.slug}-buy-in` },
       data: {
         gameSlug: table.slug,
         buyInAmount: 500,
@@ -69,6 +72,7 @@ test("four core tables support buy-in, authoritative round settlement, replay sa
       },
     })
     expect(buyIn.status(), `${table.slug} buy-in`).toBe(200)
+    expect(buyIn.headers()["x-request-id"]).toBe(`e2e-${table.slug}-buy-in`)
     const buyInBody = await buyIn.json()
     const tableSession = buyInBody.tableSession
     expect(tableSession.gameSlug).toBe(table.slug)
@@ -85,8 +89,12 @@ test("four core tables support buy-in, authoritative round settlement, replay sa
       bankroll: 999999,
       resultSnapshot: { forged: true },
     }
-    const round = await request.post("/api/member/game-rounds", { data: roundPayload })
+    const round = await request.post("/api/member/game-rounds", {
+      headers: { "x-request-id": `e2e-${table.slug}-round` },
+      data: roundPayload,
+    })
     expect(round.status(), `${table.slug} round`).toBe(200)
+    expect(round.headers()["x-request-id"]).toBe(`e2e-${table.slug}-round`)
     const roundBody = await round.json()
     expect(roundBody.settlement.totalStake).toBe(10)
     expect(roundBody.settlement.resultSnapshot.forged).toBeUndefined()
@@ -96,12 +104,14 @@ test("four core tables support buy-in, authoritative round settlement, replay sa
     expect((await replay.json()).idempotent).toBe(true)
 
     const cashOut = await request.post(`/api/member/table-sessions/${tableSession.id}/cash-out`, {
+      headers: { "x-request-id": `e2e-${table.slug}-cash-out` },
       data: {
         idempotencyKey: `e2e-cashout-${table.slug}`,
         expectedChipBalance: 999999,
       },
     })
     expect(cashOut.status(), `${table.slug} cash-out`).toBe(200)
+    expect(cashOut.headers()["x-request-id"]).toBe(`e2e-${table.slug}-cash-out`)
     const cashOutBody = await cashOut.json()
     expect(cashOutBody.tableSession.status).toBe("cashed_out")
     expect(cashOutBody.tableSession.chipBalance).toBe(0)
