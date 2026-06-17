@@ -158,9 +158,9 @@ const betOptions = [
   tone: "player" | "banker" | "tie"
 }>
 
-const dealCardDelayMs = 680
-const pointCheckDelayMs = 900
-const settlementDelayMs = 1700
+const dealCardDelayMs = 220
+const pointCheckDelayMs = 250
+const settlementDelayMs = 200
 
 const suits = ["spades", "hearts", "diamonds", "clubs"] satisfies Suit[]
 
@@ -867,7 +867,7 @@ export function BaccaratTablePage({
     for (let index = 0; index < steps.length; index += 1) {
       const step = steps[index]
 
-      await sleep(index === 0 ? 360 : dealCardDelayMs)
+      await sleep(index === 0 ? 160 : dealCardDelayMs)
       setVisibleDeal({
         playerCards: step.playerCards,
         bankerCards: step.bankerCards,
