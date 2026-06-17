@@ -76,6 +76,9 @@ jobs:
       - name: Test API security regression
         run: pnpm test:api-security
 
+      - name: Test member-flow observability
+        run: pnpm test:observability
+
   build:
     name: Production build / 生产构建
     runs-on: ubuntu-latest

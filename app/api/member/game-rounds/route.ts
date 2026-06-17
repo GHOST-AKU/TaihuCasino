@@ -2,6 +2,7 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
 import { isSameOriginMutation, readMemberOverview, recordGameProgress } from "@/lib/member-data"
+import { createRequestObserver } from "@/lib/observability"
 import { enforceRateLimit, recordSecuritySignal } from "@/lib/rate-limit"
 
 export async function GET() {
@@ -35,8 +36,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const observer = createRequestObserver(request, { flow: "game_round", route: "/api/member/game-rounds" })
+
   if (!isSameOriginMutation(request)) {
-    return NextResponse.json({ error: "Cross-origin mutation rejected." }, { status: 403 })
+    observer.reject("game_round.settle.rejected", { status: 403, reasonCode: "cross_origin" })
+    return observer.attach(NextResponse.json({ error: "Cross-origin mutation rejected." }, { status: 403 }))
   }
 
   const response = NextResponse.json(
@@ -49,44 +53,76 @@ export async function POST(request: Request) {
   )
   const cookieStore = await cookies()
   const body = await request.json().catch(() => null) as Record<string, unknown> | null
+  observer.info("game_round.settle.started", {
+    gameSlug: body?.gameSlug,
+    tableSessionId: body?.tableSessionId,
+  })
   const limited = await enforceRateLimit(request, "member.game-rounds", {
     identifiers: [body?.gameSlug, body?.tableSessionId],
+    requestId: observer.requestId,
   })
-  if (limited) return limited
+  if (limited) {
+    observer.reject("game_round.settle.blocked", {
+      gameSlug: body?.gameSlug,
+      status: limited.status,
+      tableSessionId: body?.tableSessionId,
+      reasonCode: limited.status === 429 ? "rate_limit_exceeded" : "rate_limit_unavailable",
+    })
+    return observer.attach(limited)
+  }
 
   try {
     const result = await recordGameProgress(cookieStore, response, body)
 
     if (!result) {
-      return NextResponse.json(
+      observer.reject("game_round.settle.rejected", {
+        gameSlug: body?.gameSlug,
+        status: 401,
+        tableSessionId: body?.tableSessionId,
+        reasonCode: "auth_required",
+      })
+      return observer.attach(NextResponse.json(
         { error: "Authentication is required." },
         {
           status: 401,
           headers: response.headers,
         },
-      )
+      ))
     }
 
     if (result.idempotent) {
       await recordSecuritySignal(request, "member.game-rounds", "replayed_idempotency_key", [
         body?.idempotencyKey,
         body?.tableSessionId,
-      ])
+      ], observer.requestId)
     }
+    observer.success("game_round.settle.succeeded", {
+      gameSlug: body?.gameSlug,
+      idempotent: result.idempotent,
+      outcome: result.settlement.outcome,
+      status: 200,
+      tableSessionId: body?.tableSessionId,
+    })
 
-    return NextResponse.json(
+    return observer.attach(NextResponse.json(
       result,
       {
         headers: response.headers,
       },
-    )
+    ))
   } catch (error) {
-    return NextResponse.json(
+    observer.failure("game_round.settle.failed", error, {
+      gameSlug: body?.gameSlug,
+      status: 400,
+      tableSessionId: body?.tableSessionId,
+      reasonCode: "game_round_settlement_failed",
+    })
+    return observer.attach(NextResponse.json(
       { error: error instanceof Error ? error.message : "Unable to record game round." },
       {
         status: 400,
         headers: response.headers,
       },
-    )
+    ))
   }
 }

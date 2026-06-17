@@ -1,19 +1,21 @@
-import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
+import { NextResponse } from "next/server"
 
+import { createRequestObserver } from "@/lib/observability"
+import { enforceRateLimit } from "@/lib/rate-limit"
 import {
   MEMBER_SESSION_COOKIE,
   assertSupabaseAuthConfigured,
-  createSessionToken,
   createSessionFromSupabaseUser,
+  createSessionToken,
   createSupabaseAuthClient,
   getSessionCookieOptions,
   isSupabaseAuthConfigured,
   validateCredentials,
 } from "@/lib/server-auth"
-import { enforceRateLimit } from "@/lib/rate-limit"
 
 export async function POST(request: Request) {
+  const observer = createRequestObserver(request, { flow: "auth", route: "/api/auth/login" })
   const body = (await request.json().catch(() => null)) as {
     account?: unknown
     password?: unknown
@@ -21,13 +23,25 @@ export async function POST(request: Request) {
 
   const account = typeof body?.account === "string" ? body.account.trim() : ""
   const password = typeof body?.password === "string" ? body.password : ""
+  observer.info("auth.login.started", { userIdentifier: account })
 
   if (!account || !password) {
-    return NextResponse.json({ error: "Account and password are required." }, { status: 400 })
+    observer.reject("auth.login.rejected", { status: 400, reasonCode: "missing_credentials", userIdentifier: account })
+    return observer.attach(NextResponse.json({ error: "Account and password are required." }, { status: 400 }))
   }
 
-  const limited = await enforceRateLimit(request, "auth.login", { identifiers: [account] })
-  if (limited) return limited
+  const limited = await enforceRateLimit(request, "auth.login", {
+    identifiers: [account],
+    requestId: observer.requestId,
+  })
+  if (limited) {
+    observer.reject("auth.login.blocked", {
+      status: limited.status,
+      reasonCode: limited.status === 429 ? "rate_limit_exceeded" : "rate_limit_unavailable",
+      userIdentifier: account,
+    })
+    return observer.attach(limited)
+  }
 
   if (isSupabaseAuthConfigured()) {
     try {
@@ -52,22 +66,45 @@ export async function POST(request: Request) {
         const failureLimited = await enforceRateLimit(request, "auth.login.failure", {
           auditAllowed: true,
           identifiers: [account],
+          requestId: observer.requestId,
           reason: "invalid_credentials",
         })
-        if (failureLimited) return failureLimited
-        return NextResponse.json({ error: "Invalid account or password." }, { status: 401 })
+        if (failureLimited) {
+          observer.reject("auth.login.blocked", {
+            authProvider: "supabase",
+            status: failureLimited.status,
+            reasonCode: "invalid_credentials_rate_limited",
+            userIdentifier: account,
+          })
+          return observer.attach(failureLimited)
+        }
+        observer.reject("auth.login.rejected", {
+          authProvider: "supabase",
+          status: 401,
+          reasonCode: "invalid_credentials",
+          userIdentifier: account,
+        })
+        return observer.attach(NextResponse.json({ error: "Invalid account or password." }, { status: 401 }))
       }
 
       const session = createSessionFromSupabaseUser(data.user)
+      observer.success("auth.login.succeeded", {
+        authProvider: "supabase",
+        status: 200,
+        userIdentifier: data.user.id,
+      })
 
-      return NextResponse.json(
-        { session },
-        {
-          headers: response.headers,
-        },
+      return observer.attach(NextResponse.json({ session }, { headers: response.headers }))
+    } catch (error) {
+      observer.failure("auth.login.failed", error, {
+        authProvider: "supabase",
+        status: 500,
+        reasonCode: "auth_provider_error",
+        userIdentifier: account,
+      })
+      return observer.attach(
+        NextResponse.json({ error: "Supabase authentication is not configured correctly." }, { status: 500 }),
       )
-    } catch {
-      return NextResponse.json({ error: "Supabase authentication is not configured correctly." }, { status: 500 })
     }
   }
 
@@ -77,18 +114,41 @@ export async function POST(request: Request) {
   try {
     session = validateCredentials(account, password)
     token = session ? createSessionToken(session) : null
-  } catch {
-    return NextResponse.json({ error: "Authentication is not configured correctly." }, { status: 500 })
+  } catch (error) {
+    observer.failure("auth.login.failed", error, {
+      authProvider: "local",
+      status: 500,
+      reasonCode: "auth_configuration_error",
+      userIdentifier: account,
+    })
+    return observer.attach(
+      NextResponse.json({ error: "Authentication is not configured correctly." }, { status: 500 }),
+    )
   }
 
   if (!session || !token) {
     const failureLimited = await enforceRateLimit(request, "auth.login.failure", {
       auditAllowed: true,
       identifiers: [account],
+      requestId: observer.requestId,
       reason: "invalid_credentials",
     })
-    if (failureLimited) return failureLimited
-    return NextResponse.json({ error: "Invalid account or password." }, { status: 401 })
+    if (failureLimited) {
+      observer.reject("auth.login.blocked", {
+        authProvider: "local",
+        status: failureLimited.status,
+        reasonCode: "invalid_credentials_rate_limited",
+        userIdentifier: account,
+      })
+      return observer.attach(failureLimited)
+    }
+    observer.reject("auth.login.rejected", {
+      authProvider: "local",
+      status: 401,
+      reasonCode: "invalid_credentials",
+      userIdentifier: account,
+    })
+    return observer.attach(NextResponse.json({ error: "Invalid account or password." }, { status: 401 }))
   }
 
   const response = NextResponse.json(
@@ -100,6 +160,11 @@ export async function POST(request: Request) {
     },
   )
   response.cookies.set(MEMBER_SESSION_COOKIE, token, getSessionCookieOptions())
+  observer.success("auth.login.succeeded", {
+    authProvider: "local",
+    status: 200,
+    userIdentifier: session.userId ?? session.account,
+  })
 
-  return response
+  return observer.attach(response)
 }

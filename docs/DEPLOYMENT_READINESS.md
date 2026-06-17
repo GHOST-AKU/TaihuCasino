@@ -1,6 +1,6 @@
 # Deployment Readiness / 部署就绪说明
 
-Last updated: 2026-05-31
+Last updated: 2026-06-17
 
 ## Scope / 范围
 
@@ -61,6 +61,12 @@ Supabase 生产认证和会员 API 必需变量：
 - `TAIHU_RATE_LIMIT_SECRET`: Independent high-entropy HMAC secret used to hash client and account identifiers for shared API rate limits. Rotate it deliberately; rotation starts fresh buckets. Never expose it to the browser. / 用于共享 API 限流客户端与账户标识 HMAC 哈希的独立高熵密钥。轮换会开启新的限流桶，必须有计划地执行，绝不能暴露到浏览器。
 - `TAIHU_SESSION_SECRET`: long random secret for signing fallback member session cookies. Configure it in production so legacy/fallback cookie paths cannot fail open or use development defaults. / 用于签名回退会员 session cookie 的长随机密钥。生产环境必须配置，避免 legacy/fallback cookie 路径使用开发默认值或异常。
 
+Optional dedicated observability secret:
+
+可选的专用可观测性密钥：
+
+- `TAIHU_OBSERVABILITY_SECRET`: high-entropy server-only HMAC secret for pseudonymous user, session, and table identifiers in structured logs. If unset, the observer falls back to `TAIHU_RATE_LIMIT_SECRET` or `TAIHU_SESSION_SECRET`; when none is available in production, those hashes are omitted. Rotate deliberately because rotation changes correlation hashes. / 用于结构化日志中用户、session 与桌台伪匿名标识的服务端高熵 HMAC 密钥。未配置时会回退到 `TAIHU_RATE_LIMIT_SECRET` 或 `TAIHU_SESSION_SECRET`；生产环境三者都不存在时将省略这些哈希。轮换会改变关联哈希，必须有计划地执行。
+
 Required when registration remains enabled with Cloudflare Turnstile:
 
 如果注册页继续启用 Cloudflare Turnstile，还需要：
@@ -111,6 +117,10 @@ Environment variables alone are not enough. Before promoting a production deploy
 Vercel can deploy this app as a zero-config Next.js project. Configure the production environment variables above in the Vercel project settings before promoting a production deployment.
 
 Vercel 可以按零配置 Next.js 项目部署此应用。正式发布前，需要先在 Vercel 项目设置中配置上面的生产环境变量。
+
+After deployment, use the response `x-request-id` to correlate member-flow failures in Vercel Runtime Logs. Unexpected `*.failed` events are emitted at error level and can be queried with `vercel logs <deployment-url> --level error --since 1h`. Follow [`OBSERVABILITY_RUNBOOK.md`](./OBSERVABILITY_RUNBOOK.md) for event names, privacy boundaries, common queries, and escalation steps.
+
+部署后，使用响应中的 `x-request-id` 在 Vercel Runtime Logs 中关联会员关键路径故障。意外的 `*.failed` 事件统一按 error 级别输出，可通过 `vercel logs <deployment-url> --level error --since 1h` 查询。事件名、隐私边界、常用查询和升级步骤见 [`OBSERVABILITY_RUNBOOK.md`](./OBSERVABILITY_RUNBOOK.md)。
 
 For another Node-compatible host, run:
 
