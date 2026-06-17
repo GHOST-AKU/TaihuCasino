@@ -7,8 +7,13 @@ on:
       - main
       - "codex/**"
 
+env:
+  PNPM_VERSION: 10.33.0
+  NODE_VERSION: 24
+
 jobs:
-  build:
+  quality:
+    name: Quality gate / 质量门禁
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -17,12 +22,38 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Enable pnpm
         run: |
           corepack enable
-          corepack prepare pnpm@10.33.0 --activate
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+  security-tests:
+    name: API and security regression / API 与安全回归
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
 
       - name: Install
         run: pnpm install --frozen-lockfile
@@ -42,8 +73,67 @@ jobs:
       - name: Test legal and account-rights framework
         run: pnpm test:legal-account-rights
 
-      - name: Typecheck
-        run: pnpm typecheck
+      - name: Test API security regression
+        run: pnpm test:api-security
+
+  build:
+    name: Production build / 生产构建
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
 
       - name: Build
         run: pnpm build
+
+  e2e:
+    name: Playwright E2E / 浏览器端到端
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run isolated Playwright E2E
+        run: pnpm test:e2e
+        env:
+          CI: true
+
+      - name: Upload Playwright failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failure-evidence
+          path: |
+            playwright-report/
+            test-results/e2e/
+          if-no-files-found: ignore
+          retention-days: 7
