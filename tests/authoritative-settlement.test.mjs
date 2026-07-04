@@ -104,3 +104,26 @@ test("client contracts and database migration close direct-write boundaries", as
   assert.match(migration, /revoke insert, update on table public\.member_game_progress from authenticated/)
   assert.match(migration, /revoke insert on table public\.member_events from authenticated/)
 })
+
+test("baccarat presentation settles a six-card hand within two seconds", async () => {
+  const source = await readFile(new URL("../components/baccarat-table-page.tsx", import.meta.url), "utf8")
+  const readDelay = (name) => {
+    const match = source.match(new RegExp(`const ${name} = (\\d+)`))
+    assert.ok(match, `${name} must remain an explicit timing constant`)
+    return Number(match[1])
+  }
+  const initialDealMatch = source.match(/index === 0 \? (\d+) : dealCardDelayMs/)
+  assert.ok(initialDealMatch, "initial deal delay must remain explicit")
+
+  const initialDealDelay = Number(initialDealMatch[1])
+  const dealCardDelay = readDelay("dealCardDelayMs")
+  const pointCheckDelay = readDelay("pointCheckDelayMs")
+  const settlementDelay = readDelay("settlementDelayMs")
+  const sixCardPresentationDelay = initialDealDelay
+    + (5 * dealCardDelay)
+    + pointCheckDelay
+    + settlementDelay
+
+  assert.ok(settlementDelay <= 300, `final settlement pause is ${settlementDelay}ms`)
+  assert.ok(sixCardPresentationDelay <= 2000, `six-card presentation takes ${sixCardPresentationDelay}ms`)
+})
