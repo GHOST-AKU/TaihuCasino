@@ -95,6 +95,8 @@ test("all required first-wave routes call the shared limiter", async () => {
     "../app/api/auth/login/route.ts",
     "../app/api/auth/register/route.ts",
     "../app/api/auth/oauth/route.ts",
+    "../app/api/auth/password-reset/request/route.ts",
+    "../app/api/auth/password-reset/update/route.ts",
     "../app/api/member/game-rounds/route.ts",
     "../app/api/member/table-sessions/route.ts",
     "../app/api/member/table-sessions/[id]/cash-out/route.ts",

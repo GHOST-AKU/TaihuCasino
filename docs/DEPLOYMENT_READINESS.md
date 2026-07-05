@@ -67,11 +67,11 @@ Optional dedicated observability secret:
 
 - `TAIHU_OBSERVABILITY_SECRET`: high-entropy server-only HMAC secret for pseudonymous user, session, and table identifiers in structured logs. If unset, the observer falls back to `TAIHU_RATE_LIMIT_SECRET` or `TAIHU_SESSION_SECRET`; when none is available in production, those hashes are omitted. Rotate deliberately because rotation changes correlation hashes. / 用于结构化日志中用户、session 与桌台伪匿名标识的服务端高熵 HMAC 密钥。未配置时会回退到 `TAIHU_RATE_LIMIT_SECRET` 或 `TAIHU_SESSION_SECRET`；生产环境三者都不存在时将省略这些哈希。轮换会改变关联哈希，必须有计划地执行。
 
-Required when registration remains enabled with Cloudflare Turnstile:
+Required when login, registration, or password recovery uses Cloudflare Turnstile:
 
-如果注册页继续启用 Cloudflare Turnstile，还需要：
+登录、注册或密码找回启用 Cloudflare Turnstile 时，还需要：
 
-- `NEXT_PUBLIC_TURNSTILE_SITE_KEY`: Turnstile site key used by the registration form. / 注册表单使用的 Turnstile site key。
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY`: Turnstile site key used by the login, registration, and password-recovery forms. / 登录、注册和密码找回表单使用的 Turnstile site key。
 
 Development-only fallback auth:
 
@@ -103,8 +103,11 @@ Environment variables alone are not enough. Before promoting a production deploy
 
 - Set the Supabase Auth Site URL to the production origin. / 将 Supabase Auth Site URL 设置为生产域名。
 - Add the production `/auth/callback` URL to the redirect allowlist. Add preview URLs if preview OAuth testing is required. / 将生产环境 `/auth/callback` 加入 redirect allowlist。如需在预览环境测试 OAuth，也加入预览 URL。
+- Configure a production SMTP provider before enabling password recovery. The built-in trial sender is rate-limited and best-effort. / 启用密码找回前配置生产 SMTP；内置试用发信服务有严格限额且不保证送达。
+- Configure the Supabase **Reset Password** email template to use `<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery">Reset password</a>`. This token-hash endpoint supports links opened on a different device from the original request. / 将 Supabase **Reset Password** 邮件模板配置为上述链接；`token_hash` 确认端点支持在不同于申请设备的浏览器中打开链接。
+- Verify a successful reset and an expired-link retry on every deployed hostname. Reset emails return to `/auth/callback?next=%2Freset-password`, and the request response intentionally does not reveal whether an email is registered. / 在每个部署域名验证成功重置与过期链接重试。重置邮件会回到 `/auth/callback?next=%2Freset-password`，申请结果不会透露邮箱是否已注册。
 - Configure OAuth providers used by the login page: Google, Apple, Microsoft/Azure, Facebook, and X. Amazon is explicitly out of scope. / 配置登录页使用的 OAuth provider：Google、Apple、Microsoft/Azure、Facebook 和 X。Amazon 已明确排除在支持范围之外。
-- If registration is enabled, configure Supabase CAPTCHA/Turnstile backend settings in addition to `NEXT_PUBLIC_TURNSTILE_SITE_KEY`. The registration API passes `captchaToken` to `supabase.auth.signUp`. / 如果启用注册，除 `NEXT_PUBLIC_TURNSTILE_SITE_KEY` 外，还要配置 Supabase CAPTCHA/Turnstile 后台设置。注册 API 会把 `captchaToken` 传给 `supabase.auth.signUp`。
+- Configure Supabase CAPTCHA/Turnstile backend settings for every protected auth flow in addition to `NEXT_PUBLIC_TURNSTILE_SITE_KEY`. Login, registration, and password-recovery APIs pass `captchaToken` to Supabase Auth. / 除 `NEXT_PUBLIC_TURNSTILE_SITE_KEY` 外，还要为所有受保护的认证流程配置 Supabase CAPTCHA/Turnstile 后台设置。登录、注册和密码找回 API 都会把 `captchaToken` 传给 Supabase Auth。
 - Apply the Supabase migrations in `supabase/migrations/` before testing member, wallet, table session, ad reward, purchase, and game round APIs. / 在测试会员、钱包、桌台 session、广告奖励、购买和游戏回合 API 前，先应用 `supabase/migrations/` 中的迁移。
 - Keep `SUPABASE_SERVICE_ROLE_KEY` server-only. It is required by server-side member and wallet mutation code paths, but must never be exposed in `NEXT_PUBLIC_*` variables. / `SUPABASE_SERVICE_ROLE_KEY` 必须只存在于服务端环境。服务端会员和钱包写入路径需要它，但绝不能放进 `NEXT_PUBLIC_*` 变量。
 - Apply `20260612090000_api_abuse_protection.sql` before enabling production traffic. The application-level limiter uses a service-role-only atomic Postgres RPC and fails closed for sensitive production mutations if the limiter is unavailable. / 启用生产流量前必须应用 `20260612090000_api_abuse_protection.sql`。应用级限流使用仅限 service role 的 Postgres 原子 RPC；生产环境限流不可用时，敏感写入会 fail-closed。

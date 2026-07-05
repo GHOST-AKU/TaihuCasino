@@ -59,6 +59,133 @@ test("login establishes a member session and protects account-rights APIs from a
   expect((await session.json()).session.account).toBe(testAccount.account)
 })
 
+test("login fits a normal desktop while short viewports keep natural overflow", async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 878 })
+  await page.goto("/login")
+
+  await expect(page.getByRole("heading", { name: "Welcome Back" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Sign In", exact: true })).toBeVisible()
+
+  const desktop = await page.evaluate(() => ({
+    clientHeight: document.documentElement.clientHeight,
+    scrollHeight: document.documentElement.scrollHeight,
+    panelBottom: document.querySelector(".casino-auth-panel")?.getBoundingClientRect().bottom ?? Number.POSITIVE_INFINITY,
+  }))
+  expect(desktop.scrollHeight).toBeLessThanOrEqual(desktop.clientHeight + 1)
+  expect(desktop.panelBottom).toBeLessThanOrEqual(desktop.clientHeight)
+
+  await page.setViewportSize({ width: 1538, height: 586 })
+  const shortViewport = await page.evaluate(() => {
+    const panel = document.querySelector(".casino-auth-panel")
+    return {
+      clientHeight: document.documentElement.clientHeight,
+      scrollHeight: document.documentElement.scrollHeight,
+      panelDisplay: panel ? window.getComputedStyle(panel).display : "",
+    }
+  })
+  expect(shortViewport.scrollHeight).toBeGreaterThan(shortViewport.clientHeight)
+  expect(shortViewport.panelDisplay).toBe("block")
+})
+
+test("password recovery routes are public and validate the recovery forms", async ({ page }) => {
+  let recoveryRequest: { email?: string; captchaToken?: string } | null = null
+  await page.route("https://challenges.cloudflare.com/turnstile/v0/api.js**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/javascript",
+      body: `window.turnstile = {
+        render: (_container, options) => {
+          setTimeout(() => options.callback("e2e-turnstile-token"), 500)
+          return "e2e-widget"
+        },
+        reset: () => {},
+        remove: () => {}
+      }`,
+    })
+  })
+  await page.route("**/api/auth/password-reset/request", async (route) => {
+    recoveryRequest = route.request().postDataJSON()
+    await route.fulfill({
+      status: 202,
+      contentType: "application/json",
+      body: JSON.stringify({ message: "If an account exists for this email, a password reset link is on its way." }),
+    })
+  })
+
+  await page.goto("/login")
+  await expect(page.getByRole("link", { name: "Forgot password?" })).toHaveAttribute("href", "/forgot-password")
+
+  await page.getByRole("link", { name: "Forgot password?" }).click()
+  await expect(page.getByRole("heading", { name: "Recover access" })).toBeVisible()
+  await page.getByLabel("Email address").fill("player@example.com")
+  await page.getByRole("button", { name: "Send reset link" }).click()
+  await expect(page.getByRole("dialog", { name: "Security check" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible()
+  await expect(page.getByText("player@example.com")).toBeVisible()
+  expect(recoveryRequest).toEqual({ email: "player@example.com", captchaToken: "e2e-turnstile-token" })
+
+  await page.goto("/reset-password")
+  await expect(page.getByRole("heading", { name: "Set a new password" })).toBeVisible()
+  await page.getByLabel("New password", { exact: true }).fill("short")
+  await page.getByLabel("Confirm new password", { exact: true }).fill("short")
+  await page.getByRole("button", { name: "Update password" }).click()
+  await expect(page.getByText("Password must be at least 8 characters.")).toBeVisible()
+
+  const invalidRequest = await page.request.post("/api/auth/password-reset/request", { data: { email: "invalid" } })
+  expect(invalidRequest.status()).toBe(400)
+  const crossOriginUpdate = await page.request.post("/api/auth/password-reset/update", {
+    headers: { origin: "https://attacker.example" },
+    data: { password: "a-valid-new-password" },
+  })
+  expect(crossOriginUpdate.status()).toBe(403)
+})
+
+test("password sign-in sends the Turnstile token with credentials", async ({ page }) => {
+  let loginRequest: { account?: string; password?: string; captchaToken?: string } | null = null
+  await page.route("https://challenges.cloudflare.com/turnstile/v0/api.js**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/javascript",
+      body: `window.turnstile = {
+        render: (_container, options) => {
+          setTimeout(() => options.callback("e2e-login-turnstile-token"), 500)
+          return "e2e-login-widget"
+        },
+        getResponse: () => "e2e-login-turnstile-token",
+        reset: () => {},
+        remove: () => {}
+      }`,
+    })
+  })
+  await page.route("**/api/auth/login", async (route) => {
+    loginRequest = route.request().postDataJSON()
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        session: {
+          account: "demo@taihu.casino",
+          displayName: "Demo",
+          loginAt: new Date().toISOString(),
+          provider: "supabase",
+        },
+      }),
+    })
+  })
+
+  await page.goto("/login")
+  await page.getByLabel("Email Address").fill("demo@taihu.casino")
+  await page.locator("#password").fill("12345678")
+  await page.getByRole("button", { name: "Sign In", exact: true }).click()
+  await expect(page.getByRole("dialog", { name: "Security check" })).toBeVisible()
+
+  await expect.poll(() => loginRequest).toEqual({
+    account: "demo@taihu.casino",
+    password: "12345678",
+    captchaToken: "e2e-login-turnstile-token",
+  })
+})
+
 test("four core tables support buy-in, authoritative round settlement, replay safety, and cash-out", async ({ request }) => {
   await signIn(request)
 

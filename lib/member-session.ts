@@ -13,13 +13,43 @@ export interface RegisterMemberResult {
   session: MemberSession | null
 }
 
-export async function loginMember(account: string, password: string): Promise<MemberSession> {
+export async function requestPasswordReset(email: string, captchaToken: string) {
+  const response = await fetch("/api/auth/password-reset/request", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ email, captchaToken }),
+  })
+
+  const payload = (await response.json().catch(() => null)) as { error?: string } | null
+  if (!response.ok) {
+    throw new Error(payload?.error ?? "Unable to start password recovery.")
+  }
+}
+
+export async function updateMemberPassword(password: string) {
+  const response = await fetch("/api/auth/password-reset/update", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ password }),
+  })
+
+  const payload = (await response.json().catch(() => null)) as { error?: string } | null
+  if (!response.ok) {
+    throw new Error(payload?.error ?? "Unable to update your password.")
+  }
+}
+
+export async function loginMember(account: string, password: string, captchaToken: string): Promise<MemberSession> {
   const response = await fetch("/api/auth/login", {
     method: "POST",
     headers: {
       "content-type": "application/json",
     },
-    body: JSON.stringify({ account, password }),
+    body: JSON.stringify({ account, password, captchaToken }),
   })
 
   const payload = (await response.json().catch(() => null)) as {

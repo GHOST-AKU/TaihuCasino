@@ -33,6 +33,7 @@ export default defineConfig({
           NEXT_PUBLIC_SUPABASE_ANON_KEY: "",
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "",
           NEXT_PUBLIC_SUPABASE_URL: "",
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY: "e2e-turnstile-site-key",
           SUPABASE_SERVICE_ROLE_KEY: "",
           TAIHU_AUTH_ACCOUNT: "e2e@taihu.casino",
           TAIHU_AUTH_PASSWORD: "not-a-secret-e2e-password",
