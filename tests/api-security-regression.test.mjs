@@ -38,6 +38,38 @@ test("member write APIs reject cross-origin mutations before state changes", asy
   }
 })
 
+test("password recovery forwards a Turnstile token to Supabase Auth", async () => {
+  const [form, captchaDialog, client, route] = await Promise.all([
+    source("../app/forgot-password/forgot-password-form.tsx"),
+    source("../components/captcha-dialog.tsx"),
+    source("../lib/member-session.ts"),
+    source("../app/api/auth/password-reset/request/route.ts"),
+  ])
+
+  assert.match(form, /CaptchaDialog/)
+  assert.match(captchaDialog, /NEXT_PUBLIC_TURNSTILE_SITE_KEY/)
+  assert.match(captchaDialog, /DialogContent/)
+  assert.match(form, /requestPasswordReset\(email\.trim\(\), captchaToken\)/)
+  assert.match(client, /requestPasswordReset\(email: string, captchaToken: string\)/)
+  assert.match(client, /JSON\.stringify\(\{ email, captchaToken \}\)/)
+  assert.match(route, /captchaToken/)
+  assert.match(route, /resetPasswordForEmail\(email, \{[\s\S]*?captchaToken,/)
+})
+
+test("password sign-in forwards a Turnstile token to Supabase Auth", async () => {
+  const [form, client, route] = await Promise.all([
+    source("../app/login/login-form.tsx"),
+    source("../lib/member-session.ts"),
+    source("../app/api/auth/login/route.ts"),
+  ])
+
+  assert.match(form, /loginMember\(trimmedEmail, password, activeCaptchaToken\)/)
+  assert.match(client, /loginMember\(account: string, password: string, captchaToken: string\)/)
+  assert.match(client, /JSON\.stringify\(\{ account, password, captchaToken \}\)/)
+  assert.match(route, /captchaToken/)
+  assert.match(route, /signInWithPassword\(\{[\s\S]*?options: \{ captchaToken \}/)
+})
+
 test("production-only stub credit paths cannot be bypassed into wallet crediting", async () => {
   const [memberData, stubGuard, purchaseComplete, adComplete, topup] = await Promise.all([
     source("../lib/member-data.ts"),

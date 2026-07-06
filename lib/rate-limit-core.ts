@@ -11,6 +11,8 @@ export const RATE_LIMIT_POLICIES = {
   "auth.login.failure": { limit: 5, windowSeconds: 900, failClosed: true },
   "auth.register": { limit: 5, windowSeconds: 3600, failClosed: true },
   "auth.oauth": { limit: 20, windowSeconds: 300, failClosed: true },
+  "auth.password-reset-request": { limit: 5, windowSeconds: 3600, failClosed: true },
+  "auth.password-reset-update": { limit: 5, windowSeconds: 900, failClosed: true },
   "member.game-rounds": { limit: 120, windowSeconds: 60, failClosed: true },
   "member.table-sessions": { limit: 20, windowSeconds: 300, failClosed: true },
   "member.cash-out": { limit: 10, windowSeconds: 300, failClosed: true },

@@ -5,19 +5,27 @@ import { createSupabaseAuthClient, createSupabaseServiceClient, isSupabaseAuthCo
 import { AGE_ATTESTATION_VERSION, PRIVACY_VERSION, TERMS_VERSION } from "@/lib/legal"
 
 function resolveRedirectTarget(nextTarget: string | null) {
-  if (!nextTarget?.startsWith("/")) {
+  if (!nextTarget?.startsWith("/") || nextTarget.startsWith("//")) {
     return "/"
   }
 
-  return nextTarget.startsWith("//") ? "/" : nextTarget
+  return nextTarget
+}
+
+function recoveryErrorUrl(origin: string) {
+  return new URL("/forgot-password?error=invalid_link", origin)
 }
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const redirectTarget = resolveRedirectTarget(requestUrl.searchParams.get("next"))
   const code = requestUrl.searchParams.get("code")
+  const isPasswordRecovery = redirectTarget === "/reset-password"
 
   if (!isSupabaseAuthConfigured() || !code) {
+    if (isPasswordRecovery) {
+      return NextResponse.redirect(recoveryErrorUrl(requestUrl.origin))
+    }
     return NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(redirectTarget)}`, requestUrl.origin))
   }
 
@@ -31,6 +39,9 @@ export async function GET(request: Request) {
   const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error) {
+    if (isPasswordRecovery) {
+      return NextResponse.redirect(recoveryErrorUrl(requestUrl.origin))
+    }
     return NextResponse.redirect(
       new URL(`/login?next=${encodeURIComponent(redirectTarget)}&authError=oauth`, requestUrl.origin),
     )

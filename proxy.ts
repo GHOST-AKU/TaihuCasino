@@ -17,6 +17,8 @@ function isPublicPath(pathname: string) {
     publicPages.has(pathname) ||
     pathname === "/login" ||
     pathname.startsWith("/login/") ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password" ||
     pathname.startsWith("/api/") ||
     pathname.startsWith("/auth/")
   )

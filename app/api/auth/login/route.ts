@@ -19,10 +19,12 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     account?: unknown
     password?: unknown
+    captchaToken?: unknown
   } | null
 
   const account = typeof body?.account === "string" ? body.account.trim() : ""
   const password = typeof body?.password === "string" ? body.password : ""
+  const captchaToken = typeof body?.captchaToken === "string" ? body.captchaToken.trim() : ""
   observer.info("auth.login.started", { userIdentifier: account })
 
   if (!account || !password) {
@@ -44,6 +46,11 @@ export async function POST(request: Request) {
   }
 
   if (isSupabaseAuthConfigured()) {
+    if (!captchaToken) {
+      observer.reject("auth.login.rejected", { status: 400, reasonCode: "missing_captcha", userIdentifier: account })
+      return observer.attach(NextResponse.json({ error: "Please complete the security check." }, { status: 400 }))
+    }
+
     try {
       assertSupabaseAuthConfigured()
 
@@ -60,6 +67,7 @@ export async function POST(request: Request) {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: account,
         password,
+        options: { captchaToken },
       })
 
       if (error || !data.user) {

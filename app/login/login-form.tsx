@@ -2,11 +2,11 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import Script from "next/script"
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowRight, Eye, EyeOff, Lock, Mail, Spade, UserPlus } from "lucide-react"
 
+import { CaptchaDialog, isCaptchaConfigured } from "@/components/captcha-dialog"
 import { Button } from "@/components/ui/button"
 import { loginMember, readMemberSession, registerMember, startOAuthSignIn, type OAuthProviderKey } from "@/lib/member-session"
 import { cn } from "@/lib/utils"
@@ -73,30 +73,6 @@ const stats = [
   { value: "Clear", label: "Explainable play" },
 ]
 
-const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""
-
-declare global {
-  interface Window {
-    turnstile?: {
-      render: (
-        container: HTMLElement,
-        options: {
-          sitekey: string
-          appearance?: "always" | "execute" | "interaction-only"
-          theme?: "auto" | "light" | "dark"
-          size?: "normal" | "compact" | "flexible" | "invisible"
-          callback: (token: string) => void
-          "expired-callback": () => void
-          "error-callback": () => void
-        },
-      ) => string
-      getResponse?: (widgetId?: string) => string
-      reset: (widgetId?: string) => void
-      remove?: (widgetId: string) => void
-    }
-  }
-}
-
 interface TestAccountHint {
   account: string
   password: string
@@ -104,7 +80,6 @@ interface TestAccountHint {
 }
 
 type AuthMode = "sign-in" | "register"
-type CaptchaStatus = "idle" | "loading" | "verified" | "expired" | "error"
 
 function resolveRedirectTarget(nextTarget: string | null) {
   if (!nextTarget || !nextTarget.startsWith("/")) {
@@ -230,40 +205,16 @@ export function LoginForm({
   const [statusMessage, setStatusMessage] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [captchaToken, setCaptchaToken] = useState("")
-  const [captchaStatus, setCaptchaStatus] = useState<CaptchaStatus>("idle")
-  const [turnstileReady, setTurnstileReady] = useState(false)
-  const turnstileContainerRef = useRef<HTMLDivElement | null>(null)
-  const turnstileWidgetIdRef = useRef<string | null>(null)
+  const [captchaDialogOpen, setCaptchaDialogOpen] = useState(false)
+  const [captchaResetKey, setCaptchaResetKey] = useState(0)
+  const formRef = useRef<HTMLFormElement | null>(null)
+  const submitAfterCaptchaRef = useRef(false)
   const isRegisterMode = authMode === "register"
 
   function resetCaptcha() {
     setCaptchaToken("")
-    setCaptchaStatus(isRegisterMode && turnstileSiteKey ? "loading" : "idle")
-
-    if (turnstileWidgetIdRef.current && window.turnstile) {
-      window.turnstile.reset(turnstileWidgetIdRef.current)
-      return
-    }
-
-    if (isRegisterMode && typeof window !== "undefined") {
-      window.location.reload()
-    }
-  }
-
-  function readCaptchaTokenFromWidget() {
-    const widgetResponse = turnstileWidgetIdRef.current
-      ? (window.turnstile?.getResponse?.(turnstileWidgetIdRef.current)?.trim() ?? "")
-      : ""
-
-    if (widgetResponse) {
-      return widgetResponse
-    }
-
-    const hiddenInput = turnstileContainerRef.current?.querySelector<HTMLInputElement>(
-      'input[name="cf-turnstile-response"]',
-    )
-
-    return hiddenInput?.value.trim() ?? ""
+    setCaptchaResetKey((current) => current + 1)
+    setCaptchaDialogOpen(true)
   }
 
   useEffect(() => {
@@ -281,76 +232,22 @@ export function LoginForm({
   }, [next, router])
 
   useEffect(() => {
-    if (!isRegisterMode) {
-      setCaptchaToken("")
-      setCaptchaStatus("idle")
+    if (!captchaToken || !submitAfterCaptchaRef.current) {
       return
     }
 
-    if (!turnstileReady || !turnstileSiteKey || !turnstileContainerRef.current || !window.turnstile) {
-      setCaptchaStatus(turnstileSiteKey ? "loading" : "idle")
-      return
-    }
-
-    setCaptchaStatus("loading")
-    turnstileWidgetIdRef.current = window.turnstile.render(turnstileContainerRef.current, {
-      sitekey: turnstileSiteKey,
-      appearance: "always",
-      theme: "light",
-      size: "normal",
-      callback(token) {
-        setCaptchaToken(token)
-        setCaptchaStatus("verified")
-      },
-      "expired-callback"() {
-        setCaptchaToken("")
-        setCaptchaStatus("expired")
-      },
-      "error-callback"() {
-        setCaptchaToken("")
-        setCaptchaStatus("error")
-      },
-    })
-
-    return () => {
-      if (turnstileWidgetIdRef.current && window.turnstile?.remove) {
-        window.turnstile.remove(turnstileWidgetIdRef.current)
-      }
-      turnstileWidgetIdRef.current = null
-    }
-  }, [isRegisterMode, turnstileReady])
-
-  useEffect(() => {
-    if (!isRegisterMode || !turnstileSiteKey || captchaToken) {
-      return
-    }
-
-    const startedAt = Date.now()
-    const tokenCheck = window.setInterval(() => {
-      const activeCaptchaToken = readCaptchaTokenFromWidget()
-
-      if (activeCaptchaToken) {
-        setCaptchaToken(activeCaptchaToken)
-        setCaptchaStatus("verified")
-        window.clearInterval(tokenCheck)
-        return
-      }
-
-      if (Date.now() - startedAt > 9000) {
-        setCaptchaStatus("error")
-        window.clearInterval(tokenCheck)
-      }
-    }, 500)
-
-    return () => {
-      window.clearInterval(tokenCheck)
-    }
-  }, [captchaToken, isRegisterMode, turnstileReady])
+    submitAfterCaptchaRef.current = false
+    setCaptchaDialogOpen(false)
+    formRef.current?.requestSubmit()
+  }, [captchaToken])
 
   function switchAuthMode(mode: AuthMode) {
     setAuthMode(mode)
     setErrorMessage("")
     setStatusMessage("")
+    setCaptchaToken("")
+    setCaptchaResetKey((current) => current + 1)
+    submitAfterCaptchaRef.current = false
 
     const params = new URLSearchParams()
     if (mode === "register") {
@@ -395,21 +292,18 @@ export function LoginForm({
         return
       }
 
-      if (!turnstileSiteKey) {
+      if (!isCaptchaConfigured) {
         setErrorMessage("Security check is not configured.")
         return
       }
 
-      const activeCaptchaToken = captchaToken || readCaptchaTokenFromWidget()
+      const activeCaptchaToken = captchaToken
 
       if (!activeCaptchaToken) {
-        setErrorMessage("Please complete the security check.")
+        setErrorMessage("Complete the security check in the pop-up to continue.")
+        submitAfterCaptchaRef.current = true
+        setCaptchaDialogOpen(true)
         return
-      }
-
-      if (!captchaToken) {
-        setCaptchaToken(activeCaptchaToken)
-        setCaptchaStatus("verified")
       }
 
       setErrorMessage("")
@@ -459,17 +353,30 @@ export function LoginForm({
       return
     }
 
+    if (!isCaptchaConfigured) {
+      setErrorMessage("Security check is not configured.")
+      return
+    }
+
+    const activeCaptchaToken = captchaToken
+    if (!activeCaptchaToken) {
+      setErrorMessage("Complete the security check in the pop-up to continue.")
+      submitAfterCaptchaRef.current = true
+      setCaptchaDialogOpen(true)
+      return
+    }
+
     setErrorMessage("")
     setStatusMessage("")
-    resetCaptcha()
     setIsSubmitting(true)
 
     try {
-      await loginMember(trimmedEmail, password)
+      await loginMember(trimmedEmail, password, activeCaptchaToken)
       router.push(resolveRedirectTarget(next ?? null))
       router.refresh()
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to sign in.")
+      resetCaptcha()
     } finally {
       setIsSubmitting(false)
     }
@@ -506,16 +413,6 @@ export function LoginForm({
 
   return (
     <main className="casino-auth-shell relative min-h-screen overflow-hidden">
-      {isRegisterMode && turnstileSiteKey ? (
-        <Script
-          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-          strategy="afterInteractive"
-          onLoad={() => setTurnstileReady(true)}
-          onReady={() => setTurnstileReady(true)}
-          onError={() => setCaptchaStatus("error")}
-        />
-      ) : null}
-
       <div className="pointer-events-none absolute inset-0">
         <div className="lobby-ambient-orb absolute left-0 top-0 h-80 w-80 rounded-full blur-3xl" />
         <div className="lobby-ambient-orb lobby-ambient-orb-secondary absolute bottom-0 right-0 h-96 w-96 rounded-full blur-3xl" />
@@ -575,7 +472,7 @@ export function LoginForm({
           </div>
         </section>
 
-        <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-24 sm:px-8 lg:px-10">
+        <section className="casino-auth-form-shell relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-24 sm:px-8 lg:px-10">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(29,188,130,0.08),transparent_0_24%)]" />
 
           <div className="casino-auth-panel relative z-10 w-full max-w-[33rem] rounded-[2rem] p-6 sm:p-8">
@@ -588,7 +485,7 @@ export function LoginForm({
               </Link>
             </div>
 
-            <div className="text-center">
+            <div className="casino-auth-heading text-center">
               <h2 className="font-serif text-[2.55rem] font-semibold tracking-tight text-foreground">
                 {isRegisterMode ? "Create Account" : "Welcome Back"}
               </h2>
@@ -597,7 +494,7 @@ export function LoginForm({
               </p>
             </div>
 
-            <div className="mt-6 grid grid-cols-2 rounded-[1.25rem] border border-primary/15 bg-background/45 p-1">
+            <div className="casino-auth-mode-tabs mt-6 grid grid-cols-2 rounded-[1.25rem] border border-primary/15 bg-background/45 p-1">
               <button
                 type="button"
                 onClick={() => switchAuthMode("sign-in")}
@@ -621,7 +518,7 @@ export function LoginForm({
             </div>
 
             {testAccount && !isRegisterMode ? (
-              <div className="mt-6 rounded-[1.35rem] border border-primary/20 bg-primary/10 p-4 text-left">
+              <div className="casino-auth-test-account mt-6 rounded-[1.35rem] border border-primary/20 bg-primary/10 p-4 text-left">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-foreground">Test account</p>
@@ -636,7 +533,7 @@ export function LoginForm({
               </div>
             ) : null}
 
-            <div className="mt-6 space-y-3 rounded-[1.2rem] border border-primary/15 bg-background/50 px-4 py-4 text-sm text-[var(--auth-soft-text)]">
+            <div className="casino-auth-consent mt-6 space-y-3 rounded-[1.2rem] border border-primary/15 bg-background/50 px-4 py-4 text-sm text-[var(--auth-soft-text)]">
               <label className="flex items-start gap-3">
                 <input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} className="mt-1 h-4 w-4 accent-[var(--primary)]" />
                 <span>I accept the draft <Link href="/terms" className="text-primary underline">Terms</Link> and <Link href="/privacy" className="text-primary underline">Privacy framework</Link>.</span>
@@ -647,7 +544,7 @@ export function LoginForm({
               </label>
             </div>
 
-            <div className="mt-5 grid grid-cols-3 gap-3">
+            <div className="casino-auth-providers mt-5 grid grid-cols-3 gap-3">
               {providerButtons.map((provider) => (
                 <ProviderButton
                   key={provider.key}
@@ -663,17 +560,17 @@ export function LoginForm({
               ))}
             </div>
 
-            <p className="mt-4 text-center text-sm leading-6 text-[var(--auth-soft-text)]">
+            <p className="casino-auth-desktop-optional mt-4 text-center text-sm leading-6 text-[var(--auth-soft-text)]">
               First-time social sign-in automatically creates a Taihu member profile.
             </p>
 
-            <div className="my-7 flex items-center gap-4 text-sm text-[var(--auth-faint-text)]">
+            <div className="casino-auth-desktop-optional my-7 flex items-center gap-4 text-sm text-[var(--auth-faint-text)]">
               <div className="h-px flex-1 bg-[var(--auth-divider)]" />
               <span className="text-base">{isRegisterMode ? "or create with email" : "or continue with email"}</span>
               <div className="h-px flex-1 bg-[var(--auth-divider)]" />
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form ref={formRef} onSubmit={handleSubmit} className="casino-auth-email-form space-y-4">
               {isRegisterMode ? (
                 <Field
                   id="displayName"
@@ -709,7 +606,7 @@ export function LoginForm({
                 icon={<Lock className="h-5 w-5" />}
                 action={
                   !isRegisterMode ? (
-                  <Link href="#" className="text-sm font-medium text-primary hover:text-primary/80">
+                  <Link href="/forgot-password" className="text-sm font-medium text-primary hover:text-primary/80">
                     Forgot password?
                   </Link>
                   ) : null
@@ -739,37 +636,13 @@ export function LoginForm({
                 />
               ) : null}
 
-              {isRegisterMode ? (
-                <div className="rounded-[1.2rem] border border-primary/15 bg-background/50 px-4 py-3">
-                  {turnstileSiteKey ? (
-                    <div className="space-y-2">
-                      <div ref={turnstileContainerRef} className="min-h-[65px]" />
-                      {captchaStatus === "loading" ? (
-                        <p className="text-xs font-medium text-[var(--auth-soft-text)]">Loading security check...</p>
-                      ) : null}
-                      {captchaStatus === "verified" ? (
-                        <p className="text-xs font-semibold text-primary">Security check complete.</p>
-                      ) : null}
-                      {captchaStatus === "expired" || captchaStatus === "error" ? (
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-xs font-medium text-red-700 dark:text-red-200">
-                            {captchaStatus === "expired" ? "Security check expired." : "Security check failed."}
-                          </p>
-                          <button
-                            type="button"
-                            onClick={resetCaptcha}
-                            className="text-xs font-semibold text-primary hover:text-primary/80"
-                          >
-                            Retry
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-red-700 dark:text-red-200">Security check is not configured.</p>
-                  )}
-                </div>
-              ) : null}
+              <CaptchaDialog
+                open={captchaDialogOpen}
+                onOpenChange={setCaptchaDialogOpen}
+                token={captchaToken}
+                onTokenChange={setCaptchaToken}
+                resetKey={captchaResetKey}
+              />
 
               {errorMessage ? (
                 <div className="rounded-[1.2rem] border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
@@ -793,7 +666,7 @@ export function LoginForm({
               </Button>
             </form>
 
-            <p className="mt-7 text-center text-base text-[var(--auth-soft-text)]">
+            <p className="casino-auth-desktop-optional mt-7 text-center text-base text-[var(--auth-soft-text)]">
               {isRegisterMode ? "Already have an account?" : "New to TaihuCasino?"}{" "}
               <button
                 type="button"
@@ -804,7 +677,7 @@ export function LoginForm({
               </button>
             </p>
 
-            <p className="mt-5 text-center text-xs leading-6 text-[var(--auth-faint-text)]">
+            <p className="casino-auth-desktop-optional mt-5 text-center text-xs leading-6 text-[var(--auth-faint-text)]">
               By using TaihuCasino, you acknowledge our draft{" "}
               <Link href="/terms" className="underline underline-offset-4 hover:text-foreground">
                 Terms of Service
