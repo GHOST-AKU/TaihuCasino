@@ -19,6 +19,7 @@ import {
 import { getPlayableTable } from "@/lib/game-catalog"
 import { createStubCreditIdempotencyKey, requireStubCreditingEnabled } from "@/lib/stub-crediting"
 import { settleAuthoritativeRound } from "@/lib/authoritative-settlement"
+import type { RoundEnvelope } from "@/lib/game-round-contract"
 
 type CookieStore = Awaited<ReturnType<typeof cookies>>
 
@@ -1208,6 +1209,7 @@ async function settleSupabaseTableSessionRound(
   const payload = data as Record<string, unknown>
   const progressPayload = payload.progress
   const sessionPayload = payload.session
+  const roundPayload = payload.round
 
   if (!progressPayload || typeof progressPayload !== "object" || Array.isArray(progressPayload)) {
     throw new Error("Table round service returned an invalid progress record.")
@@ -1217,9 +1219,20 @@ async function settleSupabaseTableSessionRound(
     throw new Error("Table round service returned an invalid table session.")
   }
 
+  const round = roundPayload && typeof roundPayload === "object" && !Array.isArray(roundPayload)
+    ? toGameRound(roundPayload as Record<string, unknown>)
+    : idempotencyKey
+      ? await findSupabaseRoundByIdempotencyKey(auth.session.userId, idempotencyKey)
+      : null
+
+  if (!round) {
+    throw new Error("Table round service did not return or persist a round record.")
+  }
+
   return {
     progress: toProgress(progressPayload as Record<string, unknown>),
     tableSession: toTableSession(sessionPayload as Record<string, unknown>),
+    round,
     idempotent: payload.idempotent === true,
   }
 }
@@ -1279,6 +1292,7 @@ async function settleSupabaseTableSessionRoundDirect(
         return {
           progress: toProgress(existingProgress),
           tableSession: toTableSession(existingSession),
+          round: existingRound,
           idempotent: true,
         }
       }
@@ -1372,7 +1386,7 @@ async function settleSupabaseTableSessionRoundDirect(
     throw new Error(progressError.message)
   }
 
-  await insertSupabaseGameRound({
+  const round = await insertSupabaseGameRound({
     userId,
     gameSlug,
     tableSessionId: sessionId,
@@ -1406,6 +1420,7 @@ async function settleSupabaseTableSessionRoundDirect(
   return {
     progress: toProgress(progressData),
     tableSession: toTableSession(updatedSession),
+    round,
     idempotent: false,
   }
 }
@@ -2379,6 +2394,34 @@ function settlementFromGameRound(round: MemberGameRound) {
   }
 }
 
+function roundEnvelopeFromGameRound(round: MemberGameRound, idempotent: boolean): RoundEnvelope {
+  const chipBalanceBefore = round.chipBalanceBefore ?? 0
+  const chipBalanceAfter = round.chipBalanceAfter ?? chipBalanceBefore + round.delta
+
+  if (!round.tableSessionId) {
+    throw new Error("Authoritative table round is missing its table session.")
+  }
+
+  return {
+    roundId: round.id,
+    gameSlug: round.gameSlug,
+    tableSessionId: round.tableSessionId,
+    status: round.roundStatus,
+    version: 1,
+    outcome: round.outcome,
+    delta: round.delta,
+    totalStake: round.totalStake,
+    chipBalanceBefore,
+    chipBalanceAvailable: chipBalanceAfter,
+    chipBalanceAfter,
+    summary: round.resultSummary,
+    betSnapshot: round.betSnapshot,
+    resultSnapshot: round.resultSnapshot,
+    serverTimestamp: round.createdAt,
+    idempotent,
+  }
+}
+
 export async function recordGameProgress(cookieStore: CookieStore, response: NextResponse, body: unknown) {
   const auth = await getAuthenticatedMember(cookieStore, response)
 
@@ -2433,9 +2476,20 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
     if (tableRound.idempotent) {
       const existingRound = await findSupabaseRoundByIdempotencyKey(userId, idempotencyKey)
       if (!existingRound) throw new Error("Idempotent table round could not be loaded.")
-      return { progress: tableRound.progress, settlement: settlementFromGameRound(existingRound), idempotent: true }
+      return {
+        progress: tableRound.progress,
+        settlement: settlementFromGameRound(existingRound),
+        round: roundEnvelopeFromGameRound(existingRound, true),
+        idempotent: true,
+      }
     }
-    return { progress: tableRound.progress, settlement, idempotent: false }
+    if (!tableRound.round) throw new Error("Authoritative table round could not be loaded.")
+    return {
+      progress: tableRound.progress,
+      settlement,
+      round: roundEnvelopeFromGameRound(tableRound.round, false),
+      idempotent: false,
+    }
   }
 
   {
@@ -2449,7 +2503,12 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
     const current = existingIndex >= 0 ? progress[existingIndex] : undefined
 
     if (existingRound && current) {
-      return { progress: current, settlement: settlementFromGameRound(existingRound), idempotent: true }
+      return {
+        progress: current,
+        settlement: settlementFromGameRound(existingRound),
+        round: roundEnvelopeFromGameRound(existingRound, true),
+        idempotent: true,
+      }
     }
 
     const sessions = [...(state.tableSessions ?? [])]
@@ -2503,38 +2562,45 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
       progress.unshift(nextProgress)
     }
 
+    const localRound: MemberGameRound = {
+      id: `${playedAt}-${Math.random().toString(16).slice(2)}`,
+      gameSlug,
+      tableSessionId,
+      roundStatus: "settled",
+      totalStake,
+      delta,
+      outcome,
+      chipBalanceBefore,
+      chipBalanceAfter,
+      resultSummary: summary,
+      betSnapshot,
+      resultSnapshot: {
+        ...resultSnapshot,
+        tableSessionId,
+        chipBalanceBefore,
+        chipBalanceAfter,
+      },
+      idempotencyKey,
+      createdAt: playedAt,
+    }
+
     writeLocalState(response, {
       ...state,
       progress: compactLocalProgress(progress),
       recentEvents: compactLocalEvents([event, ...(state.recentEvents ?? [])]),
       tableSessions: compactLocalTableSessions(sessions),
       gameRounds: compactLocalGameRounds([
-        {
-          id: `${playedAt}-${Math.random().toString(16).slice(2)}`,
-          gameSlug,
-          tableSessionId,
-          roundStatus: "settled",
-          totalStake,
-          delta,
-          outcome,
-          chipBalanceBefore,
-          chipBalanceAfter,
-          resultSummary: summary,
-          betSnapshot,
-          resultSnapshot: {
-            ...resultSnapshot,
-            tableSessionId,
-            chipBalanceBefore,
-            chipBalanceAfter,
-          },
-          idempotencyKey,
-          createdAt: playedAt,
-        },
+        localRound,
         ...(state.gameRounds ?? []),
       ]),
     })
 
-    return { progress: nextProgress, settlement, idempotent: false }
+    return {
+      progress: nextProgress,
+      settlement,
+      round: roundEnvelopeFromGameRound(localRound, false),
+      idempotent: false,
+    }
   }
 }
 

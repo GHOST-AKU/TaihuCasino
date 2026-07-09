@@ -36,6 +36,9 @@ export default async function GameRoutePage({
 
   const initialProgress = member.progress.find((progress) => progress.gameSlug === game.slug) ?? null
   const initialTableSession = await readActiveTableSession(cookieStore, game.slug)
+  const initialGameRounds = member.gameRounds.filter(
+    (round) => round.gameSlug === game.slug && round.tableSessionId === initialTableSession?.id,
+  )
   const gameStateProps = {
     initialWalletBalance: member.wallet.balance,
     initialProgress,
@@ -49,6 +52,7 @@ export default async function GameRoutePage({
         entry={game}
         defaultLanguage={member.settings.language}
         initialTableSession={initialTableSession}
+        initialGameRounds={initialGameRounds}
         {...gameStateProps}
       />
     )
@@ -71,6 +75,7 @@ export default async function GameRoutePage({
         entry={game}
         defaultLanguage={member.settings.language}
         initialTableSession={initialTableSession}
+        initialGameRounds={initialGameRounds}
         {...gameStateProps}
       />
     )
@@ -82,6 +87,7 @@ export default async function GameRoutePage({
         entry={game}
         defaultLanguage={member.settings.language}
         initialTableSession={initialTableSession}
+        initialGameRounds={initialGameRounds}
         {...gameStateProps}
       />
     )

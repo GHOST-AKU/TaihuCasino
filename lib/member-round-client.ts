@@ -1,3 +1,5 @@
+import type { RoundEnvelope } from "@/lib/game-round-contract"
+
 export interface ClientGameRoundInput {
   gameSlug: string
   idempotencyKey: string
@@ -23,6 +25,8 @@ export async function recordClientGameRound(input: ClientGameRoundInput) {
     error?: string
     progress?: { bankroll?: unknown }
     settlement?: ClientAuthoritativeSettlement
+    round?: RoundEnvelope
+    idempotent?: boolean
   } | null
 
   if (!response.ok) {
@@ -32,5 +36,7 @@ export async function recordClientGameRound(input: ClientGameRoundInput) {
   return {
     bankroll: typeof payload?.progress?.bankroll === "number" ? payload.progress.bankroll : null,
     settlement: payload?.settlement ?? null,
+    round: payload?.round ?? null,
+    idempotent: payload?.idempotent === true,
   }
 }

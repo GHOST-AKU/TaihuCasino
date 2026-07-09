@@ -225,16 +225,33 @@ test("four core tables support buy-in, authoritative round settlement, replay sa
     const roundBody = await round.json()
     expect(roundBody.settlement.totalStake).toBe(10)
     expect(roundBody.settlement.resultSnapshot.forged).toBeUndefined()
+    expect(roundBody.round.roundId).toEqual(expect.any(String))
+    expect(roundBody.round.gameSlug).toBe(table.slug)
+    expect(roundBody.round.tableSessionId).toBe(tableSession.id)
+    expect(roundBody.round.status).toBe("settled")
+    expect(roundBody.round.version).toBe(1)
+    expect(roundBody.round.totalStake).toBe(10)
+    expect(roundBody.round.delta).toBe(roundBody.settlement.delta)
+    expect(roundBody.round.summary).toBe(roundBody.settlement.summary)
+    expect(roundBody.round.chipBalanceBefore).toBe(tableSession.chipBalance)
+    expect(roundBody.round.chipBalanceAfter).toBe(roundBody.progress.bankroll)
+    expect(roundBody.round.resultSnapshot.forged).toBeUndefined()
+    expect(roundBody.round.idempotent).toBe(false)
 
     const replay = await request.post("/api/member/game-rounds", { data: roundPayload })
     expect(replay.status(), `${table.slug} replay`).toBe(200)
-    expect((await replay.json()).idempotent).toBe(true)
+    const replayBody = await replay.json()
+    expect(replayBody.idempotent).toBe(true)
+    expect(replayBody.round.roundId).toBe(roundBody.round.roundId)
+    expect(replayBody.round.tableSessionId).toBe(tableSession.id)
+    expect(replayBody.round.chipBalanceAfter).toBe(roundBody.round.chipBalanceAfter)
+    expect(replayBody.round.idempotent).toBe(true)
 
     const cashOut = await request.post(`/api/member/table-sessions/${tableSession.id}/cash-out`, {
       headers: { "x-request-id": `e2e-${table.slug}-cash-out` },
       data: {
         idempotencyKey: `e2e-cashout-${table.slug}`,
-        expectedChipBalance: 999999,
+        expectedChipBalance: roundBody.round.chipBalanceAfter,
       },
     })
     expect(cashOut.status(), `${table.slug} cash-out`).toBe(200)

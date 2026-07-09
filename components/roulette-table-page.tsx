@@ -5,9 +5,10 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, BookOpen, RotateCcw, Settings, Trash2 } from "lucide-react"
 
 import { useLanguage } from "@/hooks/use-language"
+import type { RoundEnvelope } from "@/lib/game-round-contract"
 import { type Language } from "@/lib/home-content"
 import { type CasinoTableEntry } from "@/lib/game-catalog"
-import { type MemberGameProgress, type MemberTableSession } from "@/lib/member-data"
+import { type MemberGameProgress, type MemberGameRound, type MemberTableSession } from "@/lib/member-data"
 import { recordClientGameRound } from "@/lib/member-round-client"
 import { cashOutClientTableSession, openClientTableSession } from "@/lib/table-session-client"
 import { cn } from "@/lib/utils"
@@ -60,6 +61,28 @@ function statsFromProgress(progress: MemberGameProgress | null): RouletteStats {
     totalStake: 0,
     totalDelta: progress.lastDelta,
     lastDelta: progress.lastDelta,
+  }
+}
+
+function rouletteStateFromRounds(rounds: MemberGameRound[], progress: MemberGameProgress | null) {
+  const ordered = [...rounds].sort(
+    (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+  )
+  const latestResult = ordered.find((round) => typeof round.resultSnapshot.result === "number")
+  const result = typeof latestResult?.resultSnapshot.result === "number"
+    ? latestResult.resultSnapshot.result
+    : null
+
+  return {
+    result,
+    lastRoundId: latestResult?.id ?? null,
+    stats: {
+      rounds: progress?.plays ?? ordered.length,
+      hitRounds: progress?.wins ?? ordered.filter((round) => round.delta > 0).length,
+      totalStake: ordered.reduce((sum, round) => sum + round.totalStake, 0),
+      totalDelta: ordered.reduce((sum, round) => sum + round.delta, 0),
+      lastDelta: latestResult?.delta ?? progress?.lastDelta ?? 0,
+    } satisfies RouletteStats,
   }
 }
 
@@ -345,12 +368,14 @@ export function RouletteTablePage({
   initialWalletBalance,
   initialProgress,
   initialTableSession,
+  initialGameRounds,
 }: {
   entry: CasinoTableEntry
   defaultLanguage: Language
   initialWalletBalance: number
   initialProgress: MemberGameProgress | null
   initialTableSession: MemberTableSession | null
+  initialGameRounds: MemberGameRound[]
 }) {
   const [language] = useLanguage(defaultLanguage)
   const isChinese = language === "zh"
@@ -361,13 +386,14 @@ export function RouletteTablePage({
     ? "主钱包只在买入和离桌时变化；每次结算会先计入本桌筹码。"
     : "Your wallet changes on buy-in and cash-out. Each round settles into table chips first."
   const defaultChips = [10, 25, 50, 100, 250]
+  const hydratedRoundState = rouletteStateFromRounds(initialGameRounds, initialProgress)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const settleTimeoutRef = useRef<number | null>(null)
-  const wheelAngle = useRef(0)
+  const wheelAngle = useRef(hydratedRoundState.result === null ? 0 : wheelAngleForResult(hydratedRoundState.result))
   const ballAngle = useRef<number | null>(null)
   const ballRadius = useRef(ballPocketRadius)
-  const pointerNumberRef = useRef<number | null>(null)
+  const pointerNumberRef = useRef<number | null>(hydratedRoundState.result)
   const initialBankroll = initialTableSession?.chipBalance ?? 0
   const [bankroll, setBankroll] = useState(initialBankroll)
   const [walletBalance, setWalletBalance] = useState(initialWalletBalance)
@@ -381,14 +407,16 @@ export function RouletteTablePage({
   const [initialBankrollInput, setInitialBankrollInput] = useState(String(initialBankroll))
   const [initialChipsInput, setInitialChipsInput] = useState(defaultChips.join(","))
   const [bets, setBets] = useState<RouletteBet[]>([])
-  const [result, setResult] = useState<number | null>(null)
-  const [pointerNumber, setPointerNumber] = useState<number | null>(null)
+  const [result, setResult] = useState<number | null>(hydratedRoundState.result)
+  const [pointerNumber, setPointerNumber] = useState<number | null>(hydratedRoundState.result)
   const [spinProgress, setSpinProgress] = useState(0)
   const [message, setMessage] = useState(
     isChinese ? "可同局叠加多个下注项目。" : "Multiple bets can be stacked in the same spin.",
   )
   const [spinning, setSpinning] = useState(false)
-  const [stats, setStats] = useState<RouletteStats>(() => statsFromProgress(initialProgress))
+  const [pendingRoundKey, setPendingRoundKey] = useState<string | null>(null)
+  const [lastRoundId, setLastRoundId] = useState<string | null>(hydratedRoundState.lastRoundId)
+  const [stats, setStats] = useState<RouletteStats>(hydratedRoundState.stats)
   const [showRules, setShowRules] = useState(false)
   const [insideTypeA, setInsideTypeA] = useState<"split" | "street">("split")
   const [insideIndexA, setInsideIndexA] = useState(0)
@@ -450,12 +478,8 @@ export function RouletteTablePage({
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as {
-          bankroll?: number
           stake?: number
           chips?: number[]
-          stats?: RouletteStats
-          result?: number | null
-          wheelAngle?: number
         }
 
         if (typeof parsed.stake === "number") {
@@ -467,20 +491,6 @@ export function RouletteTablePage({
           setInitialChipsInput(parsed.chips.join(","))
         }
 
-        if (parsed.stats) {
-          setStats(parsed.stats)
-        }
-
-        if (typeof parsed.result === "number" || parsed.result === null) {
-          setResult(parsed.result)
-          setPointerNumber(parsed.result)
-          pointerNumberRef.current = parsed.result
-        }
-
-        if (typeof parsed.wheelAngle === "number") {
-          wheelAngle.current = parsed.wheelAngle
-          updatePointerNumber(parsed.wheelAngle)
-        }
       } catch {
         window.localStorage.removeItem(storageKey)
       }
@@ -493,25 +503,24 @@ export function RouletteTablePage({
     setInitialBankrollInput(String(syncedBankroll))
 
     if (initialProgress) {
-      setStats(statsFromProgress(initialProgress))
+      const hydrated = rouletteStateFromRounds(initialGameRounds, initialProgress)
+      setStats(hydrated.stats)
+      setResult(hydrated.result)
+      setPointerNumber(hydrated.result)
+      pointerNumberRef.current = hydrated.result
+      setLastRoundId(hydrated.lastRoundId)
+      if (hydrated.result !== null) {
+        wheelAngle.current = wheelAngleForResult(hydrated.result)
+      }
     }
-  }, [storageKey, initialProgress, initialWalletBalance, initialTableSession])
+  }, [storageKey, initialProgress, initialWalletBalance, initialTableSession, initialGameRounds])
 
-  function persistLocal(
-    nextBankroll: number,
-    nextStats: RouletteStats,
-    nextResult: number | null,
-    nextWheelAngle: number,
-  ) {
+  function persistLocal(nextStake = stake, nextChips = chips) {
     window.localStorage.setItem(
       storageKey,
       JSON.stringify({
-        bankroll: nextBankroll,
-        stake,
-        chips,
-        stats: nextStats,
-        result: nextResult,
-        wheelAngle: nextWheelAngle,
+        stake: nextStake,
+        chips: nextChips,
       }),
     )
   }
@@ -638,17 +647,9 @@ export function RouletteTablePage({
     setInitialChipsInput(defaultChips.join(","))
     setStake(50)
     setBets([])
-    setResult(null)
-    setPointerNumber(null)
-    pointerNumberRef.current = null
     setSpinProgress(0)
-    setStats(initialStats)
-    wheelAngle.current = 0
-    ballAngle.current = null
-    ballRadius.current = ballPocketRadius
-    drawWheel(canvasRef.current, 0, null, ballPocketRadius, null)
     window.localStorage.removeItem(storageKey)
-    setMessage(isChinese ? "已重置局面。" : "Table reset.")
+    setMessage(isChinese ? "下注与界面偏好已重置；权威结果和余额保持不变。" : "Bets and UI preferences reset; authoritative results and bankroll were kept.")
   }
 
   function applyInitialSettings() {
@@ -663,16 +664,8 @@ export function RouletteTablePage({
     setChips(nextChips)
     setStake(nextChips[0])
     setBets([])
-    setResult(null)
-    setPointerNumber(null)
-    pointerNumberRef.current = null
     setSpinProgress(0)
-    setStats(initialStats)
-    wheelAngle.current = 0
-    ballAngle.current = null
-    ballRadius.current = ballPocketRadius
-    drawWheel(canvasRef.current, 0, null, ballPocketRadius, null)
-    window.localStorage.removeItem(storageKey)
+    persistLocal(nextChips[0], nextChips)
     setMessage(isChinese ? "已应用初始设置。" : "Initial settings applied.")
   }
 
@@ -694,7 +687,7 @@ export function RouletteTablePage({
     })
   }
 
-  function spin() {
+  async function spin() {
     if (spinning) {
       return
     }
@@ -704,6 +697,7 @@ export function RouletteTablePage({
       return
     }
     const activeTableSession = tableSession
+    const betsThisRound = bets.map((bet) => ({ ...bet, numbers: [...bet.numbers] }))
 
     if (!bets.length) {
       setMessage(isChinese ? "请先添加下注。" : "Place a bet first.")
@@ -715,8 +709,46 @@ export function RouletteTablePage({
       return
     }
 
-    const targetIndex = Math.floor(Math.random() * wheelOrder.length)
-    const targetResult = wheelOrder[targetIndex]
+    setSpinning(true)
+    setIsSyncingRound(true)
+    setSpinProgress(4)
+    setMessage(isChinese ? "正在等待服务端权威结算..." : "Waiting for the authoritative server round...")
+
+    const idempotencyKey = pendingRoundKey ?? `roulette-${entry.slug}-${crypto.randomUUID()}`
+    setPendingRoundKey(idempotencyKey)
+
+    let round: RoundEnvelope | null = null
+
+    try {
+      const serverResult = await persistRouletteProgress(
+        entry,
+        betsThisRound,
+        idempotencyKey,
+        activeTableSession.id,
+      )
+      round = serverResult.round
+
+      if (!round) {
+        throw new Error(isChinese ? "服务端未返回权威回合。" : "The server did not return an authoritative round.")
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : isChinese ? "结算未完成，请使用同一回合重试。" : "Settlement did not complete; retry the same round.")
+      setIsSyncingRound(false)
+      setSpinning(false)
+      return
+    }
+
+    const targetResult = round.resultSnapshot.result
+
+    if (typeof targetResult !== "number" || !wheelOrder.includes(targetResult)) {
+      setMessage(isChinese ? "服务端轮盘结果无效。" : "The authoritative roulette result is invalid.")
+      setIsSyncingRound(false)
+      setSpinning(false)
+      return
+    }
+
+    const authoritativeRound = round
+    setIsSyncingRound(false)
     const pocketJitter = (Math.random() - 0.5) * wheelPocketAngle * 0.6
     const fromWheel = wheelAngle.current
     const fromBall = ballAngle.current ?? -Math.PI / 2
@@ -738,7 +770,6 @@ export function RouletteTablePage({
     setResult(null)
     setPointerNumber(rouletteResultAtPointer(fromWheel))
     pointerNumberRef.current = rouletteResultAtPointer(fromWheel)
-    setSpinning(true)
     setSpinProgress(0)
     setMessage(
       isChinese
@@ -789,73 +820,32 @@ export function RouletteTablePage({
       wheelAngle.current = finalWheelAngle
       ballAngle.current = null
       ballRadius.current = ballPocketRadius
-      const settledResult = rouletteResultAtPointer(finalWheelAngle)
+      const settledResult = targetResult
       drawWheel(canvasRef.current, finalWheelAngle, null, ballPocketRadius, settledResult)
       setPointerNumber(settledResult)
       pointerNumberRef.current = settledResult
       setSpinProgress(96)
 
       settleTimeoutRef.current = window.setTimeout(() => {
-        void (async () => {
-        const delta = bets.reduce((sum, bet) => sum + payoutOne(bet, settledResult), 0)
-        const nextBankroll = bankroll + delta
+        const nextBankroll = authoritativeRound.chipBalanceAfter
         const nextStats: RouletteStats = {
           rounds: stats.rounds + 1,
-          hitRounds: stats.hitRounds + (delta > 0 ? 1 : 0),
-          totalStake: stats.totalStake + preview.totalStake,
-          totalDelta: stats.totalDelta + delta,
-          lastDelta: delta,
+          hitRounds: stats.hitRounds + (authoritativeRound.delta > 0 ? 1 : 0),
+          totalStake: stats.totalStake + authoritativeRound.totalStake,
+          totalDelta: stats.totalDelta + authoritativeRound.delta,
+          lastDelta: authoritativeRound.delta,
         }
 
         setResult(settledResult)
         setBankroll(nextBankroll)
         setTableSession({ ...activeTableSession, chipBalance: nextBankroll })
         setStats(nextStats)
+        setLastRoundId(authoritativeRound.roundId)
+        setPendingRoundKey(null)
         setSpinProgress(100)
-        setMessage(
-          isChinese
-            ? `开出 ${settledResult}（${numberColor(settledResult) === "green" ? "绿" : numberColor(settledResult) === "red" ? "红" : "黑"}），本轮 ${formatDelta(delta)}。`
-            : `Landed on ${settledResult} ${numberColor(settledResult)}, round ${formatDelta(delta)}.`,
-        )
-        persistLocal(nextBankroll, nextStats, settledResult, finalWheelAngle)
-        setIsSyncingRound(true)
-
-        try {
-          const serverResult = await persistRouletteProgress(
-            entry,
-            bets,
-            `roulette-${entry.slug}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-            activeTableSession.id,
-          )
-          const serverBankroll = serverResult.bankroll
-
-          if (typeof serverBankroll === "number") {
-            setBankroll(serverBankroll)
-            setTableSession((current) => current ? { ...current, chipBalance: serverBankroll } : current)
-            persistLocal(serverBankroll, nextStats, settledResult, finalWheelAngle)
-          }
-
-          const serverNumber = serverResult.settlement?.resultSnapshot.result
-
-          if (typeof serverNumber === "number") {
-            const serverWheelAngle = wheelAngleForResult(serverNumber)
-            setResult(serverNumber)
-            setPointerNumber(serverNumber)
-            pointerNumberRef.current = serverNumber
-            wheelAngle.current = serverWheelAngle
-            drawWheel(canvasRef.current, serverWheelAngle, null, ballPocketRadius, serverNumber)
-          }
-
-          if (serverResult.settlement) {
-            setMessage(serverResult.settlement.summary)
-          }
-        } catch (error) {
-          console.error("roulette round sync failed", error)
-        } finally {
-          setIsSyncingRound(false)
-          setSpinning(false)
-        }
-        })()
+        setMessage(authoritativeRound.summary)
+        persistLocal()
+        setSpinning(false)
       }, settleDelay)
     }
 
@@ -866,7 +856,7 @@ export function RouletteTablePage({
   const optionB = insideOptions[insideTypeB]
 
   return (
-    <main className="game-table-shell lobby-shell min-h-screen overflow-hidden bg-background text-foreground">
+    <main data-round-id={lastRoundId ?? undefined} className="game-table-shell lobby-shell min-h-screen overflow-hidden bg-background text-foreground">
       <div className="mx-auto grid max-w-[1440px] gap-3 px-4 py-4 lg:px-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
