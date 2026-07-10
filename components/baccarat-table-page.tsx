@@ -14,14 +14,13 @@ import {
 import { useLanguage } from "@/hooks/use-language"
 import { type Language } from "@/lib/home-content"
 import { type CasinoTableEntry } from "@/lib/game-catalog"
-import { type MemberGameProgress, type MemberTableSession } from "@/lib/member-data"
+import { type MemberGameProgress, type MemberGameRound, type MemberTableSession } from "@/lib/member-data"
 import { recordClientGameRound } from "@/lib/member-round-client"
 import { cashOutClientTableSession, openClientTableSession } from "@/lib/table-session-client"
 import { cn } from "@/lib/utils"
 
 type BetKey = "player" | "banker" | "tie" | "playerPair" | "bankerPair"
 type Winner = "P" | "B" | "T"
-type Outcome = "win" | "loss" | "push"
 type Suit = "spades" | "hearts" | "diamonds" | "clubs"
 type BaccaratSide = "player" | "banker"
 
@@ -71,12 +70,6 @@ interface BaccaratDealStep {
   en: string
 }
 
-interface BaccaratDealPlan {
-  round: BaccaratRound
-  shoe: BaccaratCard[]
-  steps: BaccaratDealStep[]
-}
-
 interface BaccaratVisibleDeal {
   playerCards: BaccaratCard[]
   bankerCards: BaccaratCard[]
@@ -91,15 +84,6 @@ const emptyBets: BetLedger = {
   tie: 0,
   playerPair: 0,
   bankerPair: 0,
-}
-
-const initialStats: BaccaratStats = {
-  rounds: 0,
-  hitRounds: 0,
-  totalStake: 0,
-  totalDelta: 0,
-  lastDelta: 0,
-  ties: 0,
 }
 
 const betOptions = [
@@ -216,47 +200,6 @@ function parseChips(value: string, fallback: number[]) {
   return parsed.length > 0 ? parsed : fallback
 }
 
-function shuffleCards(cards: BaccaratCard[]) {
-  const next = [...cards]
-
-  for (let index = next.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1))
-    const current = next[index]
-    next[index] = next[swapIndex]
-    next[swapIndex] = current
-  }
-
-  return next
-}
-
-function freshShoe(deckCount = 8) {
-  const cards: BaccaratCard[] = []
-
-  for (let deck = 0; deck < deckCount; deck += 1) {
-    for (const suit of suits) {
-      for (let rank = 1; rank <= 13; rank += 1) {
-        cards.push({ rank, suit })
-      }
-    }
-  }
-
-  return shuffleCards(cards)
-}
-
-function drawFrom(shoe: BaccaratCard[]) {
-  if (shoe.length < 20) {
-    shoe.splice(0, shoe.length, ...freshShoe())
-  }
-
-  const card = shoe.pop()
-
-  if (!card) {
-    throw new Error("Shoe could not draw a card.")
-  }
-
-  return card
-}
-
 function cardPoint(card: BaccaratCard) {
   return card.rank >= 10 ? 0 : card.rank
 }
@@ -298,43 +241,70 @@ function authoritativeBaccaratRound(snapshot: Record<string, unknown>): Baccarat
   }
 }
 
-function shouldBankerDraw(bankerPoint: number, playerThirdPoint: number | null) {
-  if (playerThirdPoint === null) {
-    return bankerPoint <= 5
-  }
+function baccaratStateFromRounds(rounds: MemberGameRound[], progress: MemberGameProgress | null) {
+  const ordered = [...rounds].sort(
+    (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+  )
+  const history = ordered.flatMap((memberRound): BaccaratHistory[] => {
+    const round = authoritativeBaccaratRound(memberRound.resultSnapshot)
 
-  if (bankerPoint <= 2) {
-    return true
-  }
+    if (!round) {
+      return []
+    }
 
-  if (bankerPoint === 3) {
-    return playerThirdPoint !== 8
-  }
+    const rawBets = memberRound.betSnapshot.bets
+    const bets = cloneEmptyBets()
 
-  if (bankerPoint === 4) {
-    return playerThirdPoint >= 2 && playerThirdPoint <= 7
-  }
+    if (rawBets && typeof rawBets === "object" && !Array.isArray(rawBets)) {
+      for (const key of Object.keys(bets) as BetKey[]) {
+        const value = (rawBets as Record<string, unknown>)[key]
+        bets[key] = typeof value === "number" ? value : 0
+      }
+    }
 
-  if (bankerPoint === 5) {
-    return playerThirdPoint >= 4 && playerThirdPoint <= 7
-  }
+    return [{
+      ...round,
+      id: memberRound.id,
+      delta: memberRound.delta,
+      bankroll: memberRound.chipBalanceAfter ?? 0,
+      totalStake: memberRound.totalStake,
+      bets,
+      createdAt: memberRound.createdAt,
+    }]
+  }).slice(0, 30)
+  const latest = history[0]
 
-  if (bankerPoint === 6) {
-    return playerThirdPoint === 6 || playerThirdPoint === 7
+  return {
+    lastRound: latest
+      ? {
+          playerCards: latest.playerCards,
+          bankerCards: latest.bankerCards,
+          playerPoint: latest.playerPoint,
+          bankerPoint: latest.bankerPoint,
+          winner: latest.winner,
+          playerPair: latest.playerPair,
+          bankerPair: latest.bankerPair,
+        }
+      : null,
+    lastRoundId: latest?.id ?? null,
+    history,
+    stats: {
+      rounds: progress?.plays ?? history.length,
+      hitRounds: progress?.wins ?? history.filter((round) => round.delta > 0).length,
+      totalStake: ordered.reduce((sum, round) => sum + round.totalStake, 0),
+      totalDelta: ordered.reduce((sum, round) => sum + round.delta, 0),
+      lastDelta: latest?.delta ?? progress?.lastDelta ?? 0,
+      ties: history.filter((round) => round.winner === "T").length,
+    } satisfies BaccaratStats,
   }
-
-  return false
 }
 
-function createBaccaratDealPlan(currentShoe: BaccaratCard[]): BaccaratDealPlan {
-  const shoe = currentShoe.length < 20 ? freshShoe() : [...currentShoe]
+function createAuthoritativeDealSteps(round: BaccaratRound): BaccaratDealStep[] {
   const playerCards: BaccaratCard[] = []
   const bankerCards: BaccaratCard[] = []
   const steps: BaccaratDealStep[] = []
 
-  function dealCard(side: BaccaratSide, zh: string, en: string) {
-    const card = drawFrom(shoe)
-
+  function dealCard(side: BaccaratSide, card: BaccaratCard, zh: string, en: string) {
     if (side === "player") {
       playerCards.push(card)
     } else {
@@ -352,48 +322,22 @@ function createBaccaratDealPlan(currentShoe: BaccaratCard[]): BaccaratDealPlan {
       en,
     })
 
-    return card
   }
 
-  dealCard("player", "闲家第一张", "Player first card")
-  dealCard("banker", "庄家第一张", "Banker first card")
-  dealCard("player", "闲家第二张", "Player second card")
-  dealCard("banker", "庄家第二张", "Banker second card")
+  dealCard("player", round.playerCards[0], "闲家第一张", "Player first card")
+  dealCard("banker", round.bankerCards[0], "庄家第一张", "Banker first card")
+  dealCard("player", round.playerCards[1], "闲家第二张", "Player second card")
+  dealCard("banker", round.bankerCards[1], "庄家第二张", "Banker second card")
 
-  let playerPoint = handPoint(playerCards)
-  let bankerPoint = handPoint(bankerCards)
-
-  if (playerPoint < 8 && bankerPoint < 8) {
-    let playerThirdPoint: number | null = null
-
-    if (playerPoint <= 5) {
-      const thirdCard = dealCard("player", "闲家按规则补第三张", "Player draws the third card")
-      playerThirdPoint = cardPoint(thirdCard)
-      playerPoint = handPoint(playerCards)
-    }
-
-    if (shouldBankerDraw(bankerPoint, playerThirdPoint)) {
-      dealCard("banker", "庄家按规则补第三张", "Banker draws the third card")
-      bankerPoint = handPoint(bankerCards)
-    }
+  if (round.playerCards[2]) {
+    dealCard("player", round.playerCards[2], "闲家按规则补第三张", "Player draws the third card")
   }
 
-  const winner: Winner =
-    playerPoint === bankerPoint ? "T" : playerPoint > bankerPoint ? "P" : "B"
-
-  return {
-    round: {
-      playerCards,
-      bankerCards,
-      playerPoint,
-      bankerPoint,
-      winner,
-      playerPair: hasPair(playerCards),
-      bankerPair: hasPair(bankerCards),
-    },
-    shoe,
-    steps,
+  if (round.bankerCards[2]) {
+    dealCard("banker", round.bankerCards[2], "庄家按规则补第三张", "Banker draws the third card")
   }
+
+  return steps
 }
 
 function settleBets(
@@ -476,25 +420,9 @@ function winnerShort(winner: Winner) {
   return winner === "P" ? "P" : winner === "B" ? "B" : "T"
 }
 
-function cardListText(cards: BaccaratCard[]) {
-  return cards.map((card) => `${rankText(card.rank)}${suitText(card.suit)}`).join(" ")
-}
-
 function betLabel(key: BetKey, language: Language) {
   const option = betOptions.find((item) => item.key === key)
   return language === "zh" ? option?.zh ?? key : option?.en ?? key
-}
-
-function outcomeFromDelta(delta: number): Outcome {
-  if (delta > 0) {
-    return "win"
-  }
-
-  if (delta < 0) {
-    return "loss"
-  }
-
-  return "push"
 }
 
 function calculatePreview(bets: BetLedger) {
@@ -525,15 +453,16 @@ function calculatePreview(bets: BetLedger) {
 
 async function persistServerProgress(
   entry: CasinoTableEntry,
-  record: BaccaratHistory,
+  bets: BetLedger,
+  idempotencyKey: string,
   tableSessionId: string,
 ) {
   return recordClientGameRound({
     gameSlug: entry.slug,
-    idempotencyKey: record.id,
+    idempotencyKey,
     tableSessionId,
     betSnapshot: {
-      bets: record.bets,
+      bets,
     },
   })
 }
@@ -544,12 +473,14 @@ export function BaccaratTablePage({
   initialWalletBalance,
   initialProgress,
   initialTableSession,
+  initialGameRounds,
 }: {
   entry: CasinoTableEntry
   defaultLanguage: Language
   initialWalletBalance: number
   initialProgress: MemberGameProgress | null
   initialTableSession: MemberTableSession | null
+  initialGameRounds: MemberGameRound[]
 }) {
   const [language] = useLanguage(defaultLanguage)
   const isChinese = language === "zh"
@@ -563,6 +494,7 @@ export function BaccaratTablePage({
   const initialBankroll = initialTableSession?.chipBalance ?? 0
   const defaultChips = isVip ? [100, 250, 500, 1000, 2500] : [10, 25, 50, 100, 250]
   const defaultStake = isVip ? 250 : 25
+  const hydratedRoundState = baccaratStateFromRounds(initialGameRounds, initialProgress)
 
   const [bankroll, setBankroll] = useState(initialBankroll)
   const [walletBalance, setWalletBalance] = useState(initialWalletBalance)
@@ -576,27 +508,17 @@ export function BaccaratTablePage({
   const [initialBankrollInput, setInitialBankrollInput] = useState(String(initialBankroll))
   const [initialChipsInput, setInitialChipsInput] = useState(defaultChips.join(","))
   const [bets, setBets] = useState<BetLedger>(() => cloneEmptyBets())
-  const [shoe, setShoe] = useState<BaccaratCard[]>(() => freshShoe())
-  const [lastRound, setLastRound] = useState<BaccaratRound | null>(null)
-  const [history, setHistory] = useState<BaccaratHistory[]>([])
-  const [stats, setStats] = useState<BaccaratStats>(() =>
-    initialProgress
-      ? {
-          rounds: initialProgress.plays,
-          hitRounds: initialProgress.wins,
-          totalStake: 0,
-          totalDelta: initialProgress.lastDelta,
-          lastDelta: initialProgress.lastDelta,
-          ties: initialProgress.lastResult === "push" ? 1 : 0,
-        }
-      : initialStats,
-  )
+  const [lastRound, setLastRound] = useState<BaccaratRound | null>(hydratedRoundState.lastRound)
+  const [history, setHistory] = useState<BaccaratHistory[]>(hydratedRoundState.history)
+  const [stats, setStats] = useState<BaccaratStats>(hydratedRoundState.stats)
   const [message, setMessage] = useState(
     isChinese
       ? "选择筹码并点击下注区域，准备下一手。"
       : "Choose a chip and click a betting area to prepare the next hand.",
   )
   const [dealing, setDealing] = useState(false)
+  const [pendingRoundKey, setPendingRoundKey] = useState<string | null>(null)
+  const [lastRoundId, setLastRoundId] = useState<string | null>(hydratedRoundState.lastRoundId)
   const [dealProgress, setDealProgress] = useState(0)
   const [visibleDeal, setVisibleDeal] = useState<BaccaratVisibleDeal | null>(null)
   const [showRules, setShowRules] = useState(false)
@@ -642,17 +564,8 @@ export function BaccaratTablePage({
 
     try {
       const parsed = JSON.parse(saved) as {
-        bankroll?: number
         chips?: number[]
         stake?: number
-        history?: BaccaratHistory[]
-        stats?: BaccaratStats
-        lastRound?: BaccaratRound | null
-      }
-
-      if (typeof parsed.bankroll === "number") {
-        setBankroll(parsed.bankroll)
-        setInitialBankrollInput(String(parsed.bankroll))
       }
 
       if (Array.isArray(parsed.chips) && parsed.chips.every((chip) => typeof chip === "number")) {
@@ -664,17 +577,6 @@ export function BaccaratTablePage({
         setStake(parsed.stake)
       }
 
-      if (Array.isArray(parsed.history)) {
-        setHistory(parsed.history.slice(0, 30))
-      }
-
-      if (parsed.stats) {
-        setStats(parsed.stats)
-      }
-
-      if (parsed.lastRound) {
-        setLastRound(parsed.lastRound)
-      }
     } catch {
       window.localStorage.removeItem(storageKey)
     }
@@ -686,32 +588,20 @@ export function BaccaratTablePage({
     setInitialBankrollInput(String(syncedBankroll))
 
     if (initialProgress) {
-      setStats({
-        rounds: initialProgress.plays,
-        hitRounds: initialProgress.wins,
-        totalStake: 0,
-        totalDelta: initialProgress.lastDelta,
-        lastDelta: initialProgress.lastDelta,
-        ties: initialProgress.lastResult === "push" ? 1 : 0,
-      })
+      const hydrated = baccaratStateFromRounds(initialGameRounds, initialProgress)
+      setLastRound(hydrated.lastRound)
+      setLastRoundId(hydrated.lastRoundId)
+      setHistory(hydrated.history)
+      setStats(hydrated.stats)
     }
-  }, [storageKey, initialProgress, initialWalletBalance, initialTableSession])
+  }, [storageKey, initialProgress, initialWalletBalance, initialTableSession, initialGameRounds])
 
-  function persistLocal(
-    nextBankroll: number,
-    nextHistory: BaccaratHistory[],
-    nextStats: BaccaratStats,
-    nextLastRound: BaccaratRound | null,
-  ) {
+  function persistLocal(nextStake = stake, nextChips = chips) {
     window.localStorage.setItem(
       storageKey,
       JSON.stringify({
-        bankroll: nextBankroll,
-        chips,
-        stake,
-        history: nextHistory.slice(0, 30),
-        stats: nextStats,
-        lastRound: nextLastRound,
+        chips: nextChips,
+        stake: nextStake,
       }),
     )
   }
@@ -741,38 +631,27 @@ export function BaccaratTablePage({
   }
 
   function applyInitialSettings() {
-    const nextBankroll = clampPositiveInteger(initialBankrollInput, initialBankroll)
     const nextChips = parseChips(initialChipsInput, defaultChips)
 
-    setBankroll(nextBankroll)
     setChips(nextChips)
     setStake(nextChips[0])
     setBets(cloneEmptyBets())
-    setHistory([])
-    setStats(initialStats)
-    setLastRound(null)
     setVisibleDeal(null)
     setDealProgress(0)
-    setShoe(freshShoe())
-    window.localStorage.removeItem(storageKey)
-    setMessage(isChinese ? "初始设置已应用，牌靴已重洗。" : "Initial settings applied and the shoe was reshuffled.")
+    persistLocal(nextChips[0], nextChips)
+    setMessage(isChinese ? "筹码面额与下注设置已更新。" : "Chip values and betting preferences were updated.")
   }
 
   function resetTable() {
-    setBankroll(initialBankroll)
-    setInitialBankrollInput(String(initialBankroll))
+    setInitialBankrollInput(String(tableSession?.chipBalance ?? 0))
     setChips(defaultChips)
     setInitialChipsInput(defaultChips.join(","))
     setStake(defaultStake)
     setBets(cloneEmptyBets())
-    setHistory([])
-    setStats(initialStats)
-    setLastRound(null)
     setVisibleDeal(null)
     setDealProgress(0)
-    setShoe(freshShoe())
     window.localStorage.removeItem(storageKey)
-    setMessage(isChinese ? "局面已重置，准备重新开靴。" : "Table reset. Ready for a fresh shoe.")
+    setMessage(isChinese ? "下注与界面偏好已重置；权威结果和余额保持不变。" : "Bets and UI preferences reset; authoritative results and bankroll were kept.")
   }
 
   async function openSession() {
@@ -850,19 +729,56 @@ export function BaccaratTablePage({
     }
 
     const betsThisRound = { ...bets }
-    const stakeThisRound = preview.totalStake
     const languageThisRound = language
     const isChineseThisRound = languageThisRound === "zh"
-    const { round, shoe: nextShoe, steps } = createBaccaratDealPlan(shoe)
+    const idempotencyKey = pendingRoundKey ?? `baccarat-${entry.slug}-${crypto.randomUUID()}`
 
     setDealing(true)
+    setIsSyncingRound(true)
+    setPendingRoundKey(idempotencyKey)
     setDealProgress(4)
+    setVisibleDeal(null)
+    setMessage(
+      isChineseThisRound
+        ? "正在等待服务端生成权威牌局..."
+        : "Waiting for the server to generate the authoritative hand...",
+    )
+
+    let serverResult: Awaited<ReturnType<typeof persistServerProgress>>
+
+    try {
+      serverResult = await persistServerProgress(
+        entry,
+        betsThisRound,
+        idempotencyKey,
+        activeTableSession.id,
+      )
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : isChineseThisRound ? "结算未完成，请使用同一回合重试。" : "Settlement did not complete; retry the same round.")
+      setIsSyncingRound(false)
+      setDealing(false)
+      return
+    }
+
+    const envelope = serverResult.round
+    const round = envelope ? authoritativeBaccaratRound(envelope.resultSnapshot) : null
+
+    if (!envelope || !round) {
+      setMessage(isChineseThisRound ? "服务端未返回有效的权威牌局。" : "The server did not return a valid authoritative hand.")
+      setIsSyncingRound(false)
+      setDealing(false)
+      return
+    }
+
+    setIsSyncingRound(false)
     setVisibleDeal({ playerCards: [], bankerCards: [] })
     setMessage(
       isChineseThisRound
-        ? "荷官开始发牌：闲、庄、闲、庄，按真实百家乐顺序亮牌。"
-        : "Dealer starts: Player, Banker, Player, Banker, then any rule-based draw.",
+        ? "荷官开始按服务端牌序发牌：闲、庄、闲、庄。"
+        : "Dealer starts with the server-provided order: Player, Banker, Player, Banker.",
     )
+
+    const steps = createAuthoritativeDealSteps(round)
 
     for (let index = 0; index < steps.length; index += 1) {
       const step = steps[index]
@@ -898,104 +814,52 @@ export function BaccaratTablePage({
 
     await sleep(pointCheckDelayMs)
 
-    const delta = settleBets(round, betsThisRound)
-    const nextBankroll = roundMoney(bankroll + delta)
+    const nextBankroll = envelope.chipBalanceAfter
     const record: BaccaratHistory = {
       ...round,
-      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      delta,
+      id: envelope.roundId,
+      delta: envelope.delta,
       bankroll: nextBankroll,
-      totalStake: stakeThisRound,
+      totalStake: envelope.totalStake,
       bets: betsThisRound,
-      createdAt: new Date().toISOString(),
+      createdAt: envelope.serverTimestamp,
     }
     const nextHistory = [record, ...history].slice(0, 30)
     const nextStats: BaccaratStats = {
       rounds: stats.rounds + 1,
-      hitRounds: stats.hitRounds + (delta > 0 ? 1 : 0),
-      totalStake: roundMoney(stats.totalStake + stakeThisRound),
-      totalDelta: roundMoney(stats.totalDelta + delta),
-      lastDelta: delta,
+      hitRounds: stats.hitRounds + (envelope.delta > 0 ? 1 : 0),
+      totalStake: roundMoney(stats.totalStake + envelope.totalStake),
+      totalDelta: roundMoney(stats.totalDelta + envelope.delta),
+      lastDelta: envelope.delta,
       ties: stats.ties + (round.winner === "T" ? 1 : 0),
     }
 
     setDealProgress(96)
     setMessage(
       isChineseThisRound
-        ? `结算中：${winnerText(round.winner, languageThisRound)}胜，本轮 ${formatDelta(delta)}，请稍候。`
-        : `Settling: ${winnerText(round.winner, languageThisRound)} wins, round ${formatDelta(delta)}. Please wait.`,
+        ? `结算中：${winnerText(round.winner, languageThisRound)}胜，本轮 ${formatDelta(envelope.delta)}，请稍候。`
+        : `Settling: ${winnerText(round.winner, languageThisRound)} wins, round ${formatDelta(envelope.delta)}. Please wait.`,
     )
 
     await sleep(settlementDelayMs)
 
-    setShoe(nextShoe)
     setLastRound(round)
     setBankroll(nextBankroll)
     setTableSession({ ...activeTableSession, chipBalance: nextBankroll })
     setHistory(nextHistory)
     setStats(nextStats)
     setBets(cloneEmptyBets())
+    setLastRoundId(envelope.roundId)
+    setPendingRoundKey(null)
     setVisibleDeal(null)
     setDealProgress(100)
-    setMessage(
-      isChineseThisRound
-        ? `结果：${winnerText(round.winner, languageThisRound)}，本轮 ${formatDelta(delta)}。`
-        : `Result: ${winnerText(round.winner, languageThisRound)}, round ${formatDelta(delta)}.`,
-    )
-    persistLocal(nextBankroll, nextHistory, nextStats, round)
-    setIsSyncingRound(true)
-
-    try {
-      const serverResult = await persistServerProgress(entry, record, activeTableSession.id)
-      const serverBankroll = serverResult.bankroll
-      const authoritativeRound = serverResult.settlement
-        ? authoritativeBaccaratRound(serverResult.settlement.resultSnapshot)
-        : null
-
-      if (serverResult.settlement && authoritativeRound) {
-        const authoritativeDelta = serverResult.settlement.delta
-        const authoritativeBankroll = typeof serverBankroll === "number"
-          ? serverBankroll
-          : roundMoney(bankroll + authoritativeDelta)
-        const authoritativeRecord: BaccaratHistory = {
-          ...record,
-          ...authoritativeRound,
-          delta: authoritativeDelta,
-          bankroll: authoritativeBankroll,
-        }
-        const authoritativeHistory = [authoritativeRecord, ...history].slice(0, 30)
-        const authoritativeStats: BaccaratStats = {
-          ...nextStats,
-          hitRounds: nextStats.hitRounds - (delta > 0 ? 1 : 0) + (authoritativeDelta > 0 ? 1 : 0),
-          totalDelta: roundMoney(nextStats.totalDelta - delta + authoritativeDelta),
-          lastDelta: authoritativeDelta,
-          ties: nextStats.ties - (round.winner === "T" ? 1 : 0) + (authoritativeRound.winner === "T" ? 1 : 0),
-        }
-        setLastRound(authoritativeRound)
-        setBankroll(authoritativeBankroll)
-        setTableSession((current) => current ? { ...current, chipBalance: authoritativeBankroll } : current)
-        setHistory(authoritativeHistory)
-        setStats(authoritativeStats)
-        persistLocal(authoritativeBankroll, authoritativeHistory, authoritativeStats, authoritativeRound)
-      } else if (typeof serverBankroll === "number") {
-        setBankroll(serverBankroll)
-        setTableSession((current) => current ? { ...current, chipBalance: serverBankroll } : current)
-        persistLocal(serverBankroll, nextHistory, nextStats, round)
-      }
-
-      if (serverResult.settlement) {
-        setMessage(serverResult.settlement.summary)
-      }
-    } catch (error) {
-      console.error("baccarat round sync failed", error)
-    } finally {
-      setIsSyncingRound(false)
-      setDealing(false)
-    }
+    setMessage(envelope.summary)
+    persistLocal()
+    setDealing(false)
   }
 
   return (
-    <main className="game-table-shell lobby-shell min-h-screen overflow-hidden bg-background text-foreground">
+    <main data-round-id={lastRoundId ?? undefined} className="game-table-shell lobby-shell min-h-screen overflow-hidden bg-background text-foreground">
       <div className="mx-auto grid max-w-[1660px] gap-3 px-4 py-4 lg:px-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -1218,7 +1082,7 @@ export function BaccaratTablePage({
               />
             </div>
             <p className="mt-4 text-lg font-black text-[#f4d18a]">
-              {isChinese ? "牌靴剩余：" : "Shoe remaining:"} {shoe.length} {isChinese ? "张" : "cards"}
+              {isChinese ? "牌局来源：服务端权威牌序" : "Hand source: authoritative server order"}
             </p>
           </div>
         </section>

@@ -7,7 +7,7 @@ import { ArrowLeft, BookOpen, RotateCcw, Settings, Trash2 } from "lucide-react"
 import { useLanguage } from "@/hooks/use-language"
 import { type Language } from "@/lib/home-content"
 import { type CasinoTableEntry } from "@/lib/game-catalog"
-import { type MemberGameProgress, type MemberTableSession } from "@/lib/member-data"
+import { type MemberGameProgress, type MemberGameRound, type MemberTableSession } from "@/lib/member-data"
 import { recordClientGameRound } from "@/lib/member-round-client"
 import { cashOutClientTableSession, openClientTableSession } from "@/lib/table-session-client"
 import { cn } from "@/lib/utils"
@@ -176,58 +176,68 @@ function calculateDicePreview(bets: DiceBetLedger) {
   }
 }
 
-function resolveDiceRound(bets: DiceBetLedger, dice: [number, number, number], language: Language) {
-  const outcome: DiceOutcome = {
-    dice,
-    sum: dice.reduce((sum, value) => sum + value, 0),
-    triple: dice[0] === dice[1] && dice[1] === dice[2],
-  }
-  const details: string[] = []
-  let delta = 0
+function diceStateFromRounds(rounds: MemberGameRound[], progress: MemberGameProgress | null) {
+  const ordered = [...rounds].sort(
+    (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+  )
+  const history = ordered.flatMap((round, index): DiceHistory[] => {
+    const dice = round.resultSnapshot.dice
+    const sum = round.resultSnapshot.sum
 
-  for (const bet of diceBets) {
-    const amount = bets[bet.key]
-
-    if (amount <= 0) {
-      continue
+    if (!Array.isArray(dice) || dice.length !== 3 || !dice.every((value) => typeof value === "number") || typeof sum !== "number") {
+      return []
     }
 
-    if (bet.wins(outcome)) {
-      const profit = amount * bet.payout
-      delta += profit
-      details.push(
-        language === "zh"
-          ? `${bet.zh} 中 ${formatDelta(profit)}`
-          : `${bet.en} hit ${formatDelta(profit)}`,
-      )
-    } else {
-      delta -= amount
-      details.push(
-        language === "zh"
-          ? `${bet.zh} 未中 ${formatDelta(-amount)}`
-          : `${bet.en} missed ${formatDelta(-amount)}`,
-      )
+    const rawBets = round.betSnapshot.bets
+    const bets = cloneEmptyDiceBets()
+
+    if (rawBets && typeof rawBets === "object" && !Array.isArray(rawBets)) {
+      for (const key of Object.keys(bets) as DiceBetKey[]) {
+        const value = (rawBets as Record<string, unknown>)[key]
+        bets[key] = typeof value === "number" ? value : 0
+      }
     }
-  }
+
+    return [{
+      id: round.id,
+      round: Math.max(1, (progress?.plays ?? ordered.length) - index),
+      dice: dice as [number, number, number],
+      sum,
+      triple: round.resultSnapshot.triple === true,
+      delta: round.delta,
+      totalStake: round.totalStake,
+      bets,
+      detail: round.resultSummary,
+    }]
+  }).slice(0, 20)
+  const latest = history[0]
 
   return {
-    ...outcome,
-    delta,
-    detail: details.join(language === "zh" ? "；" : "; "),
+    dice: latest?.dice ?? [1, 1, 1] as [number, number, number],
+    lastSum: latest?.sum ?? 3,
+    lastRoundId: latest?.id ?? null,
+    stats: {
+      rounds: progress?.plays ?? history.length,
+      totalStake: ordered.reduce((sum, round) => sum + round.totalStake, 0),
+      totalDelta: ordered.reduce((sum, round) => sum + round.delta, 0),
+      lastDelta: latest?.delta ?? progress?.lastDelta ?? 0,
+      history,
+    } satisfies DiceStats,
   }
 }
 
 async function persistDiceProgress(
   entry: CasinoTableEntry,
-  record: DiceHistory,
+  bets: DiceBetLedger,
+  idempotencyKey: string,
   tableSessionId: string,
 ) {
   return recordClientGameRound({
     gameSlug: entry.slug,
-    idempotencyKey: record.id,
+    idempotencyKey,
     tableSessionId,
     betSnapshot: {
-      bets: record.bets,
+      bets,
     },
   })
 }
@@ -238,12 +248,14 @@ export function DiceTablePage({
   initialWalletBalance,
   initialProgress,
   initialTableSession,
+  initialGameRounds,
 }: {
   entry: CasinoTableEntry
   defaultLanguage: Language
   initialWalletBalance: number
   initialProgress: MemberGameProgress | null
   initialTableSession: MemberTableSession | null
+  initialGameRounds: MemberGameRound[]
 }) {
   const [language] = useLanguage(defaultLanguage)
   const isChinese = language === "zh"
@@ -255,6 +267,7 @@ export function DiceTablePage({
     : "Your wallet changes on buy-in and cash-out. Each round settles into table chips first."
   const defaultChips = [10, 25, 50, 100, 250]
   const initialBankroll = initialTableSession?.chipBalance ?? 0
+  const hydratedRoundState = diceStateFromRounds(initialGameRounds, initialProgress)
   const [bankroll, setBankroll] = useState(initialBankroll)
   const [walletBalance, setWalletBalance] = useState(initialWalletBalance)
   const [tableSession, setTableSession] = useState<MemberTableSession | null>(initialTableSession)
@@ -267,8 +280,8 @@ export function DiceTablePage({
   const [initialBankrollInput, setInitialBankrollInput] = useState(String(initialBankroll))
   const [initialChipsInput, setInitialChipsInput] = useState(defaultChips.join(","))
   const [bets, setBets] = useState<DiceBetLedger>(() => cloneEmptyDiceBets())
-  const [dice, setDice] = useState<[number, number, number]>([1, 1, 1])
-  const [lastSum, setLastSum] = useState(3)
+  const [dice, setDice] = useState<[number, number, number]>(hydratedRoundState.dice)
+  const [lastSum, setLastSum] = useState(hydratedRoundState.lastSum)
   const [headline, setHeadline] = useState(isChinese ? "等待下注" : "Waiting for bets")
   const [subText, setSubText] = useState(
     isChinese
@@ -276,13 +289,9 @@ export function DiceTablePage({
       : "Click a betting card to add the current stake. Multiple bets can resolve together.",
   )
   const [rolling, setRolling] = useState(false)
-  const [stats, setStats] = useState<DiceStats>(() => ({
-    rounds: initialProgress?.plays ?? 0,
-    totalStake: 0,
-    totalDelta: initialProgress?.lastDelta ?? 0,
-    lastDelta: initialProgress?.lastDelta ?? 0,
-    history: [],
-  }))
+  const [pendingRoundKey, setPendingRoundKey] = useState<string | null>(null)
+  const [lastRoundId, setLastRoundId] = useState<string | null>(hydratedRoundState.lastRoundId)
+  const [stats, setStats] = useState<DiceStats>(hydratedRoundState.stats)
   const [showRules, setShowRules] = useState(false)
   const storageKey = `taihu-dice-table-${entry.slug}`
   const preview = useMemo(() => calculateDicePreview(bets), [bets])
@@ -315,12 +324,8 @@ export function DiceTablePage({
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as {
-          bankroll?: number
           stake?: number
           chips?: number[]
-          stats?: DiceStats
-          dice?: [number, number, number]
-          lastSum?: number
         }
 
         if (typeof parsed.stake === "number") {
@@ -332,17 +337,6 @@ export function DiceTablePage({
           setInitialChipsInput(parsed.chips.join(","))
         }
 
-        if (parsed.stats) {
-          setStats(parsed.stats)
-        }
-
-        if (Array.isArray(parsed.dice) && parsed.dice.length === 3) {
-          setDice(parsed.dice)
-        }
-
-        if (typeof parsed.lastSum === "number") {
-          setLastSum(parsed.lastSum)
-        }
       } catch {
         window.localStorage.removeItem(storageKey)
       }
@@ -355,25 +349,20 @@ export function DiceTablePage({
     setInitialBankrollInput(String(syncedBankroll))
 
     if (initialProgress) {
-      setStats((current) => ({
-        ...current,
-        rounds: initialProgress.plays,
-        totalDelta: initialProgress.lastDelta,
-        lastDelta: initialProgress.lastDelta,
-      }))
+      const hydrated = diceStateFromRounds(initialGameRounds, initialProgress)
+      setDice(hydrated.dice)
+      setLastSum(hydrated.lastSum)
+      setLastRoundId(hydrated.lastRoundId)
+      setStats(hydrated.stats)
     }
-  }, [storageKey, initialProgress, initialWalletBalance, initialTableSession])
+  }, [storageKey, initialProgress, initialWalletBalance, initialTableSession, initialGameRounds])
 
-  function persistLocal(nextBankroll: number, nextStats: DiceStats, nextDice: [number, number, number], nextSum: number) {
+  function persistLocal() {
     window.localStorage.setItem(
       storageKey,
       JSON.stringify({
-        bankroll: nextBankroll,
         stake,
         chips,
-        stats: nextStats,
-        dice: nextDice,
-        lastSum: nextSum,
       }),
     )
   }
@@ -490,12 +479,9 @@ export function DiceTablePage({
     setChips(nextChips)
     setStake(nextChips[0])
     setBets(cloneEmptyDiceBets())
-    setDice([1, 1, 1])
-    setLastSum(3)
-    setStats({ rounds: 0, totalStake: 0, totalDelta: 0, lastDelta: 0, history: [] })
-    window.localStorage.removeItem(storageKey)
+    persistLocal()
     setHeadline(isChinese ? "初始设置已应用" : "Initial settings applied")
-    setSubText(isChinese ? "余额、筹码和历史已刷新。" : "Bankroll, chips and history were refreshed.")
+    setSubText(isChinese ? "筹码面额与下注设置已更新。" : "Chip values and betting preferences were updated.")
   }
 
   function resetTable() {
@@ -507,15 +493,12 @@ export function DiceTablePage({
     setInitialChipsInput(defaultChips.join(","))
     setStake(50)
     setBets(cloneEmptyDiceBets())
-    setDice([1, 1, 1])
-    setLastSum(3)
-    setStats({ rounds: 0, totalStake: 0, totalDelta: 0, lastDelta: 0, history: [] })
     window.localStorage.removeItem(storageKey)
     setHeadline(isChinese ? "已重置局面" : "Table reset")
-    setSubText(isChinese ? "余额、下注和历史都已恢复到初始状态。" : "Bankroll, bets and history were reset.")
+    setSubText(isChinese ? "下注与界面偏好已重置；权威结果和余额保持不变。" : "Bets and UI preferences reset; authoritative results and bankroll were kept.")
   }
 
-  function roll() {
+  async function roll() {
     if (rolling) {
       return
     }
@@ -526,6 +509,9 @@ export function DiceTablePage({
       return
     }
     const activeTableSession = tableSession
+    const betsThisRound = { ...bets }
+    const previousDice = dice
+    const previousSum = lastSum
 
     if (preview.totalStake <= 0) {
       setHeadline(isChinese ? "请先下注" : "Place a bet first")
@@ -544,79 +530,85 @@ export function DiceTablePage({
     }
 
     setRolling(true)
+    setIsSyncingRound(true)
     setHeadline(isChinese ? "骰子摇动中..." : "Rolling...")
-    setSubText(isChinese ? "动画为简化版进度条和实时随机点数预览。" : "Preview dice are shuffling before settlement.")
+    setSubText(isChinese ? "正在等待服务端权威结算；当前点数仅为滚动预览。" : "Waiting for the authoritative server round; visible dice are rolling previews only.")
 
     const previewTimer = window.setInterval(() => setDice(rollDice()), 85)
-    const actualDice = rollDice()
+    const idempotencyKey = pendingRoundKey ?? `dice-${entry.slug}-${crypto.randomUUID()}`
+    setPendingRoundKey(idempotencyKey)
 
-    window.setTimeout(() => {
+    try {
+      const serverResult = await persistDiceProgress(
+        entry,
+        betsThisRound,
+        idempotencyKey,
+        activeTableSession.id,
+      )
+      const round = serverResult.round
+
+      if (!round) {
+        throw new Error(isChinese ? "服务端未返回权威回合。" : "The server did not return an authoritative round.")
+      }
+
+      const serverDice = round.resultSnapshot.dice
+      const serverSum = round.resultSnapshot.sum
+      const serverTriple = round.resultSnapshot.triple === true
+
+      if (!Array.isArray(serverDice) || serverDice.length !== 3 || !serverDice.every((value) => typeof value === "number") || typeof serverSum !== "number") {
+        throw new Error(isChinese ? "服务端骰子结果无效。" : "The authoritative dice result is invalid.")
+      }
+
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 450))
       window.clearInterval(previewTimer)
-      const result = resolveDiceRound(bets, actualDice, language)
-      const nextBankroll = bankroll + result.delta
+      const authoritativeDice = serverDice as [number, number, number]
+      const nextBankroll = round.chipBalanceAfter
       const nextRound = stats.rounds + 1
       const record: DiceHistory = {
-        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        id: round.roundId,
         round: nextRound,
-        dice: result.dice,
-        sum: result.sum,
-        triple: result.triple,
-        delta: result.delta,
-        totalStake: preview.totalStake,
-        bets,
-        detail: result.detail,
+        dice: authoritativeDice,
+        sum: serverSum,
+        triple: serverTriple,
+        delta: round.delta,
+        totalStake: round.totalStake,
+        bets: betsThisRound,
+        detail: round.summary,
       }
       const nextStats: DiceStats = {
         rounds: nextRound,
-        totalStake: stats.totalStake + preview.totalStake,
-        totalDelta: stats.totalDelta + result.delta,
-        lastDelta: result.delta,
+        totalStake: stats.totalStake + round.totalStake,
+        totalDelta: stats.totalDelta + round.delta,
+        lastDelta: round.delta,
         history: [record, ...stats.history].slice(0, 20),
       }
 
-      setDice(actualDice)
-      setLastSum(result.sum)
+      setDice(authoritativeDice)
+      setLastSum(serverSum)
       setBankroll(nextBankroll)
       setTableSession({ ...activeTableSession, chipBalance: nextBankroll })
       setStats(nextStats)
-      setHeadline(result.triple ? (isChinese ? "豹子出现！" : "Triple!") : isChinese ? `和值 ${result.sum}` : `Total ${result.sum}`)
-      setSubText(`${result.dice.join(" + ")} = ${result.sum}，${result.detail}。`)
-      persistLocal(nextBankroll, nextStats, actualDice, result.sum)
-      setIsSyncingRound(true)
-      void (async () => {
-        try {
-          const serverResult = await persistDiceProgress(entry, record, activeTableSession.id)
-          const serverBankroll = serverResult.bankroll
-
-          if (typeof serverBankroll === "number") {
-            setBankroll(serverBankroll)
-            setTableSession((current) => current ? { ...current, chipBalance: serverBankroll } : current)
-            persistLocal(serverBankroll, nextStats, actualDice, result.sum)
-          }
-
-          const serverDice = serverResult.settlement?.resultSnapshot.dice
-          const serverSum = serverResult.settlement?.resultSnapshot.sum
-
-          if (Array.isArray(serverDice) && serverDice.length === 3 && typeof serverSum === "number") {
-            setDice(serverDice as [number, number, number])
-            setLastSum(serverSum)
-          }
-
-          if (serverResult.settlement) {
-            setSubText(serverResult.settlement.summary)
-          }
-        } catch (error) {
-          console.error("dice round sync failed", error)
-        } finally {
-          setIsSyncingRound(false)
-          setRolling(false)
-        }
-      })()
-    }, 1400)
+      setBets(cloneEmptyDiceBets())
+      setLastRoundId(round.roundId)
+      setPendingRoundKey(null)
+      setHeadline(serverTriple ? (isChinese ? "豹子出现！" : "Triple!") : isChinese ? `和值 ${serverSum}` : `Total ${serverSum}`)
+      setSubText(round.summary)
+      persistLocal()
+    } catch (error) {
+      window.clearInterval(previewTimer)
+      setDice(previousDice)
+      setLastSum(previousSum)
+      setHeadline(isChinese ? "结算未完成" : "Settlement not completed")
+      setSubText(error instanceof Error ? error.message : isChinese ? "请使用同一回合重试。" : "Retry the same round.")
+      console.error("dice round settlement failed", error)
+    } finally {
+      setIsSyncingRound(false)
+      setRolling(false)
+    }
   }
 
   return (
-    <main className="game-table-shell lobby-shell min-h-screen overflow-hidden bg-background text-foreground">
+    <main data-round-id={lastRoundId ?? undefined} className="game-table-shell lobby-shell min-h-screen overflow-hidden bg-background text-foreground">
       <div className="mx-auto grid max-w-[1360px] gap-3 px-4 py-4 lg:px-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
