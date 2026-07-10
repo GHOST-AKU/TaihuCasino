@@ -62,22 +62,15 @@ test("roulette rejects an unknown forged bet", () => {
   )
 })
 
-test("blackjack settlement applies the submitted player actions", () => {
-  const stand = settleAuthoritativeRound(
-    "blackjack",
-    { hands: [{ bet: 10, actions: ["stand"] }] },
-    sequence([9, 6, 5, 5]),
+test("blackjack cannot use the generic one-step settlement path", () => {
+  assert.throws(
+    () => settleAuthoritativeRound(
+      "blackjack",
+      { hands: [{ bet: 10, actions: ["stand"] }] },
+      sequence([9, 6, 5, 5]),
+    ),
+    /state machine/i,
   )
-  const hit = settleAuthoritativeRound(
-    "blackjack",
-    { hands: [{ bet: 10, actions: ["hit", "stand"] }] },
-    sequence([9, 6, 5, 5, 8]),
-  )
-
-  assert.equal(stand.delta, -10)
-  assert.equal(hit.delta, 10)
-  assert.deepEqual(stand.resultSnapshot.hands[0].actions, ["stand"])
-  assert.deepEqual(hit.resultSnapshot.hands[0].actions, ["hit"])
 })
 
 test("client contracts and database migration close direct-write boundaries", async () => {

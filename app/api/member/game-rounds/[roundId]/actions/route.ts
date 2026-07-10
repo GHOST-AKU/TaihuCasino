@@ -1,7 +1,7 @@
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
-import { cashOutTableSession, isSameOriginMutation, memberDataErrorStatus } from "@/lib/member-data"
+import { applyBlackjackRoundAction, isSameOriginMutation, memberDataErrorStatus } from "@/lib/member-data"
 import { createRequestObserver } from "@/lib/observability"
 import { enforceRateLimit, recordSecuritySignal } from "@/lib/rate-limit"
 
@@ -10,23 +10,22 @@ export async function POST(
   {
     params,
   }: {
-    params: Promise<{ id: string }>
+    params: Promise<{ roundId: string }>
   },
 ) {
+  const { roundId } = await params
   const observer = createRequestObserver(request, {
-    flow: "cash_out",
-    route: "/api/member/table-sessions/[id]/cash-out",
+    flow: "blackjack_action",
+    route: "/api/member/game-rounds/[roundId]/actions",
   })
 
   if (!isSameOriginMutation(request)) {
-    observer.reject("cash_out.rejected", { status: 403, reasonCode: "cross_origin" })
+    observer.reject("blackjack_action.rejected", { status: 403, roundId, reasonCode: "cross_origin" })
     return observer.attach(NextResponse.json({ error: "Cross-origin mutation rejected." }, { status: 403 }))
   }
 
-  const { id } = await params
-  observer.info("cash_out.started", { tableSessionId: id })
   const response = NextResponse.json(
-    { tableSession: null },
+    { blackjackRound: null },
     {
       headers: {
         "cache-control": "private, no-store",
@@ -34,25 +33,30 @@ export async function POST(
     },
   )
   const cookieStore = await cookies()
-  const body = await request.json().catch(() => null)
-  const limited = await enforceRateLimit(request, "member.cash-out", {
-    identifiers: [id],
+  const body = await request.json().catch(() => null) as Record<string, unknown> | null
+  observer.info("blackjack_action.started", {
+    roundId,
+    action: body?.action,
+    expectedVersion: body?.expectedVersion,
+  })
+  const limited = await enforceRateLimit(request, "member.game-rounds", {
+    identifiers: [roundId, body?.action],
     requestId: observer.requestId,
   })
   if (limited) {
-    observer.reject("cash_out.blocked", {
+    observer.reject("blackjack_action.blocked", {
+      roundId,
       status: limited.status,
-      tableSessionId: id,
       reasonCode: limited.status === 429 ? "rate_limit_exceeded" : "rate_limit_unavailable",
     })
     return observer.attach(limited)
   }
 
   try {
-    const result = await cashOutTableSession(cookieStore, response, id, body)
+    const result = await applyBlackjackRoundAction(cookieStore, response, roundId, body)
 
     if (!result) {
-      observer.reject("cash_out.rejected", { status: 401, tableSessionId: id, reasonCode: "auth_required" })
+      observer.reject("blackjack_action.rejected", { status: 401, roundId, reasonCode: "auth_required" })
       return observer.attach(NextResponse.json(
         { error: "Authentication is required." },
         {
@@ -63,13 +67,18 @@ export async function POST(
     }
 
     if (result.idempotent) {
-      await recordSecuritySignal(request, "member.cash-out", "replayed_idempotency_key", [id], observer.requestId)
+      await recordSecuritySignal(request, "member.game-rounds", "replayed_idempotency_key", [
+        body?.commandId,
+        roundId,
+      ], observer.requestId)
     }
-    observer.success("cash_out.succeeded", {
-      gameSlug: result.tableSession.gameSlug,
+
+    observer.success("blackjack_action.succeeded", {
+      roundId,
+      action: body?.action,
       idempotent: result.idempotent,
       status: 200,
-      tableSessionId: id,
+      phase: result.blackjackRound.phase,
     })
 
     return observer.attach(NextResponse.json(
@@ -80,13 +89,13 @@ export async function POST(
     ))
   } catch (error) {
     const status = memberDataErrorStatus(error)
-    observer.failure("cash_out.failed", error, {
+    observer.failure("blackjack_action.failed", error, {
+      roundId,
       status,
-      tableSessionId: id,
-      reasonCode: "cash_out_failed",
+      reasonCode: "blackjack_action_failed",
     })
     return observer.attach(NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to cash out table session." },
+      { error: error instanceof Error ? error.message : "Unable to apply blackjack action." },
       {
         status,
         headers: response.headers,

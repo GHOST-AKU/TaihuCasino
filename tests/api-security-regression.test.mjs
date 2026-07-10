@@ -14,6 +14,7 @@ const protectedMutations = [
   "../app/api/member/ad-rewards/complete/route.ts",
   "../app/api/member/ad-rewards/start/route.ts",
   "../app/api/member/game-rounds/route.ts",
+  "../app/api/member/game-rounds/[roundId]/actions/route.ts",
   "../app/api/member/purchases/route.ts",
   "../app/api/member/purchases/[id]/complete/route.ts",
   "../app/api/member/table-sessions/route.ts",

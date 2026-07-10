@@ -14,7 +14,7 @@ import {
   sanitizeObservationText,
 } from "@/lib/observability-core"
 
-export type MemberFlow = "auth" | "table_session" | "game_round" | "cash_out"
+export type MemberFlow = "auth" | "table_session" | "game_round" | "blackjack_action" | "cash_out"
 
 interface ObserverOptions {
   flow: MemberFlow
@@ -22,11 +22,15 @@ interface ObserverOptions {
 }
 
 interface ObservationFields {
+  action?: unknown
   authProvider?: unknown
+  expectedVersion?: unknown
   gameSlug?: unknown
   idempotent?: boolean
   outcome?: unknown
   reasonCode?: string
+  roundId?: unknown
+  phase?: unknown
   status?: number
   tableSessionId?: unknown
   userIdentifier?: unknown
@@ -68,10 +72,14 @@ export function createRequestObserver(request: Request, options: ObserverOptions
       vercelRequestId,
       sessionHash,
       userHash: hashObservationIdentifier(secret, fields.userIdentifier, "user"),
+      roundHash: hashObservationIdentifier(secret, fields.roundId, "round"),
       tableSessionHash: hashObservationIdentifier(secret, fields.tableSessionId, "table-session"),
+      action: sanitizeObservationText(fields.action, 40),
       authProvider: sanitizeObservationText(fields.authProvider, 40),
+      expectedVersion: typeof fields.expectedVersion === "number" ? fields.expectedVersion : undefined,
       gameSlug: sanitizeObservationText(fields.gameSlug, 80),
       outcome: sanitizeObservationText(fields.outcome, 40),
+      phase: sanitizeObservationText(fields.phase, 40),
       idempotent: fields.idempotent,
       reasonCode: fields.reasonCode ? normalizeObservationCode(fields.reasonCode) : undefined,
       status: fields.status,

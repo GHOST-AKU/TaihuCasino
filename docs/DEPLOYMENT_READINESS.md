@@ -1,6 +1,6 @@
 # Deployment Readiness / 部署就绪说明
 
-Last updated: 2026-06-17
+Last updated: 2026-07-10
 
 ## Scope / 范围
 
@@ -91,8 +91,9 @@ Authoritative wagering boundary:
 
 - Core-game clients submit only a table session, idempotency key, and canonical bet intent. The server generates results with `node:crypto.randomInt`, calculates payouts from fixed rules, and records the audit snapshots. Client `delta`, `outcome`, result, bankroll, and cash-out chip-balance fields are ignored or unavailable. Apply `20260610160000_authoritative_settlement_boundary.sql` before production promotion to enforce the atomic stake check and revoke direct player writes to progress/events. / 核心游戏客户端仅提交桌台会话、幂等键和规范化下注意图。服务端使用 `node:crypto.randomInt` 生成结果、按固定规则计算赔付并记录审计快照。客户端无法提交最终 `delta`、`outcome`、结果、余额或 cash-out 筹码余额。生产发布前必须应用 `20260610160000_authoritative_settlement_boundary.sql`，以启用原子下注校验并撤销玩家对 progress/events 的直接写权限。
 - P0 single-round gate: dice, roulette, and baccarat clients must consume the canonical `round: RoundEnvelope<TResult>` returned by `/api/member/game-rounds`. They may animate previews, but must not update final result, chip balance, round delta, statistics, or history before the server response. The legacy `progress`, `settlement`, and top-level `idempotent` fields remain temporary compatibility fields for one release cycle. / P0 单一回合门禁：骰子、轮盘、百家乐客户端必须消费 `/api/member/game-rounds` 返回的 canonical `round: RoundEnvelope<TResult>`。它们可以播放预览动画，但在服务端响应前不得更新最终结果、筹码余额、本轮盈亏、统计或历史。旧的 `progress`、`settlement` 和顶层 `idempotent` 字段仅作为一个发布周期的临时兼容字段保留。
+- Blackjack state-machine gate: apply `20260710073327_member_blackjack_round_states.sql` before promoting PR2. Blackjack uses `POST /api/member/game-rounds` to create/restore active state and `POST /api/member/game-rounds/[roundId]/actions` for versioned actions. The client must not shuffle, draw, or settle final blackjack cards. Active blackjack rounds block cash-out with `409`; expired active rounds are voided without chip movement. / 21 点状态机门禁：推广 PR2 前必须应用 `20260710073327_member_blackjack_round_states.sql`。21 点使用 `POST /api/member/game-rounds` 创建/恢复活跃状态，并使用 `POST /api/member/game-rounds/[roundId]/actions` 执行版本化动作。客户端不得洗牌、抽牌或结算最终 21 点牌局。活跃 21 点回合以 `409` 阻断离桌；过期活跃回合会先作废且不改变筹码。
 - Browser storage gate: core tables may store only stake and chip-denomination preferences in `localStorage`; bankroll, final result, history, and cumulative statistics must recover from server/member round history. / 浏览器存储门禁：核心桌台只能在 `localStorage` 保存下注额与筹码面额偏好；余额、最终结果、历史和累计统计必须从服务端/会员回合历史恢复。
-- Release remains `NO-GO` after PR1. Server-authoritative multi-step blackjack is PR2 and must land before the P0 parent issue can close or MVP-R2 can be released. / PR1 后发布仍为 `NO-GO`。多步服务端权威 21 点属于 PR2，必须落地后才可关闭 P0 父 Issue 或发布 MVP-R2。
+- Release remains `NO-GO` until PR2 lands green and GitHub Issue #66 is closed by the PR2 completion path. / PR2 绿色落地并通过 PR2 完成路径关闭 GitHub Issue #66 前，发布仍为 `NO-GO`。
 
 When Supabase variables are missing, local development can use the built-in demo account or the `TAIHU_AUTH_*` fallback. Production deployments should configure Supabase and should not rely on demo or fallback credentials.
 
@@ -148,9 +149,9 @@ GitHub Actions now separates the release gate into four required-check candidate
 GitHub Actions 现在把发布门禁拆成四个可设置为必需检查的 job：
 
 - `Quality gate / 质量门禁`: ESLint and TypeScript checks. / ESLint 与 TypeScript 检查。
-- `API and security regression / API 与安全回归`: production dependency audit plus settlement, stub-crediting, abuse-protection, legal/account-rights, and API security regression tests. / 生产依赖审计，以及结算、stub 入账、滥用防护、法律/账户权利和 API 安全回归测试。
+- `API and security regression / API 与安全回归`: production dependency audit plus settlement, blackjack state-machine, stub-crediting, abuse-protection, legal/account-rights, and API security regression tests. / 生产依赖审计，以及结算、21 点状态机、stub 入账、滥用防护、法律/账户权利和 API 安全回归测试。
 - `Production build / 生产构建`: production `next build`. / 生产构建。
-- `Playwright E2E / 浏览器端到端`: isolated browser/API flow covering login, four core tables, replay safety, cash-out, and rejected attack attempts. / 隔离浏览器/API 流程，覆盖登录、四张核心桌、重放安全、cash-out 和攻击尝试拒绝。
+- `Playwright E2E / 浏览器端到端`: isolated browser/API flow covering login, four core tables, blackjack actions/recovery, replay safety, cash-out, and rejected attack attempts. / 隔离浏览器/API 流程，覆盖登录、四张核心桌、21 点动作/恢复、重放安全、cash-out 和攻击尝试拒绝。
 
 Playwright failure artifacts are uploaded only on failure from `playwright-report/` and `test-results/e2e/`. These artifacts use local non-production E2E credentials and must not include production secrets.
 

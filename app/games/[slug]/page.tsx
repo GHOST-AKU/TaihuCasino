@@ -8,7 +8,7 @@ import { GameTablePage } from "@/components/game-table-page"
 import { MemberGameFrame } from "@/components/member-game-frame"
 import { RouletteTablePage } from "@/components/roulette-table-page"
 import { getPlayableTable, playableTableEntries } from "@/lib/game-catalog"
-import { readActiveTableSession, readMemberOverview } from "@/lib/member-data"
+import { readActiveBlackjackRound, readActiveTableSession, readMemberOverview } from "@/lib/member-data"
 
 export const dynamic = "force-dynamic"
 
@@ -59,11 +59,14 @@ export default async function GameRoutePage({
   }
 
   if (game.ruleSet === "blackjack") {
+    const initialBlackjackRound = await readActiveBlackjackRound(cookieStore, initialTableSession?.id)
     page = (
       <BlackjackTablePage
         entry={game}
         defaultLanguage={member.settings.language}
         initialTableSession={initialTableSession}
+        initialBlackjackRound={initialBlackjackRound}
+        initialGameRounds={initialGameRounds}
         {...gameStateProps}
       />
     )
