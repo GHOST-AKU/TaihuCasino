@@ -214,81 +214,15 @@ function settleRoulette(betSnapshot: Record<string, unknown>, rng: RandomInt): A
   }
 }
 
-function drawCard(rng: RandomInt) {
-  return rng(13) + 1
-}
-
-function cardTotal(cards: number[]) {
-  let total = cards.reduce((sum, rank) => sum + (rank === 1 ? 11 : Math.min(rank, 10)), 0)
-  let aces = cards.filter((rank) => rank === 1).length
-  while (total > 21 && aces > 0) {
-    total -= 10
-    aces -= 1
-  }
-  return total
-}
-
-function settleBlackjack(betSnapshot: Record<string, unknown>, rng: RandomInt): AuthoritativeSettlement {
-  const source = record(betSnapshot)
-  const hands = (Array.isArray(source.hands) ? source.hands : []).flatMap((value) => {
-    const hand = record(value)
-    const bet = amount(hand.bet)
-    const actions = (Array.isArray(hand.actions) ? hand.actions : [])
-      .filter((action): action is string => action === "hit" || action === "stand" || action === "double")
-      .slice(0, 10)
-    return bet > 0 ? [{ bet, actions }] : []
-  }).slice(0, 4)
-  const insuranceBet = amount(source.insuranceBet)
-  const totalStake = requireStake(hands.reduce((sum, hand) => sum + hand.bet, insuranceBet))
-  const dealerCards = [drawCard(rng), drawCard(rng)]
-  const settledHands = hands.map(({ bet, actions }) => {
-    const cards = [drawCard(rng), drawCard(rng)]
-    const appliedActions: string[] = []
-
-    for (const action of actions) {
-      if (cardTotal(cards) >= 21 || appliedActions.includes("stand") || appliedActions.includes("double")) break
-      appliedActions.push(action)
-      if (action === "hit" || action === "double") cards.push(drawCard(rng))
-    }
-
-    const playerTotal = cardTotal(cards)
-    return { bet, actions: appliedActions, cards, playerTotal, naturalBlackjack: cards.length === 2 && playerTotal === 21 }
-  })
-  const allBusted = settledHands.every((hand) => hand.playerTotal > 21)
-  if (!allBusted) while (cardTotal(dealerCards) < 17) dealerCards.push(drawCard(rng))
-  const dealerTotal = cardTotal(dealerCards)
-  const dealerBlackjack = dealerCards.length === 2 && dealerTotal === 21
-  let delta = dealerBlackjack && insuranceBet > 0 ? insuranceBet * 2 : -insuranceBet
-  const resultHands = settledHands.map((hand) => {
-    const handDelta = hand.playerTotal > 21 || (dealerBlackjack && !hand.naturalBlackjack)
-      ? -hand.bet
-      : hand.naturalBlackjack && !dealerBlackjack
-        ? hand.bet * 1.5
-        : dealerTotal > 21 || hand.playerTotal > dealerTotal
-          ? hand.bet
-          : hand.playerTotal < dealerTotal ? -hand.bet : 0
-    delta += handDelta
-    return { ...hand, delta: money(handDelta) }
-  })
-  delta = money(delta)
-
-  return {
-    outcome: outcomeFor(delta),
-    delta,
-    totalStake,
-    summary: `Blackjack dealer ${dealerTotal}; ${delta >= 0 ? "+" : ""}${delta}`,
-    betSnapshot: { hands: hands.map(({ bet, actions }) => ({ bet, actions })), insuranceBet, totalStake },
-    resultSnapshot: { dealerCards, dealerTotal, hands: resultHands, rng: "node:crypto.randomInt" },
-  }
-}
-
 export function settleAuthoritativeRound(
   ruleSet: GameRuleSet | undefined,
   betSnapshot: Record<string, unknown>,
   rng: RandomInt = randomInt,
 ) {
   if (ruleSet === "baccarat") return settleBaccarat(betSnapshot, rng)
-  if (ruleSet === "blackjack") return settleBlackjack(betSnapshot, rng)
+  if (ruleSet === "blackjack") {
+    throw new Error("Blackjack uses the versioned server-side round state machine.")
+  }
   if (ruleSet === "roulette") return settleRoulette(betSnapshot, rng)
   if (ruleSet === "dice") return settleDice(betSnapshot, rng)
   throw new Error("This table does not support authoritative wagering settlement.")

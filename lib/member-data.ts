@@ -20,6 +20,22 @@ import { getPlayableTable } from "@/lib/game-catalog"
 import { createStubCreditIdempotencyKey, requireStubCreditingEnabled } from "@/lib/stub-crediting"
 import { settleAuthoritativeRound } from "@/lib/authoritative-settlement"
 import type { RoundEnvelope } from "@/lib/game-round-contract"
+import {
+  BlackjackCommandError,
+  BlackjackVersionConflictError,
+  applyBlackjackCommand,
+  createBlackjackRoundState,
+  isBlackjackExpired,
+  publicBlackjackView,
+  voidExpiredBlackjackRound,
+  type BlackjackAction,
+  type BlackjackCard,
+  type BlackjackCommandReplay,
+  type BlackjackHandStatus,
+  type BlackjackRoundState,
+  type BlackjackRoundView,
+  type BlackjackSettlement,
+} from "@/lib/blackjack-engine"
 
 type CookieStore = Awaited<ReturnType<typeof cookies>>
 
@@ -146,6 +162,15 @@ export interface TableSessionMutationResult {
   idempotent: boolean
 }
 
+export interface BlackjackRoundMutationResult {
+  blackjackRound: BlackjackRoundView
+  tableSession: MemberTableSession | null
+  progress: MemberGameProgress | null
+  settlement: BlackjackSettlement | null
+  round: RoundEnvelope | null
+  idempotent: boolean
+}
+
 export interface MemberAdReward {
   id: string
   placement: AdRewardPlacement
@@ -224,6 +249,29 @@ interface LocalMemberState {
   adRewards?: MemberAdReward[]
   purchases?: MemberPurchase[]
   tableSessions?: MemberTableSession[]
+  blackjackRoundStates?: BlackjackRoundState[]
+}
+
+export class MemberDataError extends Error {
+  status: number
+
+  constructor(message: string, status = 400) {
+    super(message)
+    this.name = "MemberDataError"
+    this.status = status
+  }
+}
+
+export function memberDataErrorStatus(error: unknown, fallback = 400) {
+  if (
+    error instanceof MemberDataError ||
+    error instanceof BlackjackCommandError ||
+    error instanceof BlackjackVersionConflictError
+  ) {
+    return error.status
+  }
+
+  return fallback
 }
 
 export const MEMBER_STATE_COOKIE = "taihu-member-state"
@@ -232,6 +280,7 @@ const LOCAL_STATE_PROGRESS_LIMIT = 4
 const LOCAL_STATE_EVENT_LIMIT = 3
 const LOCAL_STATE_ROUND_LIMIT = 12
 const LOCAL_STATE_TABLE_SESSION_LIMIT = 8
+const LOCAL_STATE_BLACKJACK_LIMIT = 4
 const MEMBER_EVENT_KINDS = new Set([
   "login_success",
   "session_recovered",
@@ -358,6 +407,21 @@ function compactLocalGameRounds(rounds: MemberGameRound[]) {
 
 function compactLocalTableSessions(sessions: MemberTableSession[]) {
   return sessions.slice(0, LOCAL_STATE_TABLE_SESSION_LIMIT)
+}
+
+function compactLocalBlackjackStates(states: BlackjackRoundState[]) {
+  return states
+    .filter((state) => state.status === "active" || state.status === "settled")
+    .map((state) => {
+      if (state.status === "active") return state
+      const commandEntries = Object.entries(state.commandLog).slice(-1)
+      return {
+        ...state,
+        deck: [],
+        commandLog: Object.fromEntries(commandEntries),
+      }
+    })
+    .slice(0, LOCAL_STATE_BLACKJACK_LIMIT)
 }
 
 function defaultSettings(): MemberSettings {
@@ -623,6 +687,121 @@ function toTableSession(row: Record<string, unknown>): MemberTableSession {
     openedAt: typeof row.opened_at === "string" ? row.opened_at : nowIso(),
     closedAt: typeof row.closed_at === "string" ? row.closed_at : null,
     updatedAt: typeof row.updated_at === "string" ? row.updated_at : nowIso(),
+  }
+}
+
+function toBlackjackCard(value: unknown): BlackjackCard | null {
+  const source = normalizeRecord(value)
+  const rank = Number(source.rank)
+  const suit = source.suit
+
+  if (!Number.isInteger(rank) || rank < 1 || rank > 13) {
+    return null
+  }
+
+  if (suit !== "spades" && suit !== "hearts" && suit !== "diamonds" && suit !== "clubs") {
+    return null
+  }
+
+  return { rank, suit }
+}
+
+function toBlackjackCards(value: unknown): BlackjackCard[] {
+  return Array.isArray(value) ? value.flatMap((item) => {
+    const card = toBlackjackCard(item)
+    return card ? [card] : []
+  }) : []
+}
+
+function toBlackjackRoundState(row: Record<string, unknown>): BlackjackRoundState {
+  const status =
+    row.status === "settled" || row.status === "voided" ? row.status : "active"
+  const phase =
+    row.phase === "insurance" ||
+    row.phase === "dealer_turn" ||
+    row.phase === "settled" ||
+    row.phase === "voided"
+      ? row.phase
+      : "player_turn"
+  const playerHands = Array.isArray(row.player_hands)
+    ? row.player_hands.map((handValue) => {
+      const hand = normalizeRecord(handValue)
+      const handStatus: BlackjackHandStatus =
+        hand.status === "standing" || hand.status === "busted" || hand.status === "settled" ? hand.status : "active"
+      return {
+        handId: typeof hand.handId === "string" ? hand.handId : String(hand.hand_id ?? randomUUID()),
+        cards: toBlackjackCards(hand.cards),
+        bet: normalizeMoney(hand.bet),
+        status: handStatus,
+        fromSplit: hand.fromSplit === true || hand.from_split === true,
+        doubled: hand.doubled === true,
+        naturalBlackjack: hand.naturalBlackjack === true || hand.natural_blackjack === true,
+        delta: typeof hand.delta === "number" ? hand.delta : null,
+        resultLabel: typeof hand.resultLabel === "string" ? hand.resultLabel : typeof hand.result_label === "string" ? hand.result_label : null,
+      }
+    })
+    : []
+
+  return {
+    roundId: String(row.id ?? randomUUID()),
+    gameSlug: "blackjack",
+    tableSessionId: String(row.table_session_id ?? ""),
+    status,
+    phase,
+    version: Number(row.version ?? 1),
+    deck: toBlackjackCards(row.deck),
+    dealerCards: toBlackjackCards(row.dealer_cards),
+    playerHands,
+    currentHandIndex: Number(row.current_hand_index ?? 0),
+    stake: normalizeMoney(row.stake),
+    chipBalanceBefore: normalizeMoney(row.chip_balance_before),
+    chipBalanceAfter: normalizeMoney(row.chip_balance_after),
+    insuranceBet: normalizeMoney(row.insurance_bet),
+    insuranceOffered: row.insurance_offered === true,
+    insuranceResolved: row.insurance_resolved !== false,
+    idempotencyKey: typeof row.idempotency_key === "string" ? row.idempotency_key : null,
+    commandLog: normalizeRecord(row.command_log) as Record<string, BlackjackCommandReplay>,
+    outcome: row.outcome === "win" || row.outcome === "loss" || row.outcome === "push" ? row.outcome : null,
+    delta: normalizeMoney(row.delta),
+    totalStake: normalizeMoney(row.total_stake),
+    summary: typeof row.summary === "string" ? row.summary : "",
+    resultSnapshot: row.result_snapshot && typeof row.result_snapshot === "object" && !Array.isArray(row.result_snapshot)
+      ? row.result_snapshot as Record<string, unknown>
+      : null,
+    finalRoundId: typeof row.final_round_id === "string" ? row.final_round_id : null,
+    createdAt: typeof row.created_at === "string" ? row.created_at : nowIso(),
+    updatedAt: typeof row.updated_at === "string" ? row.updated_at : nowIso(),
+    expiresAt: typeof row.expires_at === "string" ? row.expires_at : nowIso(),
+  }
+}
+
+function blackjackStateToRow(state: BlackjackRoundState) {
+  return {
+    game_slug: "blackjack",
+    table_session_id: state.tableSessionId,
+    status: state.status,
+    phase: state.phase,
+    version: state.version,
+    deck: state.deck,
+    dealer_cards: state.dealerCards,
+    player_hands: state.playerHands,
+    current_hand_index: state.currentHandIndex,
+    stake: state.stake,
+    chip_balance_before: state.chipBalanceBefore,
+    chip_balance_after: state.chipBalanceAfter,
+    insurance_bet: state.insuranceBet,
+    insurance_offered: state.insuranceOffered,
+    insurance_resolved: state.insuranceResolved,
+    idempotency_key: state.idempotencyKey,
+    command_log: state.commandLog,
+    outcome: state.outcome,
+    delta: state.delta,
+    total_stake: state.totalStake,
+    summary: state.summary,
+    result_snapshot: state.resultSnapshot,
+    final_round_id: state.finalRoundId,
+    expires_at: state.expiresAt,
+    updated_at: state.updatedAt,
   }
 }
 
@@ -1039,6 +1218,8 @@ export async function cashOutTableSession(
       throw new Error("Supabase member session is missing a user id.")
     }
 
+    await ensureNoActiveBlackjackRoundForCashOut(auth, cookieStore, response, sessionId)
+
     const serviceSupabase = createSupabaseServiceClient()
     const { data, error } = await serviceSupabase.rpc("cash_out_member_table_session", {
       p_user_id: auth.session.userId,
@@ -1078,6 +1259,8 @@ export async function cashOutTableSession(
       idempotent: true,
     }
   }
+
+  await ensureNoActiveBlackjackRoundForCashOut(auth, cookieStore, response, sessionId)
 
   const walletEntry = applyLocalWalletEntry(auth, cookieStore, response, {
     source: "table_cash_out",
@@ -1121,6 +1304,7 @@ export async function cashOutTableSession(
 async function settleSupabaseTableSessionRound(
   auth: AuthenticatedMember,
   {
+    roundId,
     sessionId,
     gameSlug,
     outcome,
@@ -1131,6 +1315,7 @@ async function settleSupabaseTableSessionRound(
     resultSnapshot,
     idempotencyKey,
   }: {
+    roundId?: string | null
     sessionId: string
     gameSlug: string
     outcome: ProgressOutcome
@@ -1182,6 +1367,7 @@ async function settleSupabaseTableSessionRound(
     p_bet_snapshot: betSnapshot,
     p_result_snapshot: resultSnapshot,
     p_idempotency_key: idempotencyKey,
+    ...(roundId ? { p_round_id: roundId } : {}),
   })
 
   if (error) {
@@ -1189,6 +1375,7 @@ async function settleSupabaseTableSessionRound(
       return settleSupabaseTableSessionRoundDirect(auth, {
         sessionId,
         gameSlug,
+        roundId,
         outcome,
         delta,
         totalStake,
@@ -1240,6 +1427,7 @@ async function settleSupabaseTableSessionRound(
 async function settleSupabaseTableSessionRoundDirect(
   auth: AuthenticatedMember,
   {
+    roundId,
     sessionId,
     gameSlug,
     outcome,
@@ -1250,6 +1438,7 @@ async function settleSupabaseTableSessionRoundDirect(
     resultSnapshot,
     idempotencyKey,
   }: {
+    roundId?: string | null
     sessionId: string
     gameSlug: string
     outcome: ProgressOutcome
@@ -1387,6 +1576,7 @@ async function settleSupabaseTableSessionRoundDirect(
   }
 
   const round = await insertSupabaseGameRound({
+    roundId,
     userId,
     gameSlug,
     tableSessionId: sessionId,
@@ -1423,6 +1613,652 @@ async function settleSupabaseTableSessionRoundDirect(
     round,
     idempotent: false,
   }
+}
+
+function normalizeBlackjackStake(patchBody: Record<string, unknown>) {
+  const betSnapshot = normalizeRecord(patchBody.betSnapshot)
+  const hands = Array.isArray(betSnapshot.hands) ? betSnapshot.hands : []
+  const firstHand = hands.length > 0 ? normalizeRecord(hands[0]) : {}
+  const rawStake = betSnapshot.stake ?? betSnapshot.bet ?? firstHand.bet ?? patchBody.stake
+  return Math.min(1000000, Math.max(1, normalizeMoney(rawStake, 10)))
+}
+
+function normalizeBlackjackAction(value: unknown): BlackjackAction {
+  if (
+    value === "hit" ||
+    value === "stand" ||
+    value === "double" ||
+    value === "split" ||
+    value === "buy_insurance" ||
+    value === "skip_insurance"
+  ) {
+    return value
+  }
+
+  throw new MemberDataError("A valid blackjack action is required.")
+}
+
+function blackjackFinalIdempotencyKey(roundId: string) {
+  return `blackjack-final:${roundId}`
+}
+
+function gameRoundFromEnvelope(round: RoundEnvelope): MemberGameRound {
+  return {
+    id: round.roundId,
+    gameSlug: round.gameSlug,
+    tableSessionId: round.tableSessionId,
+    roundStatus: round.status,
+    totalStake: round.totalStake,
+    delta: round.delta,
+    outcome: round.outcome,
+    chipBalanceBefore: round.chipBalanceBefore,
+    chipBalanceAfter: round.chipBalanceAfter,
+    resultSummary: round.summary,
+    betSnapshot: round.betSnapshot,
+    resultSnapshot: round.resultSnapshot,
+    idempotencyKey: blackjackFinalIdempotencyKey(round.roundId),
+    createdAt: round.serverTimestamp,
+  }
+}
+
+async function findSupabaseBlackjackStateByIdempotencyKey(userId: string, idempotencyKey: string) {
+  const serviceSupabase = createSupabaseServiceClient()
+  const { data, error } = await serviceSupabase
+    .from("member_blackjack_round_states")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("idempotency_key", idempotencyKey)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data ? toBlackjackRoundState(data) : null
+}
+
+async function findActiveSupabaseBlackjackState(userId: string, tableSessionId: string) {
+  const serviceSupabase = createSupabaseServiceClient()
+  const { data, error } = await serviceSupabase
+    .from("member_blackjack_round_states")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("table_session_id", tableSessionId)
+    .eq("status", "active")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data ? toBlackjackRoundState(data) : null
+}
+
+async function findSupabaseBlackjackStateById(userId: string, roundId: string) {
+  const serviceSupabase = createSupabaseServiceClient()
+  const { data, error } = await serviceSupabase
+    .from("member_blackjack_round_states")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("id", roundId)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data ? toBlackjackRoundState(data) : null
+}
+
+async function insertSupabaseBlackjackState(userId: string, state: BlackjackRoundState) {
+  const serviceSupabase = createSupabaseServiceClient()
+  const { data, error } = await serviceSupabase
+    .from("member_blackjack_round_states")
+    .insert({
+      id: state.roundId,
+      user_id: userId,
+      ...blackjackStateToRow(state),
+    })
+    .select("*")
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return toBlackjackRoundState(data)
+}
+
+async function updateSupabaseBlackjackState(userId: string, state: BlackjackRoundState) {
+  const serviceSupabase = createSupabaseServiceClient()
+  const { data, error } = await serviceSupabase
+    .from("member_blackjack_round_states")
+    .update(blackjackStateToRow(state))
+    .eq("id", state.roundId)
+    .eq("user_id", userId)
+    .select("*")
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return toBlackjackRoundState(data)
+}
+
+async function voidSupabaseBlackjackStateIfExpired(userId: string, state: BlackjackRoundState, now = nowIso()) {
+  if (!isBlackjackExpired(state, now)) {
+    return state
+  }
+
+  return updateSupabaseBlackjackState(userId, voidExpiredBlackjackRound(state, now))
+}
+
+function upsertLocalBlackjackState(states: BlackjackRoundState[], state: BlackjackRoundState) {
+  const next = states.filter((item) => item.roundId !== state.roundId)
+  next.unshift(state)
+  return compactLocalBlackjackStates(next)
+}
+
+function buildLocalProgressAfterRound(
+  current: MemberGameProgress | undefined,
+  round: RoundEnvelope,
+): MemberGameProgress {
+  const streak = round.outcome === "win" ? (current?.streak ?? 0) + 1 : round.outcome === "loss" ? 0 : current?.streak ?? 0
+
+  return {
+    gameSlug: round.gameSlug,
+    plays: (current?.plays ?? 0) + 1,
+    wins: (current?.wins ?? 0) + (round.outcome === "win" ? 1 : 0),
+    losses: (current?.losses ?? 0) + (round.outcome === "loss" ? 1 : 0),
+    streak,
+    bestStreak: Math.max(current?.bestStreak ?? 0, streak),
+    bankroll: round.chipBalanceAfter,
+    lastResult: round.outcome,
+    lastDelta: round.delta,
+    lastSummary: round.summary,
+    lastPlayedAt: round.serverTimestamp,
+  }
+}
+
+async function ensureNoActiveBlackjackRoundForCashOut(
+  auth: AuthenticatedMember,
+  cookieStore: CookieStore,
+  response: NextResponse,
+  sessionId: string,
+) {
+  const now = nowIso()
+
+  if (auth.source === "supabase") {
+    const userId = auth.session.userId
+    if (!userId) throw new Error("Supabase member session is missing a user id.")
+    const active = await findActiveSupabaseBlackjackState(userId, sessionId)
+
+    if (!active) {
+      return
+    }
+
+    if (isBlackjackExpired(active, now)) {
+      await updateSupabaseBlackjackState(userId, voidExpiredBlackjackRound(active, now))
+      return
+    }
+
+    throw new MemberDataError("An active blackjack round must be completed or expired before cash out.", 409)
+  }
+
+  const state = readStateToken(cookieStore.get(MEMBER_STATE_COOKIE)?.value)
+  const active = (state.blackjackRoundStates ?? []).find((round) => round.tableSessionId === sessionId && round.status === "active")
+
+  if (!active) {
+    return
+  }
+
+  if (isBlackjackExpired(active, now)) {
+    writeLocalState(response, {
+      ...state,
+      blackjackRoundStates: upsertLocalBlackjackState(state.blackjackRoundStates ?? [], voidExpiredBlackjackRound(active, now)),
+    })
+    return
+  }
+
+  throw new MemberDataError("An active blackjack round must be completed or expired before cash out.", 409)
+}
+
+async function startSupabaseBlackjackRound(
+  auth: AuthenticatedMember,
+  tableSessionId: string,
+  idempotencyKey: string,
+  stake: number,
+): Promise<BlackjackRoundMutationResult> {
+  const userId = auth.session.userId
+  if (!userId) throw new Error("Supabase member session is missing a user id.")
+  const serviceSupabase = createSupabaseServiceClient()
+  const { data: sessionData, error: sessionError } = await serviceSupabase
+    .from("member_table_sessions")
+    .select("*")
+    .eq("id", tableSessionId)
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .maybeSingle()
+
+  if (sessionError) throw new Error(sessionError.message)
+  if (!sessionData) throw new Error("Active table session was not found.")
+
+  const tableSession = toTableSession(sessionData)
+  if (tableSession.gameSlug !== "blackjack") {
+    throw new Error("Table session game does not match round game.")
+  }
+
+  const existingByKey = await findSupabaseBlackjackStateByIdempotencyKey(userId, idempotencyKey)
+  if (existingByKey) {
+    const maybeVoided = await voidSupabaseBlackjackStateIfExpired(userId, existingByKey)
+    return {
+      blackjackRound: publicBlackjackView(maybeVoided, true),
+      tableSession,
+      progress: null,
+      settlement: null,
+      round: publicBlackjackView(maybeVoided, true).round,
+      idempotent: true,
+    }
+  }
+
+  const active = await findActiveSupabaseBlackjackState(userId, tableSessionId)
+  if (active) {
+    if (isBlackjackExpired(active)) {
+      await updateSupabaseBlackjackState(userId, voidExpiredBlackjackRound(active))
+    } else {
+      return {
+        blackjackRound: publicBlackjackView(active, true),
+        tableSession,
+        progress: null,
+        settlement: null,
+        round: null,
+        idempotent: true,
+      }
+    }
+  }
+
+  const state = createBlackjackRoundState({
+    roundId: randomUUID(),
+    gameSlug: "blackjack",
+    tableSessionId,
+    stake,
+    chipBalanceBefore: tableSession.chipBalance,
+    idempotencyKey,
+  })
+  const inserted = await insertSupabaseBlackjackState(userId, state)
+
+  return {
+    blackjackRound: publicBlackjackView(inserted, false),
+    tableSession,
+    progress: null,
+    settlement: null,
+    round: null,
+    idempotent: false,
+  }
+}
+
+function startLocalBlackjackRound(
+  auth: AuthenticatedMember,
+  cookieStore: CookieStore,
+  response: NextResponse,
+  tableSessionId: string,
+  idempotencyKey: string,
+  stake: number,
+): BlackjackRoundMutationResult {
+  const state = readStateToken(cookieStore.get(MEMBER_STATE_COOKIE)?.value)
+  const sessions = [...(state.tableSessions ?? [])]
+  const tableSession = sessions.find((session) => session.id === tableSessionId && session.status === "active")
+
+  if (!auth.session || !tableSession) {
+    throw new Error("Active table session was not found.")
+  }
+
+  if (tableSession.gameSlug !== "blackjack") {
+    throw new Error("Table session game does not match round game.")
+  }
+
+  const existingByKey = (state.blackjackRoundStates ?? []).find((round) => round.idempotencyKey === idempotencyKey)
+  if (existingByKey) {
+    const maybeVoided = isBlackjackExpired(existingByKey) ? voidExpiredBlackjackRound(existingByKey) : existingByKey
+    writeLocalState(response, {
+      ...state,
+      blackjackRoundStates: upsertLocalBlackjackState(state.blackjackRoundStates ?? [], maybeVoided),
+    })
+    const view = publicBlackjackView(maybeVoided, true)
+    return {
+      blackjackRound: view,
+      tableSession,
+      progress: null,
+      settlement: null,
+      round: view.round,
+      idempotent: true,
+    }
+  }
+
+  const active = (state.blackjackRoundStates ?? []).find((round) => round.tableSessionId === tableSessionId && round.status === "active")
+  let blackjackRoundStates = state.blackjackRoundStates ?? []
+
+  if (active) {
+    if (isBlackjackExpired(active)) {
+      blackjackRoundStates = upsertLocalBlackjackState(blackjackRoundStates, voidExpiredBlackjackRound(active))
+    } else {
+      return {
+        blackjackRound: publicBlackjackView(active, true),
+        tableSession,
+        progress: null,
+        settlement: null,
+        round: null,
+        idempotent: true,
+      }
+    }
+  }
+
+  const nextState = createBlackjackRoundState({
+    roundId: randomUUID(),
+    gameSlug: "blackjack",
+    tableSessionId,
+    stake,
+    chipBalanceBefore: tableSession.chipBalance,
+    idempotencyKey,
+  })
+
+  writeLocalState(response, {
+    ...state,
+    blackjackRoundStates: upsertLocalBlackjackState(blackjackRoundStates, nextState),
+  })
+
+  return {
+    blackjackRound: publicBlackjackView(nextState, false),
+    tableSession,
+    progress: null,
+    settlement: null,
+    round: null,
+    idempotent: false,
+  }
+}
+
+export async function startBlackjackRound(
+  cookieStore: CookieStore,
+  response: NextResponse,
+  body: unknown,
+): Promise<BlackjackRoundMutationResult | null> {
+  const auth = await getAuthenticatedMember(cookieStore, response)
+
+  if (!auth) {
+    return null
+  }
+
+  const patchBody = body && typeof body === "object" ? body as Record<string, unknown> : {}
+  const gameSlug = typeof patchBody.gameSlug === "string" ? patchBody.gameSlug.slice(0, 80) : ""
+  const table = getPlayableTable(gameSlug)
+  const tableSessionId = typeof patchBody.tableSessionId === "string" ? patchBody.tableSessionId.slice(0, 80) : null
+  const idempotencyKey = typeof patchBody.idempotencyKey === "string" ? patchBody.idempotencyKey.slice(0, 160) : null
+
+  if (!table || table.ruleSet !== "blackjack") {
+    throw new Error("Game slug is not a blackjack table.")
+  }
+
+  if (!idempotencyKey || !tableSessionId) {
+    throw new Error("A table session and idempotency key are required for blackjack.")
+  }
+
+  const stake = normalizeBlackjackStake(patchBody)
+
+  if (auth.source === "supabase") {
+    return startSupabaseBlackjackRound(auth, tableSessionId, idempotencyKey, stake)
+  }
+
+  return startLocalBlackjackRound(auth, cookieStore, response, tableSessionId, idempotencyKey, stake)
+}
+
+async function applySupabaseBlackjackAction(
+  auth: AuthenticatedMember,
+  roundId: string,
+  command: { commandId: string, expectedVersion: number, action: BlackjackAction, handId: string | null },
+): Promise<BlackjackRoundMutationResult> {
+  const userId = auth.session.userId
+  if (!userId) throw new Error("Supabase member session is missing a user id.")
+
+  const loaded = await findSupabaseBlackjackStateById(userId, roundId)
+  if (!loaded) throw new MemberDataError("Blackjack round was not found.", 404)
+
+  if (isBlackjackExpired(loaded)) {
+    const voided = await updateSupabaseBlackjackState(userId, voidExpiredBlackjackRound(loaded))
+    throw new MemberDataError(`Blackjack round expired: ${publicBlackjackView(voided).summary}`, 409)
+  }
+
+  const applied = applyBlackjackCommand(loaded, command)
+
+  if (applied.idempotent) {
+    return {
+      blackjackRound: applied.blackjackRound,
+      tableSession: null,
+      progress: null,
+      settlement: applied.settlement,
+      round: applied.round,
+      idempotent: true,
+    }
+  }
+
+  let nextState = applied.state
+  let progress: MemberGameProgress | null = null
+  let tableSession: MemberTableSession | null = null
+  let round = applied.round
+  let settlement = applied.settlement
+
+  if (applied.round && applied.settlement) {
+    const tableRound = await settleSupabaseTableSessionRound(auth, {
+      roundId: nextState.roundId,
+      sessionId: nextState.tableSessionId,
+      gameSlug: "blackjack",
+      outcome: applied.settlement.outcome,
+      delta: applied.settlement.delta,
+      totalStake: applied.settlement.totalStake,
+      summary: applied.settlement.summary,
+      betSnapshot: applied.settlement.betSnapshot,
+      resultSnapshot: applied.settlement.resultSnapshot,
+      idempotencyKey: blackjackFinalIdempotencyKey(nextState.roundId),
+    })
+
+    if (!tableRound.round) {
+      throw new Error("Authoritative blackjack round could not be loaded.")
+    }
+
+    nextState = {
+      ...nextState,
+      finalRoundId: tableRound.round.id,
+      chipBalanceAfter: tableRound.tableSession.chipBalance,
+    }
+    progress = tableRound.progress
+    tableSession = tableRound.tableSession
+    round = roundEnvelopeFromGameRound(tableRound.round, tableRound.idempotent)
+    settlement = settlementFromGameRound(tableRound.round)
+  }
+
+  const saved = await updateSupabaseBlackjackState(userId, nextState)
+
+  return {
+    blackjackRound: publicBlackjackView(saved, false),
+    tableSession,
+    progress,
+    settlement,
+    round,
+    idempotent: false,
+  }
+}
+
+function applyLocalBlackjackAction(
+  auth: AuthenticatedMember,
+  cookieStore: CookieStore,
+  response: NextResponse,
+  roundId: string,
+  command: { commandId: string, expectedVersion: number, action: BlackjackAction, handId: string | null },
+): BlackjackRoundMutationResult {
+  const state = readStateToken(cookieStore.get(MEMBER_STATE_COOKIE)?.value)
+  const blackjackStates = [...(state.blackjackRoundStates ?? [])]
+  const index = blackjackStates.findIndex((round) => round.roundId === roundId)
+  const loaded = index >= 0 ? blackjackStates[index] : null
+
+  if (!auth.session || !loaded) {
+    throw new MemberDataError("Blackjack round was not found.", 404)
+  }
+
+  if (isBlackjackExpired(loaded)) {
+    const voided = voidExpiredBlackjackRound(loaded)
+    writeLocalState(response, {
+      ...state,
+      blackjackRoundStates: upsertLocalBlackjackState(blackjackStates, voided),
+    })
+    throw new MemberDataError(`Blackjack round expired: ${publicBlackjackView(voided).summary}`, 409)
+  }
+
+  const applied = applyBlackjackCommand(loaded, command)
+
+  if (applied.idempotent) {
+    return {
+      blackjackRound: applied.blackjackRound,
+      tableSession: null,
+      progress: null,
+      settlement: applied.settlement,
+      round: applied.round,
+      idempotent: true,
+    }
+  }
+
+  let nextState = applied.state
+  let tableSession: MemberTableSession | null = null
+  let progressResult: MemberGameProgress | null = null
+  let round = applied.round
+  const sessions = [...(state.tableSessions ?? [])]
+  const sessionIndex = sessions.findIndex((session) => session.id === nextState.tableSessionId && session.status === "active")
+  const progress = [...(state.progress ?? [])]
+  const progressIndex = progress.findIndex((item) => item.gameSlug === "blackjack")
+  const existingRound = (state.gameRounds ?? []).find((item) => item.id === roundId)
+
+  if (applied.round && !existingRound) {
+    if (sessionIndex < 0) throw new Error("Active table session was not found.")
+
+    const currentSession = sessions[sessionIndex]
+    tableSession = {
+      ...currentSession,
+      chipBalance: applied.round.chipBalanceAfter,
+      updatedAt: applied.round.serverTimestamp,
+    }
+    sessions[sessionIndex] = tableSession
+    progressResult = buildLocalProgressAfterRound(progressIndex >= 0 ? progress[progressIndex] : undefined, applied.round)
+    if (progressIndex >= 0) {
+      progress[progressIndex] = progressResult
+    } else {
+      progress.unshift(progressResult)
+    }
+    round = {
+      ...applied.round,
+      idempotent: false,
+    }
+    nextState = {
+      ...nextState,
+      finalRoundId: round.roundId,
+      chipBalanceAfter: round.chipBalanceAfter,
+    }
+  }
+
+  const finalGameRound = round ? gameRoundFromEnvelope(round) : null
+  const event: MemberEvent | null = round
+    ? {
+      id: `${round.serverTimestamp}-${Math.random().toString(16).slice(2)}`,
+      kind: "game",
+      title: `blackjack ${round.outcome}`,
+      detail: round.summary,
+      createdAt: round.serverTimestamp,
+    }
+    : null
+
+  writeLocalState(response, {
+    ...state,
+    progress: compactLocalProgress(progress),
+    recentEvents: event ? compactLocalEvents([event, ...(state.recentEvents ?? [])]) : state.recentEvents,
+    tableSessions: compactLocalTableSessions(sessions),
+    gameRounds: finalGameRound
+      ? compactLocalGameRounds([finalGameRound, ...(state.gameRounds ?? [])])
+      : state.gameRounds,
+    blackjackRoundStates: upsertLocalBlackjackState(blackjackStates, nextState),
+  })
+
+  return {
+    blackjackRound: publicBlackjackView(nextState, false),
+    tableSession,
+    progress: progressResult,
+    settlement: applied.settlement,
+    round,
+    idempotent: false,
+  }
+}
+
+export async function applyBlackjackRoundAction(
+  cookieStore: CookieStore,
+  response: NextResponse,
+  roundId: string,
+  body: unknown,
+): Promise<BlackjackRoundMutationResult | null> {
+  const auth = await getAuthenticatedMember(cookieStore, response)
+
+  if (!auth) {
+    return null
+  }
+
+  const patchBody = body && typeof body === "object" ? body as Record<string, unknown> : {}
+  const commandId = typeof patchBody.commandId === "string" ? patchBody.commandId.slice(0, 160) : null
+  const expectedVersion = Number(patchBody.expectedVersion)
+
+  if (!commandId || !Number.isInteger(expectedVersion)) {
+    throw new MemberDataError("A blackjack command id and expected version are required.")
+  }
+
+  const command = {
+    commandId,
+    expectedVersion,
+    action: normalizeBlackjackAction(patchBody.action),
+    handId: typeof patchBody.handId === "string" ? patchBody.handId : null,
+  }
+
+  if (auth.source === "supabase") {
+    return applySupabaseBlackjackAction(auth, roundId, command)
+  }
+
+  return applyLocalBlackjackAction(auth, cookieStore, response, roundId, command)
+}
+
+export async function readActiveBlackjackRound(cookieStore: CookieStore, tableSessionId: string | null | undefined) {
+  if (!tableSessionId) {
+    return null
+  }
+
+  const auth = await getAuthenticatedMember(cookieStore)
+
+  if (!auth) {
+    return null
+  }
+
+  if (auth.source === "supabase") {
+    const userId = auth.session.userId
+    if (!userId) return null
+    const active = await findActiveSupabaseBlackjackState(userId, tableSessionId)
+    if (!active) return null
+    const maybeVoided = await voidSupabaseBlackjackStateIfExpired(userId, active)
+    return maybeVoided.status === "active" ? publicBlackjackView(maybeVoided, false) : null
+  }
+
+  const state = readStateToken(cookieStore.get(MEMBER_STATE_COOKIE)?.value)
+  const active = (state.blackjackRoundStates ?? []).find((round) => round.tableSessionId === tableSessionId && round.status === "active")
+
+  if (!active || isBlackjackExpired(active)) {
+    return null
+  }
+
+  return publicBlackjackView(active, false)
 }
 
 export async function getAuthenticatedMember(
@@ -1708,6 +2544,7 @@ async function findSupabaseRoundByIdempotencyKey(userId: string, idempotencyKey:
 }
 
 async function insertSupabaseGameRound({
+  roundId,
   userId,
   gameSlug,
   tableSessionId,
@@ -1721,6 +2558,7 @@ async function insertSupabaseGameRound({
   resultSnapshot,
   idempotencyKey,
 }: {
+  roundId?: string | null
   userId: string
   gameSlug: string
   tableSessionId?: string | null
@@ -1738,6 +2576,7 @@ async function insertSupabaseGameRound({
   const { data, error } = await serviceSupabase
     .from("member_game_rounds")
     .insert({
+      ...(roundId ? { id: roundId } : {}),
       user_id: userId,
       game_slug: gameSlug,
       table_session_id: tableSessionId ?? null,
@@ -2442,6 +3281,10 @@ export async function recordGameProgress(cookieStore: CookieStore, response: Nex
 
   if (!idempotencyKey || !tableSessionId) {
     throw new Error("A table session and idempotency key are required for authoritative settlement.")
+  }
+
+  if (table.ruleSet === "blackjack") {
+    return startBlackjackRound(cookieStore, response, body)
   }
 
   const settlement = settleAuthoritativeRound(table.ruleSet, normalizeRecord(patchBody.betSnapshot))

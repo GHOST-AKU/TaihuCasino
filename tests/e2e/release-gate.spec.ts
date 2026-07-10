@@ -12,7 +12,7 @@ const coreTables = [
   },
   {
     slug: "blackjack",
-    betSnapshot: { hands: [{ bet: 10, actions: ["stand"] }] },
+    betSnapshot: { stake: 10 },
   },
   {
     slug: "roulette",
@@ -34,6 +34,71 @@ async function signIn(request: APIRequestContext, requestId = "e2e-login-request
   expect(response.headers()["x-request-id"]).toBe(requestId)
   const body = await response.json()
   expect(body.session.account).toBe(testAccount.account)
+}
+
+type ReleaseBlackjackRound = {
+  roundId: string
+  status: "active" | "settled" | "voided"
+  version: number
+  allowedActions: string[]
+  currentHandId: string | null
+}
+
+type ReleaseRoundEnvelope = {
+  roundId: string
+  gameSlug: string
+  tableSessionId: string
+  status: "settled"
+  version: 1
+  delta: number
+  totalStake: number
+  chipBalanceBefore: number
+  chipBalanceAfter: number
+  summary: string
+  resultSnapshot: Record<string, unknown>
+  idempotent: boolean
+}
+
+type ReleaseBlackjackFinalBody = {
+  blackjackRound: ReleaseBlackjackRound
+  settlement: {
+    totalStake: number
+    delta: number
+    summary: string
+    resultSnapshot: Record<string, unknown>
+  }
+  progress: { bankroll: number }
+  round: ReleaseRoundEnvelope
+}
+
+async function settleBlackjackRound(request: APIRequestContext, blackjackRound: ReleaseBlackjackRound) {
+  let active = blackjackRound
+  let finalBody: ReleaseBlackjackFinalBody | null = null
+
+  for (let step = 0; step < 12 && active?.status === "active"; step += 1) {
+    const action = active.allowedActions.includes("skip_insurance")
+      ? "skip_insurance"
+      : active.allowedActions.includes("stand")
+        ? "stand"
+        : active.allowedActions[0]
+    const actionResponse = await request.post(`/api/member/game-rounds/${active.roundId}/actions`, {
+      data: {
+        commandId: `e2e-blackjack-final-${active.roundId}-${step}`,
+        expectedVersion: active.version,
+        action,
+        handId: active.currentHandId,
+      },
+    })
+    expect(actionResponse.status(), `blackjack ${action}`).toBe(200)
+    finalBody = await actionResponse.json() as ReleaseBlackjackFinalBody
+    active = finalBody.blackjackRound
+  }
+
+  expect(finalBody?.round, "blackjack final envelope").toBeTruthy()
+  if (!finalBody) {
+    throw new Error("Blackjack did not return a final body.")
+  }
+  return finalBody
 }
 
 test("public legal and support pages remain open and draft-marked", async ({ page }) => {
@@ -223,6 +288,49 @@ test("four core tables support buy-in, authoritative round settlement, replay sa
     expect(round.status(), `${table.slug} round`).toBe(200)
     expect(round.headers()["x-request-id"]).toBe(`e2e-${table.slug}-round`)
     const roundBody = await round.json()
+    if (table.slug === "blackjack") {
+      expect(roundBody.blackjackRound.roundId).toEqual(expect.any(String))
+      expect(roundBody.blackjackRound.tableSessionId).toBe(tableSession.id)
+      expect(roundBody.blackjackRound.status).toBe("active")
+      expect(roundBody.blackjackRound.dealer.holeCardHidden).toBe(true)
+      expect(roundBody.blackjackRound.playerHands[0].cards.length).toBe(2)
+      expect(roundBody.round).toBeFalsy()
+
+      const replay = await request.post("/api/member/game-rounds", { data: roundPayload })
+      expect(replay.status(), `${table.slug} replay`).toBe(200)
+      const replayBody = await replay.json()
+      expect(replayBody.idempotent).toBe(true)
+      expect(replayBody.blackjackRound.roundId).toBe(roundBody.blackjackRound.roundId)
+
+      const finalBody = await settleBlackjackRound(request, roundBody.blackjackRound)
+      expect(finalBody.settlement.totalStake).toBeGreaterThanOrEqual(10)
+      expect(finalBody.settlement.resultSnapshot.forged).toBeUndefined()
+      expect(finalBody.round.roundId).toBe(roundBody.blackjackRound.roundId)
+      expect(finalBody.round.gameSlug).toBe(table.slug)
+      expect(finalBody.round.tableSessionId).toBe(tableSession.id)
+      expect(finalBody.round.status).toBe("settled")
+      expect(finalBody.round.version).toBe(1)
+      expect(finalBody.round.delta).toBe(finalBody.settlement.delta)
+      expect(finalBody.round.summary).toBe(finalBody.settlement.summary)
+      expect(finalBody.round.chipBalanceBefore).toBe(tableSession.chipBalance)
+      expect(finalBody.round.chipBalanceAfter).toBe(finalBody.progress.bankroll)
+      expect(finalBody.round.resultSnapshot.forged).toBeUndefined()
+      expect(finalBody.round.idempotent).toBe(false)
+
+      const cashOut = await request.post(`/api/member/table-sessions/${tableSession.id}/cash-out`, {
+        headers: { "x-request-id": `e2e-${table.slug}-cash-out` },
+        data: {
+          idempotencyKey: `e2e-cashout-${table.slug}`,
+        },
+      })
+      expect(cashOut.status(), `${table.slug} cash-out`).toBe(200)
+      expect(cashOut.headers()["x-request-id"]).toBe(`e2e-${table.slug}-cash-out`)
+      const cashOutBody = await cashOut.json()
+      expect(cashOutBody.tableSession.status).toBe("cashed_out")
+      expect(cashOutBody.tableSession.chipBalance).toBe(0)
+      continue
+    }
+
     expect(roundBody.settlement.totalStake).toBe(10)
     expect(roundBody.settlement.resultSnapshot.forged).toBeUndefined()
     expect(roundBody.round.roundId).toEqual(expect.any(String))
@@ -251,7 +359,6 @@ test("four core tables support buy-in, authoritative round settlement, replay sa
       headers: { "x-request-id": `e2e-${table.slug}-cash-out` },
       data: {
         idempotencyKey: `e2e-cashout-${table.slug}`,
-        expectedChipBalance: roundBody.round.chipBalanceAfter,
       },
     })
     expect(cashOut.status(), `${table.slug} cash-out`).toBe(200)

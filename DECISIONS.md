@@ -1,6 +1,6 @@
 # Decisions / 决策日志
 
-Last updated / 更新日期: 2026-07-09
+Last updated / 更新日期: 2026-07-10
 
 ## D-2026-07-09-01: Canonical round envelope with compatibility fields / Canonical round envelope 与兼容字段
 
@@ -69,4 +69,38 @@ Rationale / 原因:
 Final gameplay state must recover from server/member round history, not from stale or user-editable browser storage.
 
 最终玩法状态必须从服务端/会员回合历史恢复，而不是从过期或可被用户篡改的浏览器存储恢复。
+
+## D-2026-07-10-01: Blackjack action round ID is the final round ID / 21 点动作回合 ID 同时作为最终回合 ID
+
+Decision / 决策:
+
+The blackjack active state `id` is the `roundId` used by `POST /api/member/game-rounds/[roundId]/actions`. When the hand settles, the same ID is inserted into `member_game_rounds.id` and returned in the final `RoundEnvelope`.
+
+21 点活跃状态的 `id` 即 `POST /api/member/game-rounds/[roundId]/actions` 使用的 `roundId`。当本手结算时，同一个 ID 写入 `member_game_rounds.id` 并作为最终 `RoundEnvelope.roundId` 返回。
+
+Rationale / 原因:
+
+This avoids a split between “state ID” and “settled round ID”, keeps refresh recovery/history mapping simple, and preserves a single canonical ID across UI, actions, final envelope, and replay.
+
+这样可以避免“状态 ID”和“已结算回合 ID”分裂，简化刷新恢复与历史映射，并让 UI、动作、最终 envelope 和重放都使用同一个 canonical ID。
+
+Rollback / 回滚:
+
+If inserting a preselected `member_game_rounds.id` is not viable in a target database, keep `final_round_id` as a separate link and return the final game-round ID in the envelope, while preserving the action state ID only for active commands.
+
+如果目标数据库不能插入预选的 `member_game_rounds.id`，则保留独立 `final_round_id` 关联，并在 envelope 中返回最终 game-round ID；动作状态 ID 只用于活跃命令。
+
+## D-2026-07-10-02: Blackjack start returns active state, actions return final envelope / 21 点开局返回活跃状态，动作返回最终 envelope
+
+Decision / 决策:
+
+For blackjack only, `POST /api/member/game-rounds` creates or restores an active `blackjackRound` view and does not return a settled final `round` unless an already-settled idempotent start is replayed. Final chip/progress/history mutation happens only from the actions endpoint when the state machine reaches `settled`.
+
+仅对 21 点，`POST /api/member/game-rounds` 创建或恢复活跃 `blackjackRound` 视图，不返回已结算最终 `round`，除非重放的是已结算的幂等开局。最终筹码/进度/历史写入只在动作端点把状态机推进到 `settled` 时发生。
+
+Rationale / 原因:
+
+Blackjack is multi-step and must hide the deck/hole card between commands; treating deal as a final generic settlement would recreate the client/server double-result problem.
+
+21 点是多步流程，命令之间必须隐藏牌堆/暗牌；把发牌当作通用最终结算会重新制造客户端/服务端双结果问题。
 

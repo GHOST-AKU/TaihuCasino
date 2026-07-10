@@ -1,7 +1,7 @@
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
-import { isSameOriginMutation, readMemberOverview, recordGameProgress } from "@/lib/member-data"
+import { isSameOriginMutation, memberDataErrorStatus, readMemberOverview, recordGameProgress } from "@/lib/member-data"
 import { createRequestObserver } from "@/lib/observability"
 import { enforceRateLimit, recordSecuritySignal } from "@/lib/rate-limit"
 
@@ -96,10 +96,11 @@ export async function POST(request: Request) {
         body?.tableSessionId,
       ], observer.requestId)
     }
+    const blackjackRound = "blackjackRound" in result ? result.blackjackRound : null
     observer.success("game_round.settle.succeeded", {
       gameSlug: body?.gameSlug,
       idempotent: result.idempotent,
-      outcome: result.settlement.outcome,
+      outcome: result.settlement?.outcome ?? blackjackRound?.phase,
       status: 200,
       tableSessionId: body?.tableSessionId,
     })
@@ -111,16 +112,17 @@ export async function POST(request: Request) {
       },
     ))
   } catch (error) {
+    const status = memberDataErrorStatus(error)
     observer.failure("game_round.settle.failed", error, {
       gameSlug: body?.gameSlug,
-      status: 400,
+      status,
       tableSessionId: body?.tableSessionId,
       reasonCode: "game_round_settlement_failed",
     })
     return observer.attach(NextResponse.json(
       { error: error instanceof Error ? error.message : "Unable to record game round." },
       {
-        status: 400,
+        status,
         headers: response.headers,
       },
     ))
