@@ -86,7 +86,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9.39.1",
     "eslint-config-next": "^16.2.7",
-    "postcss": "^8.5.15",
+    "postcss": "^8.5.18",
     "supabase": "^2.98.0",
     "tailwindcss": "^4.2.0",
     "tw-animate-css": "1.3.3",
@@ -94,7 +94,7 @@
   },
   "pnpm": {
     "overrides": {
-      "postcss": "8.5.15"
+      "postcss": "8.5.18"
     }
   }
 }
