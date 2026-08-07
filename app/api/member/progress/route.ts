@@ -1,7 +1,7 @@
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
-import { isSameOriginMutation, readMemberOverview, recordGameProgress } from "@/lib/member-data"
+import { isSameOriginMutation, readMemberProgressView, recordGameProgress } from "@/lib/member-data"
 
 export async function GET() {
   const response = NextResponse.json(
@@ -13,9 +13,9 @@ export async function GET() {
     },
   )
   const cookieStore = await cookies()
-  const member = await readMemberOverview(cookieStore, response)
+  const progress = await readMemberProgressView(cookieStore, response)
 
-  if (!member) {
+  if (!progress) {
     return NextResponse.json(
       { error: "Authentication is required." },
       {
@@ -26,7 +26,7 @@ export async function GET() {
   }
 
   return NextResponse.json(
-    { progress: member.progress },
+    { progress },
     {
       headers: response.headers,
     },

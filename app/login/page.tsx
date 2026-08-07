@@ -1,6 +1,10 @@
 import type { Metadata } from "next"
+import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
 
 import { getLocalDemoCredentials } from "@/lib/server-auth"
+import { getAuthenticatedMember } from "@/lib/member-data"
+import { resolveAppRedirectTarget } from "@/lib/redirect-target"
 
 import { LoginForm } from "./login-form"
 
@@ -14,7 +18,13 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ mode?: string; next?: string }>
 }) {
-  const params = await searchParams
+  const [params, cookieStore] = await Promise.all([searchParams, cookies()])
+  const member = await getAuthenticatedMember(cookieStore)
+
+  if (member) {
+    redirect(resolveAppRedirectTarget(params.next))
+  }
+
   const testAccount = getLocalDemoCredentials()
   const initialMode = params.mode === "register" ? "register" : "sign-in"
 

@@ -3,14 +3,7 @@ import { NextResponse } from "next/server"
 
 import { createSupabaseAuthClient, createSupabaseServiceClient, isSupabaseAuthConfigured } from "@/lib/server-auth"
 import { AGE_ATTESTATION_VERSION, PRIVACY_VERSION, TERMS_VERSION } from "@/lib/legal"
-
-function resolveRedirectTarget(nextTarget: string | null) {
-  if (!nextTarget?.startsWith("/") || nextTarget.startsWith("//")) {
-    return "/"
-  }
-
-  return nextTarget
-}
+import { resolveAppRedirectTarget } from "@/lib/redirect-target"
 
 function recoveryErrorUrl(origin: string) {
   return new URL("/forgot-password?error=invalid_link", origin)
@@ -18,7 +11,7 @@ function recoveryErrorUrl(origin: string) {
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
-  const redirectTarget = resolveRedirectTarget(requestUrl.searchParams.get("next"))
+  const redirectTarget = resolveAppRedirectTarget(requestUrl.searchParams.get("next"))
   const code = requestUrl.searchParams.get("code")
   const isPasswordRecovery = redirectTarget === "/reset-password"
 

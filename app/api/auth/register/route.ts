@@ -8,18 +8,11 @@ import {
 } from "@/lib/server-auth"
 import { enforceRateLimit } from "@/lib/rate-limit"
 import { AGE_ATTESTATION_VERSION, PRIVACY_VERSION, TERMS_VERSION } from "@/lib/legal"
+import { resolveAppRedirectTarget } from "@/lib/redirect-target"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MIN_PASSWORD_LENGTH = 8
 const MAX_DISPLAY_NAME_LENGTH = 60
-
-function resolveRedirectTarget(nextTarget: unknown) {
-  if (typeof nextTarget !== "string" || !nextTarget.startsWith("/") || nextTarget.startsWith("//")) {
-    return "/"
-  }
-
-  return nextTarget
-}
 
 function parseRegistrationBody(body: {
   email?: unknown
@@ -35,7 +28,7 @@ function parseRegistrationBody(body: {
   const password = typeof body?.password === "string" ? body.password : ""
   const displayName = typeof body?.displayName === "string" ? body.displayName.trim() : ""
   const captchaToken = typeof body?.captchaToken === "string" ? body.captchaToken.trim() : ""
-  const next = resolveRedirectTarget(body?.next)
+  const next = resolveAppRedirectTarget(body?.next)
   const termsAccepted = body?.termsAccepted === true
   const ageAttested = body?.ageAttested === true
   const locale = typeof body?.locale === "string" ? body.locale.trim().slice(0, 20) : "en"

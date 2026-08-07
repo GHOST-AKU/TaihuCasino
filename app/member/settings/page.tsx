@@ -9,8 +9,9 @@ import { MemberSignOutButton } from "@/components/member-sign-out-button"
 import { AccountRightsPanel } from "@/components/account-rights-panel"
 import { Button } from "@/components/ui/button"
 import { ThemePanelSurface } from "@/components/theme-page-shell"
-import { readMemberOverview } from "@/lib/member-data"
+import { readMemberSettingsView, readWallet } from "@/lib/member-data"
 import type { MemberLanguage, MemberSettings } from "@/lib/member-data"
+import { formatAmount } from "@/lib/number-format"
 
 function getSettingsCopy(language: MemberLanguage) {
   const isChinese = language === "zh"
@@ -60,13 +61,16 @@ function formatSettingValue(settings: MemberSettings, key: "profileVisibility" |
 
 export default async function MemberSettingsPage() {
   const cookieStore = await cookies()
-  const member = await readMemberOverview(cookieStore)
+  const [settings, wallet] = await Promise.all([
+    readMemberSettingsView(cookieStore),
+    readWallet(cookieStore),
+  ])
 
-  if (!member) {
+  if (!settings || !wallet) {
     redirect(`/login?next=${encodeURIComponent("/member/settings")}`)
   }
 
-  const copy = getSettingsCopy(member.settings.language)
+  const copy = getSettingsCopy(settings.language)
 
   return (
     <MemberCenterShell
@@ -82,8 +86,8 @@ export default async function MemberSettingsPage() {
             <h2 className="text-lg font-semibold text-foreground">{copy.preferences}</h2>
           </div>
           <MemberSettingsForm
-            initialSettings={member.settings}
-            initialWalletBalance={member.wallet.balance}
+            initialSettings={settings}
+            initialWalletBalance={wallet.balance}
             enableTestWalletTopUp={process.env.NODE_ENV !== "production" || process.env.TAIHU_ENABLE_TEST_WALLET_TOPUP === "true"}
           />
         </ThemePanelSurface>
@@ -92,10 +96,10 @@ export default async function MemberSettingsPage() {
           <ThemePanelSurface className="p-6">
             <h2 className="text-lg font-semibold text-foreground">{copy.policy}</h2>
             <div className="mt-5 grid gap-3">
-              <SettingSummary icon={Eye} label={copy.summary.visibility} value={formatSettingValue(member.settings, "profileVisibility", member.settings.language)} />
-              <SettingSummary icon={Bell} label={copy.summary.notifications} value={member.settings.notificationEnabled ? copy.summary.on : copy.summary.off} />
-              <SettingSummary icon={Gamepad2} label={copy.summary.tableDensity} value={formatSettingValue(member.settings, "tableDensity", member.settings.language)} />
-              <SettingSummary icon={LockKeyhole} label={copy.summary.dailyLimit} value={`$${member.settings.responsibleLimit.toLocaleString()}`} />
+              <SettingSummary icon={Eye} label={copy.summary.visibility} value={formatSettingValue(settings, "profileVisibility", settings.language)} />
+              <SettingSummary icon={Bell} label={copy.summary.notifications} value={settings.notificationEnabled ? copy.summary.on : copy.summary.off} />
+              <SettingSummary icon={Gamepad2} label={copy.summary.tableDensity} value={formatSettingValue(settings, "tableDensity", settings.language)} />
+              <SettingSummary icon={LockKeyhole} label={copy.summary.dailyLimit} value={`$${formatAmount(settings.responsibleLimit)}`} />
             </div>
           </ThemePanelSurface>
 

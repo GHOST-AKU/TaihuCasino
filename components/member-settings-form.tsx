@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { LANGUAGE_STORAGE_KEY } from "@/lib/home-content"
+import { formatUsd } from "@/lib/number-format"
 
 type MemberTheme = "light" | "dark" | "system"
 type MemberLanguage = "zh" | "en"
@@ -78,13 +79,7 @@ function getFormCopy(language: MemberLanguage) {
   }
 }
 
-function formatMoney(value: number) {
-  return value.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
-  })
-}
+const formatMoney = formatUsd
 
 export function MemberSettingsForm({
   initialSettings,
@@ -208,19 +203,6 @@ export function MemberSettingsForm({
 
       if (typeof payload?.walletEntry?.balanceAfter === "number") {
         setWalletBalance(payload.walletEntry.balanceAfter)
-      }
-
-      const memberResponse = await fetch("/api/member/me", {
-        headers: {
-          "cache-control": "no-store",
-        },
-      }).catch(() => null)
-      const memberPayload = memberResponse?.ok
-        ? ((await memberResponse.json().catch(() => null)) as { member?: { wallet?: { balance?: unknown } } } | null)
-        : null
-
-      if (typeof memberPayload?.member?.wallet?.balance === "number") {
-        setWalletBalance(memberPayload.member.wallet.balance)
       }
 
       setMessage(copy.testWalletSuccess)
