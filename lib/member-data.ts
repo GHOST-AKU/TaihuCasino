@@ -5,6 +5,7 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { cookies } from "next/headers"
 import type { NextResponse } from "next/server"
+import { cache } from "react"
 
 import type { MemberSession } from "@/lib/member-session"
 import {
@@ -230,6 +231,25 @@ export interface MemberOverview {
   gameRounds: MemberGameRound[]
   adRewards: MemberAdReward[]
   purchases: MemberPurchase[]
+}
+
+export type MemberGameOverview = Pick<
+  MemberOverview,
+  "session" | "profile" | "settings" | "wallet" | "progress" | "gameRounds"
+>
+
+export type MemberLobbyOverview = Pick<
+  MemberOverview,
+  "session" | "profile" | "settings" | "wallet" | "progress" | "walletLedger" | "gameRounds"
+>
+
+export interface MemberHomeSnapshot {
+  wallet: Pick<MemberWallet, "balance">
+  progress: Array<
+    Pick<MemberGameProgress, "gameSlug" | "plays" | "wins" | "losses" | "streak" | "bestStreak">
+  >
+  walletLedger: Array<Pick<MemberWalletLedgerEntry, "id" | "amount" | "source" | "createdAt" | "metadata">>
+  gameRounds: Array<Pick<MemberGameRound, "id" | "gameSlug" | "outcome" | "delta" | "createdAt">>
 }
 
 interface AuthenticatedMember {
@@ -982,18 +1002,44 @@ export async function applyWalletEntry(cookieStore: CookieStore, response: NextR
 }
 
 export async function readWallet(cookieStore: CookieStore, response?: NextResponse) {
-  const overview = await readMemberOverview(cookieStore, response)
+  const auth = await getAuthenticatedMember(cookieStore, response)
 
-  return overview?.wallet ?? null
+  return auth ? readAuthenticatedWallet(auth, cookieStore) : null
 }
 
 export async function readWalletLedger(cookieStore: CookieStore, limit = 12, response?: NextResponse) {
-  const overview = await readMemberOverview(cookieStore, response)
+  const auth = await getAuthenticatedMember(cookieStore, response)
 
-  return overview ? overview.walletLedger.slice(0, Math.max(1, Math.min(50, limit))) : null
+  if (!auth) {
+    return null
+  }
+
+  const normalizedLimit = Math.max(1, Math.min(50, limit))
+
+  if (auth.source === "supabase") {
+    if (!auth.supabase || !auth.session.userId) {
+      throw new Error("Supabase member session is missing a user id.")
+    }
+
+    const { data, error } = await auth.supabase
+      .from("member_wallet_ledger")
+      .select("*")
+      .eq("user_id", auth.session.userId)
+      .order("created_at", { ascending: false })
+      .limit(normalizedLimit)
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    return Array.isArray(data) ? data.map((row) => toWalletLedgerEntry(row)) : []
+  }
+
+  const overview = readLocalOverview(auth, cookieStore)
+  return overview.walletLedger.slice(0, normalizedLimit)
 }
 
-async function readAuthenticatedWallet(auth: AuthenticatedMember): Promise<MemberWallet> {
+async function readAuthenticatedWallet(auth: AuthenticatedMember, cookieStore?: CookieStore): Promise<MemberWallet> {
   if (auth.source === "supabase") {
     if (!auth.supabase || !auth.session.userId) {
       throw new Error("Supabase member session is missing a user id.")
@@ -1012,7 +1058,7 @@ async function readAuthenticatedWallet(auth: AuthenticatedMember): Promise<Membe
     return toWallet(data)
   }
 
-  const state = readStateToken(undefined)
+  const state = readStateToken(cookieStore?.get(MEMBER_STATE_COOKIE)?.value)
   return {
     ...defaultWallet(),
     ...state.wallet,
@@ -2261,7 +2307,7 @@ export async function readActiveBlackjackRound(cookieStore: CookieStore, tableSe
   return publicBlackjackView(active, false)
 }
 
-export async function getAuthenticatedMember(
+async function authenticateMember(
   cookieStore: CookieStore,
   response?: NextResponse,
 ): Promise<AuthenticatedMember | null> {
@@ -2289,6 +2335,398 @@ export async function getAuthenticatedMember(
         source: "local",
       }
     : null
+}
+
+const getRequestAuthenticatedMember = cache((cookieStore: CookieStore) => authenticateMember(cookieStore))
+
+export async function getAuthenticatedMember(
+  cookieStore: CookieStore,
+  response?: NextResponse,
+): Promise<AuthenticatedMember | null> {
+  return response ? authenticateMember(cookieStore, response) : getRequestAuthenticatedMember(cookieStore)
+}
+
+async function readSupabaseGameOverview(
+  auth: AuthenticatedMember,
+  gameSlug: string,
+): Promise<MemberGameOverview> {
+  const supabase = auth.supabase
+  const userId = auth.session.userId
+
+  if (!supabase || !userId) {
+    throw new Error("Supabase member session is missing a user id.")
+  }
+
+  const [profileResult, settingsResult, walletResult, progressResult, roundResult] = await Promise.all([
+    supabase.from("profiles").select("id, display_name, avatar_url, created_at, updated_at").eq("id", userId).maybeSingle(),
+    supabase.from("member_settings").select("*").eq("user_id", userId).maybeSingle(),
+    supabase.from("member_wallets").select("*").eq("user_id", userId).maybeSingle(),
+    supabase
+      .from("member_game_progress")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("game_slug", gameSlug)
+      .limit(1),
+    supabase
+      .from("member_game_rounds")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("game_slug", gameSlug)
+      .order("created_at", { ascending: false })
+      .limit(50),
+  ])
+  const supabaseErrors = [
+    ["profiles", profileResult.error],
+    ["member_settings", settingsResult.error],
+    ["member_wallets", walletResult.error],
+    ["member_game_progress", progressResult.error],
+    ["member_game_rounds", roundResult.error],
+  ].filter(([, error]) => error)
+
+  if (supabaseErrors.length > 0) {
+    throw new Error(
+      `Supabase game overview query failed: ${supabaseErrors
+        .map(([table, error]) => `${table}: ${formatSupabaseError(error)}`)
+        .join("; ")}`,
+    )
+  }
+
+  return {
+    session: auth.session,
+    profile: toProfile(auth.session, profileResult.data),
+    settings: toSettings(settingsResult.data),
+    wallet: toWallet(walletResult.data),
+    progress: Array.isArray(progressResult.data) ? progressResult.data.map((row) => toProgress(row)) : [],
+    gameRounds: Array.isArray(roundResult.data) ? roundResult.data.map((row) => toGameRound(row)) : [],
+  }
+}
+
+async function readAuthenticatedSettings(
+  auth: AuthenticatedMember,
+  cookieStore: CookieStore,
+): Promise<MemberSettings> {
+  if (auth.source === "supabase") {
+    if (!auth.supabase || !auth.session.userId) {
+      throw new Error("Supabase member session is missing a user id.")
+    }
+
+    const { data, error } = await auth.supabase
+      .from("member_settings")
+      .select("*")
+      .eq("user_id", auth.session.userId)
+      .maybeSingle()
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    return toSettings(data)
+  }
+
+  return readLocalOverview(auth, cookieStore).settings
+}
+
+export async function readMemberProfileView(cookieStore: CookieStore, response?: NextResponse) {
+  const auth = await getAuthenticatedMember(cookieStore, response)
+
+  if (!auth) {
+    return null
+  }
+
+  if (auth.source === "supabase") {
+    if (!auth.supabase || !auth.session.userId) {
+      throw new Error("Supabase member session is missing a user id.")
+    }
+
+    const { data, error } = await auth.supabase
+      .from("profiles")
+      .select("id, display_name, avatar_url, created_at, updated_at")
+      .eq("id", auth.session.userId)
+      .maybeSingle()
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    return toProfile(auth.session, data)
+  }
+
+  return readLocalOverview(auth, cookieStore).profile
+}
+
+export async function readMemberSettingsView(cookieStore: CookieStore, response?: NextResponse) {
+  const auth = await getAuthenticatedMember(cookieStore, response)
+  return auth ? readAuthenticatedSettings(auth, cookieStore) : null
+}
+
+export async function readMemberProgressView(cookieStore: CookieStore, response?: NextResponse) {
+  const auth = await getAuthenticatedMember(cookieStore, response)
+
+  if (!auth) {
+    return null
+  }
+
+  if (auth.source === "supabase") {
+    if (!auth.supabase || !auth.session.userId) {
+      throw new Error("Supabase member session is missing a user id.")
+    }
+
+    const { data, error } = await auth.supabase
+      .from("member_game_progress")
+      .select("*")
+      .eq("user_id", auth.session.userId)
+      .order("last_played_at", { ascending: false, nullsFirst: false })
+      .limit(8)
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    return Array.isArray(data) ? data.map((row) => toProgress(row)) : []
+  }
+
+  return readLocalOverview(auth, cookieStore).progress
+}
+
+export async function readMemberGameHistory(cookieStore: CookieStore, response?: NextResponse) {
+  const auth = await getAuthenticatedMember(cookieStore, response)
+
+  if (!auth) {
+    return null
+  }
+
+  if (auth.source === "supabase") {
+    if (!auth.supabase || !auth.session.userId) {
+      throw new Error("Supabase member session is missing a user id.")
+    }
+
+    const [progressResult, roundResult] = await Promise.all([
+      auth.supabase
+        .from("member_game_progress")
+        .select("*")
+        .eq("user_id", auth.session.userId)
+        .order("last_played_at", { ascending: false, nullsFirst: false })
+        .limit(8),
+      auth.supabase
+        .from("member_game_rounds")
+        .select("*")
+        .eq("user_id", auth.session.userId)
+        .order("created_at", { ascending: false })
+        .limit(50),
+    ])
+
+    if (progressResult.error || roundResult.error) {
+      throw new Error(
+        `Supabase game history query failed: ${[
+          ["member_game_progress", progressResult.error],
+          ["member_game_rounds", roundResult.error],
+        ]
+          .filter(([, error]) => error)
+          .map(([table, error]) => `${table}: ${formatSupabaseError(error)}`)
+          .join("; ")}`,
+      )
+    }
+
+    return {
+      progress: Array.isArray(progressResult.data) ? progressResult.data.map((row) => toProgress(row)) : [],
+      gameRounds: Array.isArray(roundResult.data) ? roundResult.data.map((row) => toGameRound(row)) : [],
+    }
+  }
+
+  const overview = readLocalOverview(auth, cookieStore)
+  return { progress: overview.progress, gameRounds: overview.gameRounds }
+}
+
+export async function readMemberEventsView(cookieStore: CookieStore, response?: NextResponse) {
+  const auth = await getAuthenticatedMember(cookieStore, response)
+
+  if (!auth) {
+    return null
+  }
+
+  if (auth.source === "supabase") {
+    if (!auth.supabase || !auth.session.userId) {
+      throw new Error("Supabase member session is missing a user id.")
+    }
+
+    const { data, error } = await auth.supabase
+      .from("member_events")
+      .select("*")
+      .eq("user_id", auth.session.userId)
+      .order("created_at", { ascending: false })
+      .limit(8)
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    return Array.isArray(data) ? data.map((row) => toEvent(row)) : []
+  }
+
+  return readLocalOverview(auth, cookieStore).recentEvents
+}
+
+export async function readMemberPurchasesView(cookieStore: CookieStore, response?: NextResponse) {
+  const auth = await getAuthenticatedMember(cookieStore, response)
+
+  if (!auth) {
+    return null
+  }
+
+  if (auth.source === "supabase") {
+    if (!auth.supabase || !auth.session.userId) {
+      throw new Error("Supabase member session is missing a user id.")
+    }
+
+    const { data, error } = await auth.supabase
+      .from("member_purchases")
+      .select("*")
+      .eq("user_id", auth.session.userId)
+      .order("created_at", { ascending: false })
+      .limit(8)
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    return Array.isArray(data) ? data.map((row) => toPurchase(row)) : []
+  }
+
+  return readLocalOverview(auth, cookieStore).purchases
+}
+
+export async function readMemberGameOverview(cookieStore: CookieStore, gameSlug: string) {
+  const auth = await getAuthenticatedMember(cookieStore)
+
+  if (!auth) {
+    return null
+  }
+
+  if (auth.source === "supabase") {
+    return readSupabaseGameOverview(auth, gameSlug)
+  }
+
+  const overview = readLocalOverview(auth, cookieStore)
+
+  return {
+    session: overview.session,
+    profile: overview.profile,
+    settings: overview.settings,
+    wallet: overview.wallet,
+    progress: overview.progress.filter((item) => item.gameSlug === gameSlug),
+    gameRounds: overview.gameRounds.filter((round) => round.gameSlug === gameSlug),
+  }
+}
+
+async function readSupabaseLobbyOverview(auth: AuthenticatedMember): Promise<MemberLobbyOverview> {
+  const supabase = auth.supabase
+  const userId = auth.session.userId
+
+  if (!supabase || !userId) {
+    throw new Error("Supabase member session is missing a user id.")
+  }
+
+  const [profileResult, settingsResult, walletResult, progressResult, ledgerResult, roundResult] = await Promise.all([
+    supabase.from("profiles").select("id, display_name, avatar_url, created_at, updated_at").eq("id", userId).maybeSingle(),
+    supabase.from("member_settings").select("*").eq("user_id", userId).maybeSingle(),
+    supabase.from("member_wallets").select("*").eq("user_id", userId).maybeSingle(),
+    supabase
+      .from("member_game_progress")
+      .select("*")
+      .eq("user_id", userId)
+      .order("last_played_at", { ascending: false, nullsFirst: false })
+      .limit(8),
+    supabase
+      .from("member_wallet_ledger")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("member_game_rounds")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(50),
+  ])
+  const supabaseErrors = [
+    ["profiles", profileResult.error],
+    ["member_settings", settingsResult.error],
+    ["member_wallets", walletResult.error],
+    ["member_game_progress", progressResult.error],
+    ["member_wallet_ledger", ledgerResult.error],
+    ["member_game_rounds", roundResult.error],
+  ].filter(([, error]) => error)
+
+  if (supabaseErrors.length > 0) {
+    throw new Error(
+      `Supabase lobby overview query failed: ${supabaseErrors
+        .map(([table, error]) => `${table}: ${formatSupabaseError(error)}`)
+        .join("; ")}`,
+    )
+  }
+
+  return {
+    session: auth.session,
+    profile: toProfile(auth.session, profileResult.data),
+    settings: toSettings(settingsResult.data),
+    wallet: toWallet(walletResult.data),
+    progress: Array.isArray(progressResult.data) ? progressResult.data.map((row) => toProgress(row)) : [],
+    walletLedger: Array.isArray(ledgerResult.data) ? ledgerResult.data.map((row) => toWalletLedgerEntry(row)) : [],
+    gameRounds: Array.isArray(roundResult.data) ? roundResult.data.map((row) => toGameRound(row)) : [],
+  }
+}
+
+export async function readMemberLobbyOverview(cookieStore: CookieStore, response?: NextResponse) {
+  const auth = await getAuthenticatedMember(cookieStore, response)
+
+  if (!auth) {
+    return null
+  }
+
+  if (auth.source === "supabase") {
+    return readSupabaseLobbyOverview(auth)
+  }
+
+  const overview = readLocalOverview(auth, cookieStore)
+
+  return {
+    session: overview.session,
+    profile: overview.profile,
+    settings: overview.settings,
+    wallet: overview.wallet,
+    progress: overview.progress,
+    walletLedger: overview.walletLedger,
+    gameRounds: overview.gameRounds,
+  }
+}
+
+export function toMemberHomeSnapshot(member: MemberLobbyOverview): MemberHomeSnapshot {
+  return {
+    wallet: { balance: member.wallet.balance },
+    progress: member.progress.map(({ gameSlug, plays, wins, losses, streak, bestStreak }) => ({
+      gameSlug,
+      plays,
+      wins,
+      losses,
+      streak,
+      bestStreak,
+    })),
+    walletLedger: member.walletLedger.map(({ id, amount, source, createdAt, metadata }) => ({
+      id,
+      amount,
+      source,
+      createdAt,
+      metadata,
+    })),
+    gameRounds: member.gameRounds.map(({ id, gameSlug, outcome, delta, createdAt }) => ({
+      id,
+      gameSlug,
+      outcome,
+      delta,
+      createdAt,
+    })),
+  }
 }
 
 async function readSupabaseOverview(auth: AuthenticatedMember): Promise<MemberOverview> {
@@ -2481,9 +2919,9 @@ export async function updateMemberSettings(cookieStore: CookieStore, response: N
   }
 
   const patchBody = body && typeof body === "object" ? (body as Partial<MemberSettings>) : {}
-  const overview = auth.source === "supabase" ? await readSupabaseOverview(auth) : readLocalOverview(auth, cookieStore)
+  const currentSettings = await readAuthenticatedSettings(auth, cookieStore)
   const settings = mergeSettings({
-    ...overview.settings,
+    ...currentSettings,
     ...patchBody,
   })
 

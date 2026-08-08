@@ -17,6 +17,7 @@ import { useLanguage } from "@/hooks/use-language"
 import { type Language } from "@/lib/home-content"
 import { playableTableEntries, type CasinoTableEntry } from "@/lib/game-catalog"
 import { type MemberGameProgress } from "@/lib/member-data"
+import { formatAmount, formatShortTime } from "@/lib/number-format"
 import { cn } from "@/lib/utils"
 
 type Outcome = "win" | "loss" | "push"
@@ -89,15 +90,10 @@ function formatDelta(delta: number) {
     return "$0"
   }
 
-  return `${delta > 0 ? "+" : "-"}$${Math.abs(delta).toLocaleString()}`
+  return `${delta > 0 ? "+" : "-"}$${formatAmount(Math.abs(delta))}`
 }
 
-function formatTime(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value))
-}
+const formatTime = formatShortTime
 
 function makeRecord({
   label,

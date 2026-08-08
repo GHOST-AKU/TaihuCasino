@@ -1,7 +1,7 @@
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
-import { createPurchase, isSameOriginMutation, readMemberOverview } from "@/lib/member-data"
+import { createPurchase, isSameOriginMutation, readMemberPurchasesView } from "@/lib/member-data"
 import { enforceRateLimit } from "@/lib/rate-limit"
 
 export async function GET() {
@@ -14,9 +14,9 @@ export async function GET() {
     },
   )
   const cookieStore = await cookies()
-  const member = await readMemberOverview(cookieStore, response)
+  const purchases = await readMemberPurchasesView(cookieStore, response)
 
-  if (!member) {
+  if (!purchases) {
     return NextResponse.json(
       { error: "Authentication is required." },
       {
@@ -27,7 +27,7 @@ export async function GET() {
   }
 
   return NextResponse.json(
-    { purchases: member.purchases },
+    { purchases },
     {
       headers: response.headers,
     },

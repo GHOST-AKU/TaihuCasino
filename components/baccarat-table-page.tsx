@@ -16,6 +16,7 @@ import { type Language } from "@/lib/home-content"
 import { type CasinoTableEntry } from "@/lib/game-catalog"
 import { type MemberGameProgress, type MemberGameRound, type MemberTableSession } from "@/lib/member-data"
 import { recordClientGameRound } from "@/lib/member-round-client"
+import { formatAmount } from "@/lib/number-format"
 import { cashOutClientTableSession, openClientTableSession } from "@/lib/table-session-client"
 import { cn } from "@/lib/utils"
 
@@ -162,11 +163,7 @@ function roundMoney(value: number) {
   return Math.round(value * 100) / 100
 }
 
-function formatMoney(value: number) {
-  return value.toLocaleString("en-US", {
-    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
-  })
-}
+const formatMoney = formatAmount
 
 function formatDelta(value: number) {
   if (value === 0) {

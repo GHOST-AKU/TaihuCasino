@@ -277,10 +277,13 @@ export const playableTableEntries = casinoTableEntries.filter(
   (entry) => entry.kind === "game",
 )
 
+const catalogEntryBySlug = new Map(allCasinoCatalogEntries.map((entry) => [entry.slug, entry]))
+const playableTableBySlug = new Map(playableTableEntries.map((entry) => [entry.slug, entry]))
+
 export function getCasinoCatalogEntry(slug: string) {
-  return allCasinoCatalogEntries.find((entry) => entry.slug === slug)
+  return catalogEntryBySlug.get(slug)
 }
 
 export function getPlayableTable(slug: string) {
-  return playableTableEntries.find((entry) => entry.slug === slug)
+  return playableTableBySlug.get(slug)
 }

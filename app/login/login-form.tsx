@@ -8,7 +8,8 @@ import { ArrowRight, Eye, EyeOff, Lock, Mail, Spade, UserPlus } from "lucide-rea
 
 import { CaptchaDialog, isCaptchaConfigured } from "@/components/captcha-dialog"
 import { Button } from "@/components/ui/button"
-import { loginMember, readMemberSession, registerMember, startOAuthSignIn, type OAuthProviderKey } from "@/lib/member-session"
+import { loginMember, registerMember, startOAuthSignIn, type OAuthProviderKey } from "@/lib/member-session"
+import { resolveAppRedirectTarget } from "@/lib/redirect-target"
 import { cn } from "@/lib/utils"
 
 const providerButtons = [
@@ -80,14 +81,6 @@ interface TestAccountHint {
 }
 
 type AuthMode = "sign-in" | "register"
-
-function resolveRedirectTarget(nextTarget: string | null) {
-  if (!nextTarget || !nextTarget.startsWith("/")) {
-    return "/"
-  }
-
-  return nextTarget
-}
 
 function ProviderButton({
   label,
@@ -218,20 +211,6 @@ export function LoginForm({
   }
 
   useEffect(() => {
-    let cancelled = false
-
-    readMemberSession().then((session) => {
-      if (!cancelled && session) {
-        router.replace(resolveRedirectTarget(next ?? null))
-      }
-    })
-
-    return () => {
-      cancelled = true
-    }
-  }, [next, router])
-
-  useEffect(() => {
     if (!captchaToken || !submitAfterCaptchaRef.current) {
       return
     }
@@ -323,7 +302,7 @@ export function LoginForm({
         })
 
         if (result.session) {
-          router.push(resolveRedirectTarget(next ?? null))
+          router.push(resolveAppRedirectTarget(next))
           router.refresh()
           return
         }
@@ -372,7 +351,7 @@ export function LoginForm({
 
     try {
       await loginMember(trimmedEmail, password, activeCaptchaToken)
-      router.push(resolveRedirectTarget(next ?? null))
+      router.push(resolveAppRedirectTarget(next))
       router.refresh()
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to sign in.")

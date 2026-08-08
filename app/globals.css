@@ -67,6 +67,17 @@
   --auth-faint-text: rgba(100, 116, 139, 0.88);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @media (min-width: 1024px) and (max-height: 1000px) {
   .casino-auth-form-shell {
     padding-block: 1rem;

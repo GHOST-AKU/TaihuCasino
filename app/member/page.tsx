@@ -12,22 +12,33 @@ import { ThemePanelSurface } from "@/components/theme-page-shell"
 import { readMemberOverview } from "@/lib/member-data"
 import { getPlayableTable, playableTableEntries } from "@/lib/game-catalog"
 import type { MemberLanguage, ProgressOutcome, ProfileVisibility } from "@/lib/member-data"
+import { formatAmount } from "@/lib/number-format"
+
+const memberDateFormatters: Record<MemberLanguage, Intl.DateTimeFormat> = {
+  zh: new Intl.DateTimeFormat("zh-CN", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }),
+  en: new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }),
+}
 
 function formatDate(value: string | null, language: MemberLanguage) {
   if (!value) {
     return language === "zh" ? "暂无活动" : "No activity yet"
   }
 
-  return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value))
+  return memberDateFormatters[language].format(new Date(value))
 }
 
 function formatMoney(value: number) {
-  return `$${value.toLocaleString("en-US")}`
+  return `$${formatAmount(value)}`
 }
 
 function visibilityText(value: ProfileVisibility, language: MemberLanguage) {

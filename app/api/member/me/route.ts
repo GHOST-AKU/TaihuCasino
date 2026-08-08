@@ -1,9 +1,9 @@
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
-import { readMemberOverview } from "@/lib/member-data"
+import { readMemberLobbyOverview, readMemberOverview, toMemberHomeSnapshot } from "@/lib/member-data"
 
-export async function GET() {
+export async function GET(request: Request) {
   const response = NextResponse.json(
     { member: null },
     {
@@ -13,7 +13,10 @@ export async function GET() {
     },
   )
   const cookieStore = await cookies()
-  const member = await readMemberOverview(cookieStore, response)
+  const scope = new URL(request.url).searchParams.get("scope")
+  const member = scope === "lobby"
+    ? await readMemberLobbyOverview(cookieStore, response)
+    : await readMemberOverview(cookieStore, response)
 
   if (!member) {
     return NextResponse.json(
@@ -26,7 +29,7 @@ export async function GET() {
   }
 
   return NextResponse.json(
-    { member },
+    { member: scope === "lobby" ? toMemberHomeSnapshot(member) : member },
     {
       headers: response.headers,
     },

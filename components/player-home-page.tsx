@@ -22,6 +22,8 @@ import {
 } from "@/lib/home-content"
 import { clearMemberSession } from "@/lib/member-session"
 import { playableTableEntries } from "@/lib/game-catalog"
+import type { MemberHomeSnapshot } from "@/lib/member-data"
+import { formatUsd } from "@/lib/number-format"
 
 const gameIcons = {
   baccarat: <Diamond className="h-7 w-7" />,
@@ -33,32 +35,7 @@ const gameIcons = {
 interface PlayerHomePageProps {
   initialLanguage: "zh" | "en"
   initialMemberName: string
-  initialMemberOverview: {
-    wallet: {
-      balance: number
-    }
-    progress: Array<{
-      plays: number
-      wins: number
-      losses: number
-      streak: number
-      bestStreak: number
-    }>
-    walletLedger: Array<{
-      id: string
-      amount: number
-      source: string
-      createdAt: string
-      metadata: Record<string, unknown>
-    }>
-    gameRounds: Array<{
-      id: string
-      gameSlug: string
-      outcome: "win" | "loss" | "push"
-      delta: number
-      createdAt: string
-    }>
-  }
+  initialMemberOverview: MemberHomeSnapshot
 }
 
 type RecentActivity = HomeActivityItem & {
@@ -68,13 +45,7 @@ type RecentActivity = HomeActivityItem & {
 
 type HomeMemberOverview = PlayerHomePageProps["initialMemberOverview"]
 
-function formatMoney(value: number) {
-  return value.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
-  })
-}
+const formatMoney = formatUsd
 
 function isToday(value: string) {
   const date = new Date(value)
@@ -251,20 +222,6 @@ function titleForGameSlug(slug: string | undefined, language: "zh" | "en") {
   return language === "zh" ? game.titleZh : game.title
 }
 
-function resultForLedgerEntry(entry: PlayerHomePageProps["initialMemberOverview"]["walletLedger"][number], language: "zh" | "en") {
-  const outcome = typeof entry.metadata.outcome === "string" ? entry.metadata.outcome : null
-
-  if (outcome === "win" || (!outcome && entry.amount > 0)) {
-    return language === "zh" ? "赢" : "Won"
-  }
-
-  if (outcome === "loss" || (!outcome && entry.amount < 0)) {
-    return language === "zh" ? "负" : "Lost"
-  }
-
-  return language === "zh" ? "和" : "Push"
-}
-
 function resultForGameRound(round: PlayerHomePageProps["initialMemberOverview"]["gameRounds"][number], language: "zh" | "en") {
   if (round.outcome === "win" || (round.outcome === "push" && round.delta > 0)) {
     return language === "zh" ? "赢" : "Won"
@@ -347,26 +304,52 @@ export function PlayerHomePage({ initialLanguage, initialMemberName, initialMemb
 
   useEffect(() => {
     let active = true
+    let activeController: AbortController | null = null
+    let refreshInFlight: Promise<void> | null = null
+    let lastRefreshAt = Date.now()
 
-    async function refreshMemberOverview() {
-      const response = await fetch("/api/member/me", {
-        cache: "no-store",
-      }).catch(() => null)
-
-      if (!response?.ok) {
-        return
+    function refreshMemberOverview(force = false) {
+      if (refreshInFlight) {
+        return refreshInFlight
       }
 
-      const payload = (await response.json().catch(() => null)) as { member?: HomeMemberOverview } | null
+      const now = Date.now()
+      if (!force && now - lastRefreshAt < 15_000) {
+        return Promise.resolve()
+      }
 
-      if (active && payload?.member) {
-        setMemberOverview(payload.member)
+      lastRefreshAt = now
+      activeController = new AbortController()
+      refreshInFlight = (async () => {
+        const response = await fetch("/api/member/me?scope=lobby", {
+          cache: "no-store",
+          signal: activeController?.signal,
+        }).catch(() => null)
+
+        if (!response?.ok) {
+          return
+        }
+
+        const payload = (await response.json().catch(() => null)) as { member?: HomeMemberOverview } | null
+
+        if (active && payload?.member) {
+          setMemberOverview(payload.member)
+        }
+      })().finally(() => {
+        activeController = null
+        refreshInFlight = null
+      })
+
+      return refreshInFlight
+    }
+
+    function handlePageShow(event: PageTransitionEvent) {
+      if (event.persisted) {
+        void refreshMemberOverview(true)
       }
     }
 
-    void refreshMemberOverview()
-
-    function handlePageShow() {
+    function handleFocus() {
       void refreshMemberOverview()
     }
 
@@ -377,13 +360,14 @@ export function PlayerHomePage({ initialLanguage, initialMemberName, initialMemb
     }
 
     window.addEventListener("pageshow", handlePageShow)
-    window.addEventListener("focus", handlePageShow)
+    window.addEventListener("focus", handleFocus)
     document.addEventListener("visibilitychange", handleVisibilityChange)
 
     return () => {
       active = false
+      activeController?.abort()
       window.removeEventListener("pageshow", handlePageShow)
-      window.removeEventListener("focus", handlePageShow)
+      window.removeEventListener("focus", handleFocus)
       document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
   }, [])

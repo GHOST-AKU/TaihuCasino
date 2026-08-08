@@ -4,6 +4,7 @@ import type { Provider } from "@supabase/supabase-js"
 
 import { createSupabaseAuthClient, isSupabaseAuthConfigured } from "@/lib/server-auth"
 import { enforceRateLimit } from "@/lib/rate-limit"
+import { resolveAppRedirectTarget } from "@/lib/redirect-target"
 
 const providerMap = {
   google: "google",
@@ -12,14 +13,6 @@ const providerMap = {
   facebook: "facebook",
   x: "x",
 } satisfies Record<string, Provider>
-
-function resolveRedirectTarget(nextTarget: unknown) {
-  if (typeof nextTarget !== "string" || !nextTarget.startsWith("/") || nextTarget.startsWith("//")) {
-    return "/"
-  }
-
-  return nextTarget
-}
 
 async function createOAuthRedirect(
   request: Request,
@@ -54,7 +47,7 @@ async function createOAuthRedirect(
   const cookieStore = await cookies()
   const supabase = createSupabaseAuthClient(cookieStore, response)
   const origin = new URL(request.url).origin
-  const next = encodeURIComponent(resolveRedirectTarget(nextTarget))
+  const next = encodeURIComponent(resolveAppRedirectTarget(nextTarget))
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
@@ -83,7 +76,7 @@ export async function GET(request: Request) {
   )
 
   if ("error" in result) {
-    const next = encodeURIComponent(resolveRedirectTarget(requestUrl.searchParams.get("next")))
+    const next = encodeURIComponent(resolveAppRedirectTarget(requestUrl.searchParams.get("next")))
     return NextResponse.redirect(new URL(`/login?next=${next}&authError=oauth`, requestUrl.origin), {
       headers: {
         "cache-control": "private, no-store",

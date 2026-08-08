@@ -5,7 +5,7 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
 import { allCasinoCatalogEntries, getCasinoCatalogEntry } from "@/lib/game-catalog"
-import { readMemberOverview } from "@/lib/member-data"
+import { getAuthenticatedMember } from "@/lib/member-data"
 
 export function generateStaticParams() {
   return allCasinoCatalogEntries
@@ -25,7 +25,7 @@ export async function GET(
   }
 
   const cookieStore = await cookies()
-  const member = await readMemberOverview(cookieStore)
+  const member = await getAuthenticatedMember(cookieStore)
 
   if (!member) {
     const requestUrl = new URL(request.url)
