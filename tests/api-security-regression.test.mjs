@@ -40,16 +40,19 @@ test("member write APIs reject cross-origin mutations before state changes", asy
 })
 
 test("password recovery forwards a Turnstile token to Supabase Auth", async () => {
-  const [form, captchaDialog, client, route] = await Promise.all([
+  const [form, captchaDialog, captchaModal, captchaConfig, client, route] = await Promise.all([
     source("../app/forgot-password/forgot-password-form.tsx"),
     source("../components/captcha-dialog.tsx"),
+    source("../components/captcha-dialog-modal.tsx"),
+    source("../lib/captcha-config.ts"),
     source("../lib/member-session.ts"),
     source("../app/api/auth/password-reset/request/route.ts"),
   ])
 
   assert.match(form, /CaptchaDialog/)
-  assert.match(captchaDialog, /NEXT_PUBLIC_TURNSTILE_SITE_KEY/)
-  assert.match(captchaDialog, /DialogContent/)
+  assert.match(captchaDialog, /captcha-dialog-modal/)
+  assert.match(captchaConfig, /NEXT_PUBLIC_TURNSTILE_SITE_KEY/)
+  assert.match(captchaModal, /DialogContent/)
   assert.match(form, /requestPasswordReset\(email\.trim\(\), captchaToken\)/)
   assert.match(client, /requestPasswordReset\(email: string, captchaToken: string\)/)
   assert.match(client, /JSON\.stringify\(\{ email, captchaToken \}\)/)
