@@ -1,6 +1,15 @@
 export type CasinoCatalogKind = "game" | "member" | "utility" | "lobby" | "ui-demo"
 export type CasinoCatalogStatus = "legacy" | "shell" | "migrated"
-export type GameRuleSet = "baccarat" | "blackjack" | "roulette" | "dice" | "service"
+export type GameRuleSet =
+  | "baccarat"
+  | "blackjack"
+  | "roulette"
+  | "dice"
+  | "fish-prawn-crab"
+  | "crown-anchor"
+  | "fan-tan"
+  | "french-boule"
+  | "service"
 
 export interface CasinoTableEntry {
   id: string
@@ -46,12 +55,12 @@ export const casinoTableEntries = [
     tableToneZh: "适合作为第一站的高级牌桌，可下注庄家、闲家或和局。",
     defaultBet: 100,
     tableNotes: [
-      "Banker and player pay even money; tie pays 8:1 in this table.",
+      "Player pays even money; banker wins pay 0.95:1 after commission; tie pays 8:1.",
       "Each hand resolves instantly so bankroll movement stays easy to read.",
       "Signed-in members keep their recent table record in the member center.",
     ],
     tableNotesZh: [
-      "庄家和闲家按 1:1 赔付；和局在本桌按 8:1 赔付。",
+      "闲家按 1:1 赔付；庄家扣除佣金后净赔 0.95:1；和局按 8:1 赔付。",
       "每手即时结算，筹码变化会直接进入圆形历史。",
       "登录会员的最近牌局会进入会员中心。",
     ],
@@ -163,26 +172,126 @@ export const casinoTableEntries = [
   {
     id: "dice-quick-round",
     slug: "dice",
-    title: "Dice Quick Round",
-    titleZh: "骰子快局",
+    title: "Sic Bo",
+    titleZh: "骰宝",
     kind: "game",
     status: "migrated",
     targetRoute: "/games/dice",
     legacyRoute: "/legacy/dice",
     legacyFile: "dice.html",
     ruleSet: "dice",
-    description: "A rapid dice table built around short rounds and simple high-or-low outcomes.",
-    descriptionZh: "短局骰子桌，围绕大小结果快速结算。",
-    tableTone: "Fast credit loop for lightweight sessions.",
-    tableToneZh: "轻量、直接、适合短时间游玩。",
+    description: "A three-dice Sic Bo table with big, small, odd, even and triple wagers.",
+    descriptionZh: "三骰骰宝桌，可下注大、小、单、双与豹子。",
+    tableTone: "A transparent three-dice table with server-authoritative outcomes and visible odds.",
+    tableToneZh: "规则透明的三骰桌，结果由服务端权威生成，并展示赔率。",
     defaultBet: 60,
     tableNotes: [
-      "Two dice are rolled each round.",
-      "Eight or higher resolves as high; seven or lower resolves as low.",
+      "Three dice are rolled each round.",
+      "Small is 4–10 and Big is 11–17; any triple makes Big, Small, Odd and Even lose.",
     ],
     tableNotesZh: [
-      "每局掷两枚骰子。",
-      "8 点及以上为大，7 点及以下为小。",
+      "每局掷三枚骰子。",
+      "4–10 点为小，11–17 点为大；任意豹子会令大、小、单、双全部落空。",
+    ],
+  },
+  {
+    id: "fish-prawn-crab",
+    slug: "fish-prawn-crab",
+    title: "Fish Prawn Crab",
+    titleZh: "鱼虾蟹",
+    kind: "game",
+    status: "migrated",
+    targetRoute: "/games/fish-prawn-crab",
+    ruleSet: "fish-prawn-crab",
+    description: "A southern Chinese symbol-dice game where one wager can match one, two or three dice.",
+    descriptionZh: "源自华南地区的符号骰游戏，一个下注可命中一、二或三枚骰子。",
+    tableTone: "Fast cultural table with six readable symbols and one-step settlement.",
+    tableToneZh: "六种清晰符号、一步结算的地方特色快桌。",
+    defaultBet: 50,
+    tableNotes: [
+      "Choose one or more symbols before the three dice settle.",
+      "A symbol appearing once, twice or three times pays 1:1, 2:1 or 3:1 net.",
+      "Virtual tokens have no cash value or redemption path.",
+    ],
+    tableNotesZh: [
+      "三枚骰子结算前，可选择一个或多个符号下注。",
+      "所押符号出现一、二、三次时，分别净赔 1:1、2:1、3:1。",
+      "虚拟筹码不具现金价值，也不可兑换。",
+    ],
+  },
+  {
+    id: "crown-anchor",
+    slug: "crown-anchor",
+    title: "Crown & Anchor",
+    titleZh: "皇冠与锚",
+    kind: "game",
+    status: "migrated",
+    targetRoute: "/games/crown-anchor",
+    ruleSet: "crown-anchor",
+    description: "A British maritime symbol-dice table using crown, anchor and the four card suits.",
+    descriptionZh: "英国航海传统符号骰桌，使用皇冠、船锚与四种扑克牌花色。",
+    tableTone: "A compact maritime variant that shares the transparent symbol-dice model.",
+    tableToneZh: "紧凑的航海主题变体，沿用透明的符号骰规则。",
+    defaultBet: 50,
+    tableNotes: [
+      "Choose crown, anchor, heart, diamond, club or spade.",
+      "One, two or three matches pay 1:1, 2:1 or 3:1 net.",
+      "Every result is generated and settled on the server.",
+    ],
+    tableNotesZh: [
+      "可选择皇冠、船锚、红心、方块、梅花或黑桃。",
+      "命中一、二、三枚骰子时，分别净赔 1:1、2:1、3:1。",
+      "每个结果均由服务端生成并结算。",
+    ],
+  },
+  {
+    id: "fan-tan",
+    slug: "fan-tan",
+    title: "Fan-Tan",
+    titleZh: "番摊",
+    kind: "game",
+    status: "migrated",
+    targetRoute: "/games/fan-tan",
+    ruleSet: "fan-tan",
+    description: "A classic remainder game: counters are grouped by four and the final remainder wins.",
+    descriptionZh: "经典余数游戏：将筹码每四枚分组，最后的余数决定胜位。",
+    tableTone: "A calm counting table built for learning probability through visible grouping.",
+    tableToneZh: "通过可见分组理解概率的安静计数桌。",
+    defaultBet: 40,
+    tableNotes: [
+      "Choose remainder 1, 2, 3 or 4.",
+      "A correct selection pays 2.85:1 net after the table commission.",
+      "The result snapshot records the counter total and remainder for review.",
+    ],
+    tableNotesZh: [
+      "选择余数 1、2、3 或 4。",
+      "命中后扣除桌台佣金，净赔 2.85:1。",
+      "结果快照会记录筹码总数与余数，便于复核。",
+    ],
+  },
+  {
+    id: "french-boule",
+    slug: "french-boule",
+    title: "French Boule",
+    titleZh: "法式 Boule",
+    kind: "game",
+    status: "migrated",
+    targetRoute: "/games/french-boule",
+    ruleSet: "french-boule",
+    description: "A compact French wheel using numbers 1–9, simple chances and exact-number bets.",
+    descriptionZh: "使用 1–9 号、简单机会与单号下注的紧凑法式轮盘。",
+    tableTone: "A small educational wheel with concise odds and a clearly explained number-five edge.",
+    tableToneZh: "赔率简洁的小型学习轮盘，并清晰说明 5 号的庄家优势。",
+    defaultBet: 40,
+    tableNotes: [
+      "Red/black, odd/even and low/high pay 1:1; number 5 loses all simple-chance bets.",
+      "A single number pays 7:1 net.",
+      "The result comes from a server-generated 1–9 outcome.",
+    ],
+    tableNotesZh: [
+      "红黑、单双、低高净赔 1:1；结果为 5 时，所有简单机会下注均输。",
+      "单号净赔 7:1。",
+      "结果由服务端生成 1–9 的权威号码。",
     ],
   },
   {

@@ -7,10 +7,12 @@ import { NextResponse } from "next/server"
 import { createSupabaseServiceClient, getSessionSecret } from "@/lib/server-auth"
 import {
   RATE_LIMIT_POLICIES,
+  RATE_LIMIT_DEVICE_COOKIE,
   createRateLimitDimensionKeys,
   createRateLimitKey,
   normalizeIdentifier,
   resolveTrustedClientAddress,
+  isValidRateLimitDeviceId,
   type RateLimitAction,
 } from "@/lib/rate-limit-core"
 
@@ -45,6 +47,12 @@ function getRateLimitSecret() {
 function getSessionFingerprint(request: Request) {
   const cookie = request.headers.get("cookie") ?? ""
   return cookie.match(/(?:^|;\s*)(?:taihu-member-session|sb-[^=]+-auth-token)=([^;]+)/)?.[1] ?? ""
+}
+
+function getDeviceFingerprint(request: Request) {
+  const cookie = request.headers.get("cookie") ?? ""
+  const candidate = cookie.match(new RegExp(`(?:^|;\\s*)${RATE_LIMIT_DEVICE_COOKIE}=([^;]+)`))?.[1] ?? ""
+  return isValidRateLimitDeviceId(candidate) ? candidate : ""
 }
 
 function responseHeaders(requestId: string, retryAfter?: number) {
@@ -93,6 +101,7 @@ export async function enforceRateLimit(
   try {
     const buckets = createRateLimitDimensionKeys(getRateLimitSecret(), action, [
       { name: "client", value: clientAddress },
+      { name: "device", value: getDeviceFingerprint(request) },
       { name: "session", value: sessionFingerprint },
       { name: "user", value: options.userId },
       ...(options.identifiers ?? []).map((value, index) => ({ name: `identifier:${index}`, value })),
@@ -168,6 +177,7 @@ export async function recordSecuritySignal(
     const clientAddress = resolveTrustedClientAddress(request.url, request.headers)
     const keyHash = createRateLimitKey(getRateLimitSecret(), action, [
       clientAddress,
+      getDeviceFingerprint(request),
       getSessionFingerprint(request),
       ...identifiers.map((value) => normalizeIdentifier(value)),
     ])

@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises"
 import test from "node:test"
 
 import { settleAuthoritativeRound } from "../lib/authoritative-settlement.ts"
+import { REGIONAL_GAME_RULE_IDS } from "../lib/game-rules/index.ts"
 
 function sequence(values) {
   let index = 0
@@ -38,6 +39,26 @@ test("dice uses server RNG and fixed server payouts", () => {
   assert.deepEqual(result.resultSnapshot.dice, [1, 1, 1])
   assert.equal(result.delta, 230)
   assert.equal(result.totalStake, 20)
+})
+
+test("regional tables dispatch through the authoritative settlement boundary", () => {
+  const cases = [
+    ["fish-prawn-crab", { bets: [{ key: "fish", amount: 10 }] }, [0, 0, 1], "fish"],
+    ["crown-anchor", { bets: [{ key: "anchor", amount: 10 }] }, [1, 2, 3], "anchor"],
+    ["fan-tan", { bets: [{ key: "remainder:2", amount: 10 }] }, [1, 0], "remainder"],
+    ["french-boule", { bets: [{ key: "number:9", amount: 10 }] }, [8], "result"],
+  ]
+
+  assert.deepEqual(cases.map(([ruleSet]) => ruleSet), REGIONAL_GAME_RULE_IDS)
+
+  for (const [ruleSet, betSnapshot, rngValues, resultKey] of cases) {
+    const result = settleAuthoritativeRound(ruleSet, betSnapshot, sequence(rngValues))
+    assert.equal(result.totalStake, 10)
+    assert.equal(result.resultSnapshot.ruleSet, ruleSet)
+    assert.ok(resultKey in result.resultSnapshot)
+    assert.match(result.resultSnapshot.rulesVersion, /\d/)
+    assert.equal(result.betSnapshot.ruleSet, ruleSet)
+  }
 })
 
 test("roulette ignores forged numbers and payout fields", () => {

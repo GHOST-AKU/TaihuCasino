@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mode?: string; next?: string }>
+  searchParams: Promise<{ mode?: string; next?: string; authError?: string; provider?: string }>
 }) {
   const [params, cookieStore] = await Promise.all([searchParams, cookies()])
   const member = await getAuthenticatedMember(cookieStore)
@@ -28,5 +28,13 @@ export default async function LoginPage({
   const testAccount = getLocalDemoCredentials()
   const initialMode = params.mode === "register" ? "register" : "sign-in"
 
-  return <LoginForm initialMode={initialMode} next={params.next} testAccount={testAccount} />
+  return (
+    <LoginForm
+      initialMode={initialMode}
+      next={params.next}
+      testAccount={testAccount}
+      authError={params.authError}
+      authProvider={params.provider}
+    />
+  )
 }

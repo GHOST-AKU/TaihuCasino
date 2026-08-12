@@ -6,8 +6,16 @@ import {
   RATE_LIMIT_POLICIES,
   createRateLimitDimensionKeys,
   createRateLimitKey,
+  isValidRateLimitDeviceId,
   resolveTrustedClientAddress,
 } from "../lib/rate-limit-core.ts"
+
+test("device rate-limit identifiers accept only server-issued UUIDv4 values", () => {
+  assert.equal(isValidRateLimitDeviceId("550e8400-e29b-41d4-a716-446655440000"), true)
+  assert.equal(isValidRateLimitDeviceId(""), false)
+  assert.equal(isValidRateLimitDeviceId("attacker-controlled"), false)
+  assert.equal(isValidRateLimitDeviceId("550e8400-e29b-11d4-a716-446655440000"), false)
+})
 
 test("untrusted forwarded headers cannot select a different client identity", () => {
   const headers = new Headers({
@@ -49,6 +57,7 @@ test("rate-limit dimensions preserve client and account buckets independently", 
   const secret = "test-rate-limit-secret"
   const dimensions = (client, account) => createRateLimitDimensionKeys(secret, "auth.login", [
     { name: "client", value: client },
+    { name: "device", value: "device-cookie-1" },
     { name: "session", value: "" },
     { name: "identifier:0", value: account },
   ])
@@ -57,10 +66,11 @@ test("rate-limit dimensions preserve client and account buckets independently", 
   const rotatedAccount = dimensions("198.51.100.20", "player-b@example.com")
   const rotatedClient = dimensions("198.51.100.21", "player-a@example.com")
 
-  assert.deepEqual(first.map(({ dimension }) => dimension), ["client", "identifier:0"])
+  assert.deepEqual(first.map(({ dimension }) => dimension), ["client", "device", "identifier:0"])
   assert.equal(first[0].keyHash, rotatedAccount[0].keyHash, "rotating accounts must retain the client bucket")
-  assert.equal(first[1].keyHash, rotatedClient[1].keyHash, "rotating clients must retain the account bucket")
-  assert.notEqual(first[1].keyHash, rotatedAccount[1].keyHash)
+  assert.equal(first[1].keyHash, rotatedAccount[1].keyHash, "rotating accounts must retain the device bucket")
+  assert.equal(first[2].keyHash, rotatedClient[2].keyHash, "rotating clients must retain the account bucket")
+  assert.notEqual(first[2].keyHash, rotatedAccount[2].keyHash)
   assert.notEqual(first[0].keyHash, rotatedClient[0].keyHash)
 })
 

@@ -64,6 +64,9 @@ jobs:
       - name: Test authoritative settlement boundary
         run: pnpm test:authoritative-settlement
 
+      - name: Test regional single-player game rules
+        run: pnpm test:regional-games
+
       - name: Test production stub crediting guard
         run: pnpm test:stub-crediting
 
@@ -75,6 +78,12 @@ jobs:
 
       - name: Test API security regression
         run: pnpm test:api-security
+
+      - name: Test authentication readiness contracts
+        run: pnpm test:auth-readiness
+
+      - name: Test maintenance runbook contracts
+        run: pnpm test:maintenance-contract
 
       - name: Test member-flow observability
         run: pnpm test:observability

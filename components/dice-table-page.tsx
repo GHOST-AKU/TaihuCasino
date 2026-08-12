@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 import { ArrowLeft, BookOpen, RotateCcw, Settings, Trash2 } from "lucide-react"
 
 import { useLanguage } from "@/hooks/use-language"
+import { SIC_BO_RULES } from "@/lib/game-rules"
 import { type Language } from "@/lib/home-content"
 import { type CasinoTableEntry } from "@/lib/game-catalog"
 import { type MemberGameProgress, type MemberGameRound, type MemberTableSession } from "@/lib/member-data"
@@ -47,58 +48,21 @@ const emptyDiceBets: DiceBetLedger = {
   triple: 0,
 }
 
-const diceBets = [
-  {
-    key: "big",
-    zh: "大",
-    en: "BIG",
-    odds: "1:1",
-    payout: 1,
-    probability: 105 / 216,
-    tone: "big",
-    wins: ({ sum }: DiceOutcome) => sum >= 11 && sum <= 17,
-  },
-  {
-    key: "small",
-    zh: "小",
-    en: "SMALL",
-    odds: "1:1",
-    payout: 1,
-    probability: 105 / 216,
-    tone: "small",
-    wins: ({ sum }: DiceOutcome) => sum >= 4 && sum <= 10,
-  },
-  {
-    key: "odd",
-    zh: "单",
-    en: "ODD",
-    odds: "1:1",
-    payout: 1,
-    probability: 108 / 216,
-    tone: "odd",
-    wins: ({ sum }: DiceOutcome) => sum % 2 === 1,
-  },
-  {
-    key: "even",
-    zh: "双",
-    en: "EVEN",
-    odds: "1:1",
-    payout: 1,
-    probability: 108 / 216,
-    tone: "even",
-    wins: ({ sum }: DiceOutcome) => sum % 2 === 0,
-  },
-  {
-    key: "triple",
-    zh: "豹子",
-    en: "TRIPLE",
-    odds: "24:1",
-    payout: 24,
-    probability: 6 / 216,
-    tone: "triple",
-    wins: ({ triple }: DiceOutcome) => triple,
-  },
-] satisfies Array<{
+const diceBetPresentation = {
+  big: { zh: "大", en: "BIG", tone: "big" },
+  small: { zh: "小", en: "SMALL", tone: "small" },
+  odd: { zh: "单", en: "ODD", tone: "odd" },
+  even: { zh: "双", en: "EVEN", tone: "even" },
+  triple: { zh: "豹子", en: "TRIPLE", tone: "triple" },
+} satisfies Record<DiceBetKey, { zh: string; en: string; tone: string }>
+
+const diceBets = SIC_BO_RULES.betOptions.map((option) => ({
+  key: option.key,
+  ...diceBetPresentation[option.key],
+  odds: `${option.netOdds.min}:1`,
+  payout: option.netOdds.min,
+  probability: option.probability,
+})) satisfies Array<{
   key: DiceBetKey
   zh: string
   en: string
@@ -106,7 +70,6 @@ const diceBets = [
   payout: number
   probability: number
   tone: string
-  wins: (outcome: DiceOutcome) => boolean
 }>
 
 function cloneEmptyDiceBets(): DiceBetLedger {
@@ -787,8 +750,8 @@ export function DiceTablePage({
             </div>
             <p className="mt-3 text-xs leading-5 text-[#cbbd91]">
               {isChinese
-                ? "规则提示：大 = 11-17，小 = 4-10，单/双按和值奇偶，豹子 = 三颗同点。"
-                : "Rules: Big = 11-17, Small = 4-10, Odd/Even by total, Triple = three equal dice."}
+                ? "规则提示：大 = 11-17，小 = 4-10，单/双按和值奇偶；任意豹子会令大、小、单、双全部输。"
+                : "Rules: Big = 11-17, Small = 4-10, Odd/Even by total; any triple defeats Big, Small, Odd and Even."}
             </p>
           </div>
 
@@ -1074,10 +1037,10 @@ export function DiceTablePage({
                   </tr>
                 </thead>
                 <tbody>
-                  <RuleRow bet={isChinese ? "大" : "Big"} odds="1:1" note={isChinese ? "和值 11-17。" : "Total 11-17."} />
-                  <RuleRow bet={isChinese ? "小" : "Small"} odds="1:1" note={isChinese ? "和值 4-10。" : "Total 4-10."} />
-                  <RuleRow bet={isChinese ? "单" : "Odd"} odds="1:1" note={isChinese ? "和值为单数。" : "Odd total."} />
-                  <RuleRow bet={isChinese ? "双" : "Even"} odds="1:1" note={isChinese ? "和值为双数。" : "Even total."} />
+                  <RuleRow bet={isChinese ? "大" : "Big"} odds="1:1" note={isChinese ? "和值 11-17；豹子除外。" : "Total 11-17, except triples."} />
+                  <RuleRow bet={isChinese ? "小" : "Small"} odds="1:1" note={isChinese ? "和值 4-10；豹子除外。" : "Total 4-10, except triples."} />
+                  <RuleRow bet={isChinese ? "单" : "Odd"} odds="1:1" note={isChinese ? "和值为单数；豹子除外。" : "Odd total, except triples."} />
+                  <RuleRow bet={isChinese ? "双" : "Even"} odds="1:1" note={isChinese ? "和值为双数；豹子除外。" : "Even total, except triples."} />
                   <RuleRow bet={isChinese ? "豹子" : "Triple"} odds="24:1" note={isChinese ? "三颗骰子完全相同。" : "All three dice match."} />
                 </tbody>
               </table>
