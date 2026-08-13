@@ -43,8 +43,8 @@ test("dice uses server RNG and fixed server payouts", () => {
 
 test("regional tables dispatch through the authoritative settlement boundary", () => {
   const cases = [
-    ["fish-prawn-crab", { bets: [{ key: "fish", amount: 10 }] }, [0, 0, 1], "fish"],
-    ["crown-anchor", { bets: [{ key: "anchor", amount: 10 }] }, [1, 2, 3], "anchor"],
+    ["fish-prawn-crab", { bets: [{ key: "fish", amount: 10 }] }, [0, 0, 1], "symbols"],
+    ["crown-anchor", { bets: [{ key: "anchor", amount: 10 }] }, [1, 2, 3], "symbols"],
     ["fan-tan", { bets: [{ key: "remainder:2", amount: 10 }] }, [1, 0], "remainder"],
     ["french-boule", { bets: [{ key: "number:9", amount: 10 }] }, [8], "result"],
   ]
