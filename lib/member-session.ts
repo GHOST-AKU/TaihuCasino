@@ -6,11 +6,48 @@ export interface MemberSession {
   provider?: "supabase" | "local"
 }
 
-export type OAuthProviderKey = "google" | "apple" | "microsoft" | "facebook" | "x"
+export type OAuthProviderKey = "google" | "apple" | "microsoft" | "facebook" | "x" | "discord" | "twitch"
 
 export interface RegisterMemberResult {
   confirmationRequired: boolean
   session: MemberSession | null
+}
+
+export class ConfirmationResendError extends Error {
+  retryAfterSeconds: number | null
+
+  constructor(message: string, retryAfterSeconds: number | null = null) {
+    super(message)
+    this.name = "ConfirmationResendError"
+    this.retryAfterSeconds = retryAfterSeconds
+  }
+}
+
+export async function resendMemberConfirmation(email: string, captchaToken: string, next?: string) {
+  const response = await fetch("/api/auth/resend-confirmation", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ email, captchaToken, next }),
+  })
+
+  const payload = (await response.json().catch(() => null)) as { error?: string; message?: string } | null
+  if (!response.ok) {
+    if (response.status === 429) {
+      const retryAfter = Number(response.headers.get("retry-after"))
+      const waitMessage = Number.isFinite(retryAfter) && retryAfter > 0
+        ? ` Try again in about ${Math.ceil(retryAfter / 60)} minute${retryAfter > 60 ? "s" : ""}.`
+        : " Please wait before trying again."
+      throw new ConfirmationResendError(
+        `${payload?.error ?? "Too many confirmation emails requested."}${waitMessage}`,
+        Number.isFinite(retryAfter) && retryAfter > 0 ? Math.ceil(retryAfter) : null,
+      )
+    }
+    throw new ConfirmationResendError(payload?.error ?? "Unable to resend the confirmation email.")
+  }
+
+  return payload?.message ?? "If a pending account exists for this email, a fresh confirmation link is on its way."
 }
 
 export async function requestPasswordReset(email: string, captchaToken: string) {

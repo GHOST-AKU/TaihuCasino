@@ -6,11 +6,20 @@ export interface RateLimitPolicy {
   failClosed: boolean
 }
 
+// Keep the newly introduced browser fingerprint independent from display branding.
+export const RATE_LIMIT_DEVICE_COOKIE = "member-device-id"
+const RATE_LIMIT_DEVICE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+export function isValidRateLimitDeviceId(value: unknown): value is string {
+  return typeof value === "string" && RATE_LIMIT_DEVICE_ID_PATTERN.test(value)
+}
+
 export const RATE_LIMIT_POLICIES = {
   "auth.login": { limit: 12, windowSeconds: 300, failClosed: true },
   "auth.login.failure": { limit: 5, windowSeconds: 900, failClosed: true },
   "auth.register": { limit: 5, windowSeconds: 3600, failClosed: true },
   "auth.oauth": { limit: 20, windowSeconds: 300, failClosed: true },
+  "auth.email-confirmation-resend": { limit: 4, windowSeconds: 3600, failClosed: true },
   "auth.password-reset-request": { limit: 5, windowSeconds: 3600, failClosed: true },
   "auth.password-reset-update": { limit: 5, windowSeconds: 900, failClosed: true },
   "member.game-rounds": { limit: 120, windowSeconds: 60, failClosed: true },

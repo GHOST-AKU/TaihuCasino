@@ -4,11 +4,18 @@ import Link from "next/link"
 import Image from "next/image"
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowRight, Eye, EyeOff, Lock, Mail, Spade, UserPlus } from "lucide-react"
+import { ArrowRight, Eye, EyeOff, Lock, Mail, RefreshCw, Spade, UserPlus } from "lucide-react"
 
 import { CaptchaDialog, isCaptchaConfigured } from "@/components/captcha-dialog"
 import { Button } from "@/components/ui/button"
-import { loginMember, registerMember, startOAuthSignIn, type OAuthProviderKey } from "@/lib/member-session"
+import {
+  ConfirmationResendError,
+  loginMember,
+  registerMember,
+  resendMemberConfirmation,
+  startOAuthSignIn,
+  type OAuthProviderKey,
+} from "@/lib/member-session"
 import { resolveAppRedirectTarget } from "@/lib/redirect-target"
 import { cn } from "@/lib/utils"
 
@@ -58,6 +65,24 @@ const providerButtons = [
     width: 20,
     height: 20,
   },
+  {
+    key: "discord",
+    label: "Discord",
+    className: "bg-[#5865f2] hover:bg-[#4f5bd9]",
+    src: "/brands/discord-logo.svg",
+    imgClassName: "h-7 w-7",
+    width: 28,
+    height: 28,
+  },
+  {
+    key: "twitch",
+    label: "Twitch",
+    className: "bg-[#9146ff] hover:bg-[#823ee5]",
+    src: "/brands/twitch-logo.svg",
+    imgClassName: "h-7 w-7",
+    width: 28,
+    height: 28,
+  },
 ] satisfies Array<{
   key: OAuthProviderKey
   label: string
@@ -67,6 +92,27 @@ const providerButtons = [
   width: number
   height: number
 }>
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function getAuthErrorMessage(authError?: string, providerKey?: string) {
+  if (!authError) return ""
+
+  const provider = providerButtons.find(({ key }) => key === providerKey)?.label ?? "The provider"
+  const messages: Record<string, string> = {
+    provider_denied: `${provider} authorization was cancelled. No account changes were made; you can try again or use email sign-in.`,
+    callback_failed: "Social sign-in returned an invalid or incomplete response. Please try again; if it repeats, contact support with the time of the attempt.",
+    oauth: "Social sign-in could not be completed. Please try again or use email sign-in.",
+    invalid_link: "This verification or sign-in link is invalid or has expired. Enter your account email below and request a fresh confirmation link.",
+    consent: "Social sign-in stopped because the required consent record could not be saved. Review the acknowledgements and try again.",
+    consent_required: "Accept the Terms, Privacy framework, and age acknowledgement before social sign-in.",
+    unsupported_provider: "That social sign-in provider is not supported.",
+    oauth_unavailable: "Social sign-in is not configured yet. Use email sign-in for now.",
+    provider_unavailable: `${provider} could not start sign-in. Please wait a moment and try again.`,
+  }
+
+  return messages[authError] ?? "Sign-in could not be completed. Please try again."
+}
 
 const stats = [
   { value: "Virtual", label: "No cash value" },
@@ -179,10 +225,14 @@ export function LoginForm({
   initialMode = "sign-in",
   next,
   testAccount,
+  authError,
+  authProvider,
 }: {
   initialMode?: AuthMode
   next?: string
   testAccount?: TestAccountHint | null
+  authError?: string
+  authProvider?: string
 }) {
   const router = useRouter()
   const [authMode, setAuthMode] = useState<AuthMode>(initialMode)
@@ -194,39 +244,85 @@ export function LoginForm({
   const [ageAttested, setAgeAttested] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
-  const [errorMessage, setErrorMessage] = useState("")
+  const [errorMessage, setErrorMessage] = useState(() => getAuthErrorMessage(authError, authProvider))
   const [statusMessage, setStatusMessage] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isResending, setIsResending] = useState(false)
+  const [confirmationPending, setConfirmationPending] = useState(authError === "invalid_link")
+  const [resendCooldownSeconds, setResendCooldownSeconds] = useState(0)
   const [captchaToken, setCaptchaToken] = useState("")
   const [captchaDialogOpen, setCaptchaDialogOpen] = useState(false)
   const [captchaResetKey, setCaptchaResetKey] = useState(0)
   const formRef = useRef<HTMLFormElement | null>(null)
   const submitAfterCaptchaRef = useRef(false)
+  const resendAfterCaptchaRef = useRef<{ email: string; next?: string } | null>(null)
   const isRegisterMode = authMode === "register"
 
   function resetCaptcha() {
+    resendAfterCaptchaRef.current = null
     setCaptchaToken("")
     setCaptchaResetKey((current) => current + 1)
     setCaptchaDialogOpen(true)
   }
 
   useEffect(() => {
-    if (!captchaToken || !submitAfterCaptchaRef.current) {
+    if (!captchaToken) {
       return
     }
 
-    submitAfterCaptchaRef.current = false
+    if (submitAfterCaptchaRef.current) {
+      submitAfterCaptchaRef.current = false
+      setCaptchaDialogOpen(false)
+      formRef.current?.requestSubmit()
+      return
+    }
+
+    const pendingResend = resendAfterCaptchaRef.current
+    if (!pendingResend) return
+
+    resendAfterCaptchaRef.current = null
     setCaptchaDialogOpen(false)
-    formRef.current?.requestSubmit()
+    setIsResending(true)
+    void resendMemberConfirmation(pendingResend.email, captchaToken, pendingResend.next)
+      .then((message) => {
+        setErrorMessage("")
+        setStatusMessage(message)
+        setConfirmationPending(true)
+        setResendCooldownSeconds(60)
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : "Unable to resend the confirmation email."
+        setErrorMessage(message)
+        if (error instanceof ConfirmationResendError && error.retryAfterSeconds) {
+          setResendCooldownSeconds(error.retryAfterSeconds)
+        } else if (/too many|recently|wait before/i.test(message)) {
+          setResendCooldownSeconds(60)
+        }
+      })
+      .finally(() => {
+        setIsResending(false)
+        setCaptchaToken("")
+        setCaptchaResetKey((current) => current + 1)
+      })
   }, [captchaToken])
+
+  useEffect(() => {
+    if (resendCooldownSeconds <= 0) return
+    const timer = window.setTimeout(() => {
+      setResendCooldownSeconds((current) => Math.max(0, current - 1))
+    }, 1_000)
+    return () => window.clearTimeout(timer)
+  }, [resendCooldownSeconds])
 
   function switchAuthMode(mode: AuthMode) {
     setAuthMode(mode)
     setErrorMessage("")
     setStatusMessage("")
+    setConfirmationPending(false)
     setCaptchaToken("")
     setCaptchaResetKey((current) => current + 1)
     submitAfterCaptchaRef.current = false
+    resendAfterCaptchaRef.current = null
 
     const params = new URLSearchParams()
     if (mode === "register") {
@@ -308,7 +404,10 @@ export function LoginForm({
         }
 
         if (result.confirmationRequired) {
-          setStatusMessage("Check your email to confirm your Taihu member account before signing in.")
+          setConfirmationPending(true)
+          setStatusMessage(
+            "Your account is created, but email verification is required before full member access. Open the link in your inbox, then return here if it has expired or never arrives.",
+          )
           setPassword("")
           setConfirmPassword("")
           return
@@ -316,6 +415,7 @@ export function LoginForm({
 
         setPassword("")
         setConfirmPassword("")
+        setConfirmationPending(false)
         switchAuthMode("sign-in")
         setStatusMessage("Account created. You can sign in now.")
       } catch (error) {
@@ -373,7 +473,45 @@ export function LoginForm({
     setStatusMessage("")
   }
 
+  function handleCaptchaDialogOpenChange(open: boolean) {
+    setCaptchaDialogOpen(open)
+    if (!open && !captchaToken) {
+      submitAfterCaptchaRef.current = false
+      resendAfterCaptchaRef.current = null
+    }
+  }
+
+  function handleResendConfirmation() {
+    if (isResending) return
+
+    if (resendCooldownSeconds > 0) {
+      setStatusMessage(`A request was already sent. You can request another in ${resendCooldownSeconds} seconds.`)
+      return
+    }
+
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!EMAIL_PATTERN.test(normalizedEmail)) {
+      setErrorMessage("Enter the email address used to create your account before requesting a new link.")
+      return
+    }
+
+    if (!isCaptchaConfigured) {
+      setErrorMessage("Security check is not configured, so confirmation email resend is not available yet.")
+      return
+    }
+
+    setErrorMessage("")
+    setStatusMessage("")
+    setConfirmationPending(true)
+    submitAfterCaptchaRef.current = false
+    resendAfterCaptchaRef.current = { email: normalizedEmail, next }
+    setCaptchaToken("")
+    setCaptchaResetKey((current) => current + 1)
+    setCaptchaDialogOpen(true)
+  }
+
   async function handleProviderClick(provider: OAuthProviderKey) {
+    if (loadingProvider) return
     if (!termsAccepted || !ageAttested) {
       setErrorMessage("Accept the draft Terms and Privacy framework and confirm age eligibility before social sign-in.")
       return
@@ -523,7 +661,7 @@ export function LoginForm({
               </label>
             </div>
 
-            <div className="casino-auth-providers mt-5 grid grid-cols-3 gap-3">
+            <div className="casino-auth-providers mt-5 grid grid-cols-4 gap-3">
               {providerButtons.map((provider) => (
                 <ProviderButton
                   key={provider.key}
@@ -534,6 +672,7 @@ export function LoginForm({
                   width={provider.width}
                   height={provider.height}
                   loading={loadingProvider === provider.key}
+                  disabled={loadingProvider !== null}
                   onClick={() => handleProviderClick(provider.key)}
                 />
               ))}
@@ -617,33 +756,71 @@ export function LoginForm({
 
               <CaptchaDialog
                 open={captchaDialogOpen}
-                onOpenChange={setCaptchaDialogOpen}
+                onOpenChange={handleCaptchaDialogOpenChange}
                 token={captchaToken}
                 onTokenChange={setCaptchaToken}
                 resetKey={captchaResetKey}
               />
 
               {errorMessage ? (
-                <div className="rounded-[1.2rem] border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
+                <div role="alert" className="rounded-[1.2rem] border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
                   {errorMessage}
                 </div>
               ) : null}
 
-              {statusMessage ? (
-                <div className="rounded-[1.2rem] border border-primary/25 bg-primary/10 px-4 py-3 text-sm leading-6 text-foreground">
-                  {statusMessage}
+              {statusMessage || confirmationPending ? (
+                <div role="status" className="rounded-[1.2rem] border border-primary/25 bg-primary/10 px-4 py-3 text-sm leading-6 text-foreground">
+                  <p>{statusMessage || "Email verification is still required before full member access."}</p>
+                  {confirmationPending ? (
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-xs text-[var(--auth-soft-text)]">Allow a few minutes and check spam or junk mail before retrying.</p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={isResending || resendCooldownSeconds > 0}
+                        onClick={handleResendConfirmation}
+                        className="shrink-0"
+                      >
+                        <RefreshCw className={cn("mr-2 h-4 w-4", isResending && "animate-spin")} />
+                        {isResending
+                          ? "Sending..."
+                          : resendCooldownSeconds > 0
+                            ? `Retry in ${resendCooldownSeconds}s`
+                            : "Resend confirmation"}
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 
               <Button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isResending}
                 className="mt-2 h-14 w-full rounded-[1.4rem] bg-primary text-lg font-semibold text-primary-foreground shadow-[0_20px_60px_rgba(45,201,142,0.18)] transition-transform duration-200 hover:-translate-y-0.5 hover:bg-primary/90"
               >
                 {isSubmitting ? (isRegisterMode ? "Creating Account..." : "Signing In...") : isRegisterMode ? "Create Account" : "Sign In"}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </form>
+
+            {!confirmationPending ? (
+              <p className="casino-auth-desktop-optional mt-5 text-center text-sm text-[var(--auth-soft-text)]">
+                Waiting for email verification?{" "}
+                <button
+                  type="button"
+                  onClick={handleResendConfirmation}
+                  disabled={isResending || resendCooldownSeconds > 0}
+                  className="font-semibold text-primary hover:text-primary/80 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isResending
+                    ? "Sending confirmation..."
+                    : resendCooldownSeconds > 0
+                      ? `Resend available in ${resendCooldownSeconds}s`
+                      : "Resend confirmation email"}
+                </button>
+              </p>
+            ) : null}
 
             <p className="casino-auth-desktop-optional mt-7 text-center text-base text-[var(--auth-soft-text)]">
               {isRegisterMode ? "Already have an account?" : "New to TaihuCasino?"}{" "}

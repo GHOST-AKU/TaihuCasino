@@ -4,6 +4,7 @@ import dynamic from "next/dynamic"
 
 import type { BlackjackRoundView } from "@/lib/blackjack-engine"
 import type { CasinoTableEntry, GameRuleSet } from "@/lib/game-catalog"
+import { isRegionalGameRuleId } from "@/lib/game-rules"
 import type { Language } from "@/lib/home-content"
 import type { MemberGameProgress, MemberGameRound, MemberTableSession } from "@/lib/member-data"
 
@@ -35,6 +36,11 @@ const RouletteTablePage = dynamic(
 
 const DiceTablePage = dynamic(
   () => import("@/components/dice-table-page").then((module) => module.DiceTablePage),
+  { loading: TableLoaderFallback },
+)
+
+const RegionalGameTablePage = dynamic(
+  () => import("@/components/regional-game-table-page").then((module) => module.RegionalGameTablePage),
   { loading: TableLoaderFallback },
 )
 
@@ -103,6 +109,16 @@ export function GameTableLoader({
   if (ruleSet === "dice") {
     return (
       <DiceTablePage
+        {...gameStateProps}
+        initialTableSession={initialTableSession}
+        initialGameRounds={initialGameRounds}
+      />
+    )
+  }
+
+  if (isRegionalGameRuleId(ruleSet)) {
+    return (
+      <RegionalGameTablePage
         {...gameStateProps}
         initialTableSession={initialTableSession}
         initialGameRounds={initialGameRounds}

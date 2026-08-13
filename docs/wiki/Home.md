@@ -14,6 +14,9 @@ This wiki is the stable navigation entry for delivery workflow and team operatio
 ## Deep Docs In Repository / 仓库内详细文档
 
 - [Deployment Readiness](../DEPLOYMENT_READINESS.md)
+- [Release and Rollback Runbook](../RELEASE_ROLLBACK_RUNBOOK.md)
+- [Legacy-to-App Migration Matrix](../LEGACY_MIGRATION_MATRIX.md)
+- [Issue #47 Data Maintenance Runbook](../../supabase/maintenance/README.md)
 - [Supabase Auth Schema](../SUPABASE_AUTH_SCHEMA.md)
 - [Codebase Boundary Plan](../CODEBASE_BOUNDARY_PLAN.md)
 - [Theme System](../THEME_SYSTEM.md)

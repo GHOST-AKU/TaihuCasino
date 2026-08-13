@@ -1,6 +1,13 @@
 import { randomInt } from "node:crypto"
 
 import type { GameRuleSet } from "@/lib/game-catalog"
+// Node's native TypeScript test runner requires the explicit extension here.
+import {
+  evaluateSicBoRoll,
+  isRegionalGameRuleId,
+  SIC_BO_NET_ODDS,
+  settleRegionalGameRound,
+} from "./game-rules/index.ts"
 import type { ProgressOutcome } from "@/lib/member-data"
 
 type RandomInt = (max: number) => number
@@ -126,18 +133,9 @@ function settleDice(betSnapshot: Record<string, unknown>, rng: RandomInt): Autho
   const bets = canonicalLedger(record(betSnapshot).bets, diceKeys)
   const totalStake = requireStake(Object.values(bets).reduce((sum, bet) => sum + bet, 0))
   const dice = [rng(6) + 1, rng(6) + 1, rng(6) + 1] as [number, number, number]
-  const sum = dice[0] + dice[1] + dice[2]
-  const triple = dice[0] === dice[1] && dice[1] === dice[2]
-  const wins = {
-    big: sum >= 11 && sum <= 17,
-    small: sum >= 4 && sum <= 10,
-    odd: sum % 2 === 1,
-    even: sum % 2 === 0,
-    triple,
-  }
-  const payouts = { big: 1, small: 1, odd: 1, even: 1, triple: 24 }
+  const { sum, triple, wins } = evaluateSicBoRoll(dice)
   const delta = money(diceKeys.reduce((sumDelta, key) => (
-    sumDelta + (wins[key] ? bets[key] * payouts[key] : -bets[key])
+    sumDelta + (wins[key] ? bets[key] * SIC_BO_NET_ODDS[key] : -bets[key])
   ), 0))
 
   return {
@@ -225,5 +223,8 @@ export function settleAuthoritativeRound(
   }
   if (ruleSet === "roulette") return settleRoulette(betSnapshot, rng)
   if (ruleSet === "dice") return settleDice(betSnapshot, rng)
+  if (isRegionalGameRuleId(ruleSet)) {
+    return settleRegionalGameRound(ruleSet, betSnapshot, rng)
+  }
   throw new Error("This table does not support authoritative wagering settlement.")
 }

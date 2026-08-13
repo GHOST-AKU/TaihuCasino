@@ -29,6 +29,9 @@ This restructure did two main things:
 - Project board / 项目看板: [TaihuCasino Delivery](https://github.com/users/GHOST-AKU/projects/2)
 - Wiki / 流程与手册入口: [TaihuCasino Wiki](https://github.com/GHOST-AKU/TaihuCasino/wiki)
 - Wiki source in repo / 仓库内 Wiki 源文件: [`docs/wiki/Home.md`](./docs/wiki/Home.md)
+- Release and rollback runbook / 发布与回滚执行手册: [`docs/RELEASE_ROLLBACK_RUNBOOK.md`](./docs/RELEASE_ROLLBACK_RUNBOOK.md)
+- Legacy migration matrix / 遗留层迁移矩阵: [`docs/LEGACY_MIGRATION_MATRIX.md`](./docs/LEGACY_MIGRATION_MATRIX.md)
+- Bounded smoke-data maintenance / 有界 smoke 数据维护: [`supabase/maintenance/README.md`](./supabase/maintenance/README.md)
 - Backlog bootstrap issues / 首批 backlog: [Open backlog items](https://github.com/GHOST-AKU/TaihuCasino/issues?q=is%3Aissue%20is%3Aopen%20no%3Aassignee)
 
 ## Main Directories / 主要目录

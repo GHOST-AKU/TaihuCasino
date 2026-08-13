@@ -12,7 +12,13 @@ const providerMap = {
   microsoft: "azure",
   facebook: "facebook",
   x: "x",
+  discord: "discord",
+  twitch: "twitch",
 } satisfies Record<string, Provider>
+
+function isOAuthProviderKey(providerKey: string): providerKey is keyof typeof providerMap {
+  return Object.hasOwn(providerMap, providerKey)
+}
 
 async function createOAuthRedirect(
   request: Request,
@@ -24,16 +30,19 @@ async function createOAuthRedirect(
   if (limited) return { limited }
 
   if (!isSupabaseAuthConfigured()) {
-    return { error: "Supabase authentication is not configured.", status: 501 }
+    return { error: "Social sign-in is not configured.", errorCode: "oauth_unavailable", status: 501 }
   }
 
-  const provider = providerMap[providerKey as keyof typeof providerMap]
-
-  if (!provider) {
-    return { error: "Unsupported sign-in provider.", status: 400 }
+  if (!isOAuthProviderKey(providerKey)) {
+    return { error: "Unsupported sign-in provider.", errorCode: "unsupported_provider", status: 400 }
   }
+  const provider = providerMap[providerKey]
   if (!consent.termsAccepted || !consent.ageAttested) {
-    return { error: "Terms, Privacy, and age eligibility acknowledgement are required.", status: 400 }
+    return {
+      error: "Terms, Privacy, and age eligibility acknowledgement are required.",
+      errorCode: "consent_required",
+      status: 400,
+    }
   }
 
   const response = NextResponse.json(
@@ -47,16 +56,24 @@ async function createOAuthRedirect(
   const cookieStore = await cookies()
   const supabase = createSupabaseAuthClient(cookieStore, response)
   const origin = new URL(request.url).origin
-  const next = encodeURIComponent(resolveAppRedirectTarget(nextTarget))
+  const callbackUrl = new URL("/auth/callback", origin)
+  callbackUrl.searchParams.set("next", resolveAppRedirectTarget(nextTarget))
+  callbackUrl.searchParams.set("consent", "1")
+  callbackUrl.searchParams.set("locale", consent.locale)
+  callbackUrl.searchParams.set("provider", providerKey)
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: `${origin}/auth/callback?next=${next}&consent=1&locale=${encodeURIComponent(consent.locale)}`,
+      redirectTo: callbackUrl.toString(),
     },
   })
 
   if (error || !data.url) {
-    return { error: error?.message ?? "Unable to start sign in.", status: 502 }
+    return {
+      error: error?.message ?? "Unable to start sign in.",
+      errorCode: "provider_unavailable",
+      status: 502,
+    }
   }
 
   return { redirectTo: data.url, headers: response.headers }
@@ -76,8 +93,13 @@ export async function GET(request: Request) {
   )
 
   if ("error" in result) {
-    const next = encodeURIComponent(resolveAppRedirectTarget(requestUrl.searchParams.get("next")))
-    return NextResponse.redirect(new URL(`/login?next=${next}&authError=oauth`, requestUrl.origin), {
+    const params = new URLSearchParams({
+      next: resolveAppRedirectTarget(requestUrl.searchParams.get("next")),
+      authError: result.errorCode ?? "oauth",
+    })
+    const providerKey = requestUrl.searchParams.get("provider") ?? ""
+    if (isOAuthProviderKey(providerKey)) params.set("provider", providerKey)
+    return NextResponse.redirect(new URL(`/login?${params.toString()}`, requestUrl.origin), {
       headers: {
         "cache-control": "private, no-store",
       },
@@ -109,7 +131,7 @@ export async function POST(request: Request) {
   })
 
   if ("error" in result) {
-    return NextResponse.json({ error: result.error }, { status: result.status })
+    return NextResponse.json({ error: result.error, code: result.errorCode }, { status: result.status })
   }
 
   if ("limited" in result) {

@@ -1,0 +1,13 @@
+{
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#game-rules/core": "./core.ts",
+    "#game-rules/fan-tan": "./fan-tan.ts",
+    "#game-rules/french-boule": "./french-boule.ts",
+    "#game-rules/sic-bo": "./sic-bo.ts",
+    "#game-rules/symbol-dice": "./symbol-dice.ts",
+    "#game-rules/types": "./types.ts"
+  }
+}
+
