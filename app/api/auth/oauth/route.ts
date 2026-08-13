@@ -95,7 +95,7 @@ export async function GET(request: Request) {
   if ("error" in result) {
     const params = new URLSearchParams({
       next: resolveAppRedirectTarget(requestUrl.searchParams.get("next")),
-      authError: result.errorCode,
+      authError: result.errorCode ?? "oauth",
     })
     const providerKey = requestUrl.searchParams.get("provider") ?? ""
     if (isOAuthProviderKey(providerKey)) params.set("provider", providerKey)

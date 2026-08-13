@@ -33,7 +33,7 @@ export interface CanonicalBet<Key extends string = string> {
   amount: number
 }
 
-export interface CanonicalBetSnapshot<Key extends string = string> {
+export interface CanonicalBetSnapshot<Key extends string = string> extends Record<string, unknown> {
   ruleSet: string
   rulesVersion: string
   bets: CanonicalBet<Key>[]
@@ -49,4 +49,3 @@ export interface RegionalSettlement<Key extends string = string> {
   betSnapshot: CanonicalBetSnapshot<Key>
   resultSnapshot: Record<string, unknown>
 }
-
